@@ -1,0 +1,23 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo 'AI Agent Plugin 2.0 - LangChain 1.0, LangGraph 1.0, Microsoft Agent Framework'"
+          },
+          {
+            "type": "command",
+            "command": "python3 -c \"import sys; print(f'Python: {sys.version}')\" 2>/dev/null || echo 'Python not detected'"
+          },
+          {
+            "type": "command",
+            "command": "python3 -c \"import langchain; import langgraph; print(f'LangChain: {langchain.__version__}, LangGraph: {langgraph.__version__}')\" 2>/dev/null || echo 'LangChain/LangGraph not installed. Use /agent or /workflow commands to install.'"
+          }
+        ]
+      }
+    ]
+  }
+}

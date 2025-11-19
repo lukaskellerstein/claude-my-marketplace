@@ -1,0 +1,15 @@
+{
+  "name": "claude-my-marketplace",
+  "version": "1.0.0",
+  "description": "A marketplace for Claude Code plugins focused on ME",
+  "owner": {
+    "name": "Lukas Kellerstein",
+    "url": "https://github.com/lukaskellerstein"
+  },
+  "plugins": [
+    {
+      "name": "finance-plugin",
+      "source": "./plugins/finance-plugin"
+    }
+  ]
+}

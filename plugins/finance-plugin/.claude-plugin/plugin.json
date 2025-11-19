@@ -1,0 +1,21 @@
+{
+  "name": "finance-plugin",
+  "version": "1.0.0",
+  "description": "Finance app plugin",
+  "author": {
+    "name": "Lukas Kellerstein"
+  },
+  "keywords": [
+    "finance",
+    "interactive-brokers",
+    "stocks",
+    "options",
+    "futures"
+  ],
+  "commands": [
+    "./commands/architecture/analyzer.md",
+    "./commands/project/latest-version.md"
+  ],
+  "agents": ["./agents/app-expert.md"],
+  "skills": ["./skills/options"]
+}

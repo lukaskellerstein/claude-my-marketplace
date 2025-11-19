@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "mermaid-mcp": {
+      "url": "https://mcp.mermaidchart.com/mcp",
+      "type": "http",
+      "description": "Mermaid diagram generation for agent workflow visualizations"
+    }
+  }
+}
