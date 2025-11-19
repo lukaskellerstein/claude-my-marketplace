@@ -14,7 +14,7 @@
   ],
   "agents": ["./agents/app-expert.md"],
   "commands": [
-    "./commands/architecture/analyzer.md",
+    "./commands/architecture/analyze.md",
     "./commands/project/latest-version.md"
   ],
   "skills": ["./skills/options"]
