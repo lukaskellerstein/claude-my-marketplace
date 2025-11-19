@@ -12,10 +12,10 @@
     "options",
     "futures"
   ],
+  "agents": ["./agents/app-expert.md"],
   "commands": [
     "./commands/architecture/analyzer.md",
     "./commands/project/latest-version.md"
   ],
-  "agents": ["./agents/app-expert.md"],
   "skills": ["./skills/options"]
 }
