@@ -1,0 +1,16 @@
+{
+  "name": "infra-plugin",
+  "version": "1.0.0",
+  "description": "Infra plugin",
+  "author": {
+    "name": "Lukas Kellerstein"
+  },
+  "keywords": [
+    "kubernetes",
+    "google cloud",
+    "keycloak",
+    "oauth2-proxy",
+    "istio"
+  ],
+  "skills": ["./skills/options"]
+}
