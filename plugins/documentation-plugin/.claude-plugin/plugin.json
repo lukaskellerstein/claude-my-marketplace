@@ -1,7 +1,7 @@
 {
   "name": "documentation-plugin",
-  "version": "1.0.0",
-  "description": "Documentation management plugin for maintaining architecture docs, feature documentation, and visual diagrams using Mermaid. Keeps docs up to date, organizes them by architecture and features, and generates documentation for feature branches.",
+  "version": "1.1.0",
+  "description": "Documentation management plugin for maintaining architecture docs, feature documentation, visual diagrams using Mermaid, data visualizations and charts using D3.js, and generating professional PowerPoint presentations. Keeps docs up to date, organizes them by architecture and features, and generates documentation for feature branches.",
   "author": {
     "name": "Lukas Kellerstein"
   },
@@ -11,11 +11,21 @@
     "mermaid",
     "diagrams",
     "features",
-    "docs"
+    "docs",
+    "pptx",
+    "presentations",
+    "powerpoint",
+    "slides",
+    "charts",
+    "graphs",
+    "d3",
+    "visualization",
+    "maps"
   ],
   "skills": [
     "./skills/documentation",
-    "./skills/mermaid"
+    "./skills/pptx",
+    "./skills/graph-generation"
   ],
   "mcpServers": {
     "mermaid": {

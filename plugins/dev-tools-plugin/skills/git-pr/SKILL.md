@@ -1,11 +1,22 @@
 ---
 name: git-pr
-description: Create a feature branch, commit staged or unstaged changes with a well-crafted commit message, and open a GitHub Pull Request with a meaningful title, description, and assignee. Use this skill whenever the user wants to commit their work and raise a PR, says things like "commit and open a PR", "create a pull request for my changes", "push this to a branch", "ship this", "submit this for review", or any variation of wanting to save work and create a GitHub PR. Always use this skill even if the user only mentions one part (e.g. "just commit this") — the full branch-commit-PR flow is the default behavior.
+description: Create a feature branch following the git flow branching model, commit staged or unstaged changes with a well-crafted commit message, and open a GitHub Pull Request with a meaningful title, description, and assignee. Follows git flow conventions — branches are created from and merged back into `develop`, with `feature/`, `hotfix/`, `release/`, and `bugfix/` prefixes. Use this skill whenever the user wants to commit their work and raise a PR, says things like "commit and open a PR", "create a pull request for my changes", "push this to a branch", "ship this", "submit this for review", or any variation of wanting to save work and create a GitHub PR. Always use this skill even if the user only mentions one part (e.g. "just commit this") — the full branch-commit-PR flow is the default behavior.
 ---
 
 # git-pr Skill
 
-Create a feature branch from current changes, commit with a meaningful message, push, and open a GitHub PR — assigned to the right person and described properly.
+Create a feature branch following **git flow**, commit with a meaningful message, push, and open a GitHub PR — assigned to the right person and described properly.
+
+## Git Flow Overview
+
+This skill follows the [git flow](https://nvie.com/posts/a-successful-git-branching-model/) branching model:
+
+- **`main`** (or `master`) — production-ready code. Only `release/` and `hotfix/` branches merge here.
+- **`develop`** — the integration branch. All `feature/` and `bugfix/` branches are created from and merged back into `develop`.
+- **`feature/*`** — new functionality, branched from `develop`.
+- **`bugfix/*`** — non-urgent fixes, branched from `develop`.
+- **`release/*`** — release prep, branched from `develop`, merged into both `main` and `develop`.
+- **`hotfix/*`** — urgent production fixes, branched from `main`, merged into both `main` and `develop`.
 
 ## Prerequisites
 
@@ -18,33 +29,7 @@ Create a feature branch from current changes, commit with a meaningful message, 
 
 ## Workflow
 
-### Step 1: Detect current branch
-
-First, check what branch you're on:
-
-```bash
-git branch --show-current
-```
-
-Then get the repo's default branch (usually `main` or `master`):
-
-```bash
-gh repo view --json defaultBranchRef -q .defaultBranchRef.name
-```
-
-**Two paths from here:**
-
-**Path A — Already on a feature branch** (current branch ≠ default branch):
-- Skip Steps 3 and 4 entirely — do NOT create a new branch
-- Proceed directly to Step 2 (understand changes), Step 5 (commit), Step 6 (push), Step 7 (PR)
-- Use the existing branch name as-is for the PR
-
-**Path B — On the default branch** (e.g. `main` or `master`):
-- Continue with Steps 2 and 3 to create a new branch before committing
-
----
-
-### Step 2: Understand the changes
+### Step 1: Understand the changes and detect the git flow base branch
 
 Run `git diff` (and `git diff --staged` if anything is staged) plus `git status` to understand what has changed. Do NOT ask the user to explain their changes — figure it out from the diff yourself.
 
@@ -54,38 +39,59 @@ git diff
 git diff --staged
 ```
 
-If there are **no changes** at all (and no commits ahead of the default branch), tell the user and stop.
+If there are **no changes** at all, tell the user and stop.
 
-### Step 3: Generate branch name and commit message
+**Detect the base branch:**
+
+Check which branches exist in the repo to determine the git flow setup:
+
+```bash
+git branch -a | grep -E '(develop|main|master)'
+```
+
+- If `develop` exists, use it as the default base branch (for `feature/` and `bugfix/` branches).
+- If the user explicitly says this is a **hotfix** (urgent production fix), branch from `main`/`master` instead.
+- If `develop` does not exist, fall back to `main`/`master` and let the user know the repo doesn't appear to follow git flow fully.
+
+### Step 2: Generate branch name and commit message
 
 From the diff, synthesize:
 
-**Branch name** *(Path B only — skip if already on a feature branch)*:
-- Format: `feature/<short-kebab-slug>` (e.g. `feature/add-login-button`)
+**Branch name (git flow conventions):**
+- `feature/<short-kebab-slug>` — new functionality (e.g. `feature/add-login-button`)
+- `bugfix/<short-kebab-slug>` — non-urgent bug fixes targeting `develop`
+- `hotfix/<short-kebab-slug>` — urgent production fixes (branched from `main`/`master`)
+- `release/<version>` — release preparation (e.g. `release/1.2.0`)
+- `chore/<short-kebab-slug>` — non-functional changes (deps, config, docs)
 - Max ~5 words, lowercase, hyphens only
-- Use `fix/` prefix instead of `feature/` if the change is clearly a bug fix
-- Use `chore/` for non-functional changes (deps, config, docs)
+- Default to `feature/` when in doubt
 
-**Commit message** *(always, if there are uncommitted changes)*:
+**Commit message:**
 - First line: imperative mood, ≤72 chars (e.g. `Add login button to navbar`)
 - Optionally followed by a blank line and a short body (2–4 lines) if the change is complex
 - Be specific — never use vague messages like "update files" or "fix stuff"
 
-**Show the plan to the user and ask for confirmation before proceeding.** Keep it brief:
-- Path A: show just the commit message and say "I'll commit to `<branch>` and open a PR — look good?"
-- Path B: show the proposed branch name and commit message and ask "Look good? I'll proceed unless you want changes."
+**Show both to the user and ask for confirmation before proceeding.** Keep it brief — just show the proposed branch name and commit message and ask "Look good? I'll proceed unless you want changes."
 
-If there are no uncommitted changes (already clean, just needs a PR opened), skip the commit message and just confirm you'll open the PR from the current branch.
+### Step 3: Create the branch from the correct base
 
-### Step 4: Create the branch *(Path B only)*
+First, ensure you're branching from the right base per git flow:
 
 ```bash
+# For feature/ and bugfix/ branches — branch from develop
+git checkout develop
+git pull origin develop
+git checkout -b <branch-name>
+
+# For hotfix/ branches — branch from main/master
+git checkout main
+git pull origin main
 git checkout -b <branch-name>
 ```
 
 If the branch already exists, append a short suffix like `-2`.
 
-### Step 5: Stage and commit
+### Step 4: Stage and commit
 
 Stage everything that's unstaged (unless the user has explicitly staged a subset — in that case respect their staging):
 
@@ -99,16 +105,22 @@ For multi-line commit messages:
 git commit -m "<subject>" -m "<body>"
 ```
 
-### Step 6: Push the branch
+### Step 5: Push the branch
 
 ```bash
 git push -u origin <branch-name>
 ```
 
-### Step 7: Create the PR with `gh`
+### Step 6: Create the PR with `gh` (targeting the correct base)
+
+Determine the correct PR base branch per git flow:
+- `feature/*`, `bugfix/*` → base is `develop`
+- `hotfix/*` → base is `main`/`master`
+- `release/*` → base is `main`/`master`
 
 ```bash
 gh pr create \
+  --base <base-branch> \
   --title "<PR title — same as commit subject>" \
   --body "<PR description>" \
   --assignee "@me"
@@ -141,38 +153,19 @@ Keep the description concise. If motivation isn't clear from the code, omit the 
 | `gh` not installed | Tell user, link to https://cli.github.com, stop |
 | `gh` not authenticated | Run `gh auth status` to confirm, then tell user to run `gh auth login` |
 | Not in a git repo | Tell user, stop |
+| `develop` branch missing | Warn user the repo may not follow git flow; fall back to `main`/`master` as base and mention they may want to create a `develop` branch |
 | Push rejected (branch exists on remote) | Try `git push --force-with-lease` only if branch was just created by this skill; otherwise ask user |
-| `gh pr create` fails (no upstream) | Ensure `--base` is set to the repo default branch: `gh repo view --json defaultBranchRef -q .defaultBranchRef.name` |
+| `gh pr create` fails (no upstream) | Ensure `--base` is set correctly per git flow conventions |
 
 ---
 
-## Examples
-
-**Path B — On `main`, new branch needed:**
+## Example
 
 User: "commit and PR my changes"
-1. Detects current branch is `main`
-2. Reads diff — sees changes to `src/auth/login.tsx` adding a new form field
-3. Proposes: branch `feature/add-email-field-to-login`, commit `Add email field to login form`
+
+Claude:
+1. Runs `git diff` — sees changes to `src/auth/login.tsx` adding a new form field
+2. Checks for `develop` branch — it exists
+3. Proposes: branch `feature/add-email-field-to-login` (from `develop`), commit `Add email field to login form`, PR targeting `develop`
 4. User confirms
-5. Creates branch, commits, pushes, opens PR assigned to `@me`
-
----
-
-**Path A — Already on a feature branch:**
-
-User: "ship this"
-1. Detects current branch is `feature/refactor-sidebar` (not the default branch)
-2. Reads diff — sees several component changes
-3. Proposes just the commit message: "I'll commit to `feature/refactor-sidebar` and open a PR — look good?"
-4. User confirms
-5. Commits, pushes, opens PR from existing branch assigned to `@me`
-
----
-
-**Path A — Clean branch, just needs a PR:**
-
-User: "open a PR for this branch"
-1. Detects current branch is `fix/null-pointer-crash`, no uncommitted changes
-2. Says: "No uncommitted changes — I'll open a PR from `fix/null-pointer-crash` now."
-3. Opens PR based on commits already on the branch, assigned to `@me`
+5. Checks out `develop`, pulls latest, creates branch, commits, pushes, opens PR titled "Add email field to login form" with body describing the change, assigned to `@me`, base set to `develop`
