@@ -17,8 +17,5 @@
     "./skills/git-pr",
     "./skills/dead-code",
     "./skills/update-dependencies"
-  ],
-  "agents": [
-    "./agents/dead-code-analyzer"
   ]
 }
