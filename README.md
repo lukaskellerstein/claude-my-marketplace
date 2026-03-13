@@ -13,12 +13,12 @@ General developer tooling — git workflows, code hygiene, and dependency manage
 
 ### [documentation-plugin](plugins/documentation-plugin)
 
-Documentation management — architecture docs, feature documentation, and Mermaid diagrams.
+Documentation management — architecture docs, feature documentation, Mermaid diagrams, D3.js charts, and PowerPoint presentations.
 
-- **Skills:** documentation, mermaid
+- **Skills:** documentation, graph-generation, pptx
 - **Agents:** docs-auditor
 - **Commands:** docs-init, docs-feature, docs-update
-- **MCP:** Mermaid Chart
+- **MCP:** Mermaid Chart, Playwright
 
 ### [infra-plugin](plugins/infra-plugin)
 
@@ -28,9 +28,11 @@ Infrastructure management for Kubernetes/GKE, Istio, Helm, Terraform, Traefik, a
 
 ### [media-plugin](plugins/media-plugin)
 
-AI-powered media generation — images, videos/GIFs, music, and text-to-speech via Google Gemini.
+AI-powered media generation — images, videos/GIFs, music, and text-to-speech via Google Gemini. Also supports sourcing stock photos from Unsplash, Pexels, and Pixabay.
 
-- **Skills:** image-generation, video-generation, music-generation, speech-generation
+- **Skills:** image-generation, image-sourcing, video-generation, music-generation, speech-generation
+- **Agents:** media-director
+- **Commands:** media-generate, media-assets
 - **MCP:** media-mcp (Gemini)
 
 ## Installation

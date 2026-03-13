@@ -1,6 +1,6 @@
 {
   "name": "media-plugin",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Media generation and manipulation for Claude Code — images, videos/GIFs, music, and text-to-speech using Google Gemini via the media-mcp server.",
   "author": {
     "name": "Lukas Kellerstein"
