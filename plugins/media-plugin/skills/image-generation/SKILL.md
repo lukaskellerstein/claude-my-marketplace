@@ -14,6 +14,8 @@ Use the `mcp__media-mcp__generate_image` tool to create images via Google Gemini
 - User provides a reference image and wants variations or modifications
 - User describes a scene, character, product, or concept they want visualized
 
+> **Tip:** If the user needs a **real photograph** (e.g., stock photo of a real place, person, or product), consider using the **image-sourcing** skill instead, which finds and downloads existing photos from Unsplash, Pexels, and Pixabay.
+
 ## Tool Reference
 
 ### generate_image
