@@ -9,8 +9,8 @@ Generate any chart, graph, diagram, map, or visualization and save it as an imag
 
 | Engine | Best For | How it renders |
 |---|---|---|
-| **Mermaid** | Software diagrams (flowcharts, sequence, state, class, ER, C4, Gantt) | Mermaid MCP server (`mcp__mermaid__*`) renders to PNG |
-| **D3.js** | Data-driven charts, maps, financial charts, network graphs, hierarchical visualizations | Self-contained HTML rendered via Playwright MCP, then screenshotted to PNG |
+| **Mermaid** | Software diagrams (flowcharts, sequence, state, class, ER, C4, Gantt) | Self-contained HTML with mermaid.js CDN, rendered via Playwright MCP with high-DPI settings, then screenshotted to PNG |
+| **D3.js** | Data-driven charts, maps, financial charts, network graphs, hierarchical visualizations | Self-contained HTML with D3.js CDN, rendered via Playwright MCP with high-DPI settings, then screenshotted to PNG |
 
 ## Decision Guide
 
@@ -36,7 +36,71 @@ Generate any chart, graph, diagram, map, or visualization and save it as an imag
 
 # Part 1: Mermaid Diagrams
 
-Use the **mermaid MCP server** (`mcp__mermaid__*`) for creating and rendering software diagrams. Diagrams can be embedded in markdown documentation using fenced code blocks, or rendered to standalone PNG images via the MCP server.
+Use **mermaid.js** for software diagrams. For embedding in markdown docs, use fenced ```` ```mermaid ```` code blocks. For **high-resolution image output**, render via Playwright MCP (same approach as D3).
+
+## Mermaid Image Rendering Workflow
+
+To generate a high-resolution mermaid diagram as a PNG image:
+
+1. **Write an HTML file** that loads mermaid.js from CDN and contains the diagram definition
+2. **Open it in Playwright** with a large viewport and high `deviceScaleFactor`
+3. **Wait for rendering** then screenshot
+
+### HTML Template for Mermaid Image Output
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <style>
+    body { margin: 0; padding: 40px; background: white; }
+    .mermaid { display: flex; justify-content: center; }
+  </style>
+</head>
+<body>
+  <div class="mermaid">
+    %% PASTE MERMAID DIAGRAM CODE HERE %%
+  </div>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'default',
+      themeVariables: {
+        fontSize: '16px'
+      }
+    });
+  </script>
+</body>
+</html>
+```
+
+### Playwright Steps
+
+```
+1. mcp__playwright__browser_resize → width: 1200, height: 800, deviceScaleFactor: 2
+2. mcp__playwright__browser_navigate → file:///absolute/path/to/diagram.html
+3. mcp__playwright__browser_wait_for → selector: ".mermaid svg", state: "visible"
+4. mcp__playwright__browser_take_screenshot → saves high-res PNG
+```
+
+**Key settings for readable output:**
+- `deviceScaleFactor: 2` produces 2x resolution (e.g., 1200x800 viewport → 2400x1600 image)
+- Set `fontSize: '16px'` or higher in mermaid config for readable text
+- Add `padding: 40px` on body to prevent diagram edges being cut off
+
+### Mermaid Themes
+
+Available themes in `mermaid.initialize({ theme: '...' })`:
+
+| Theme | Description |
+|---|---|
+| `default` | Light purple/blue tones (recommended) |
+| `neutral` | Black and white, clean for documents |
+| `dark` | Dark background |
+| `forest` | Green tones |
+| `base` | Minimal, customizable via `themeVariables` |
 
 ## Mermaid Diagram Types
 
@@ -315,7 +379,7 @@ classDiagram
 2. **Use consistent naming** — same service/component names across all diagrams
 3. **Label relationships** — always annotate arrows with protocol, action, or data type
 4. **Keep it readable** — limit to ~10-15 nodes per diagram; use subgraphs for grouping
-5. **Use the MCP server** — validate diagram syntax before committing by using `mcp__mermaid__*` tools
+5. **Always use Playwright for image output** — render via HTML + mermaid.js CDN with `deviceScaleFactor: 2` for crisp images
 6. **Match the audience** — C4 Context for stakeholders, Sequence for developers, ER for database teams
 7. **Update diagrams with code** — when architecture changes, update the diagram in the same PR
 
@@ -330,8 +394,8 @@ Generate data-driven charts, maps, and visualizations as image files using **D3.
 Every D3 graph follows this 3-step process:
 
 1. **Write a self-contained HTML file** with inline D3.js code (loaded from CDN)
-2. **Open it in Playwright** using `mcp__playwright__browser_navigate`
-3. **Screenshot it** using `mcp__playwright__browser_take_screenshot` to save as PNG
+2. **Open it in Playwright** with high-DPI settings using `mcp__playwright__browser_navigate`
+3. **Screenshot it** using `mcp__playwright__browser_take_screenshot` to save as high-res PNG
 
 ### Step 1: Write the HTML File
 
@@ -362,21 +426,22 @@ Create a single `.html` file with:
 </html>
 ```
 
-### Step 2: Open in Playwright
+### Step 2: Open in Playwright with High-DPI
 
 ```
-mcp__playwright__browser_navigate → file:///absolute/path/to/chart.html
+1. mcp__playwright__browser_resize → width: 1200, height: 800, deviceScaleFactor: 2
+2. mcp__playwright__browser_navigate → file:///absolute/path/to/chart.html
 ```
 
 ### Step 3: Screenshot
 
 ```
-mcp__playwright__browser_take_screenshot → saves PNG to desired output path
+mcp__playwright__browser_take_screenshot → saves high-res PNG to desired output path
 ```
 
 ### Alternative: Extract SVG
 
-Instead of a screenshot, extract the SVG markup directly:
+Instead of a screenshot, extract the SVG markup directly (resolution-independent):
 
 ```
 mcp__playwright__browser_evaluate → document.querySelector('svg').outerHTML
@@ -955,10 +1020,12 @@ Load these as needed for specialized chart types:
 
 ## Sizing and Resolution
 
-- Default chart size: `width=800, height=500` for landscape charts
+**Always use `deviceScaleFactor: 2`** when calling `mcp__playwright__browser_resize` before navigating to any chart HTML. This applies to both Mermaid and D3 charts. This produces crisp, readable text without excessive file sizes.
+
+- Default viewport: `width: 1200, height: 800, deviceScaleFactor: 2` (produces 2400x1600 image)
+- Default chart SVG size: `width=800, height=500` for landscape charts
 - Maps: `width=960, height=500` (standard for world maps)
 - Square charts (pie, network): `width=600, height=600`
-- For high-DPI output, set Playwright viewport to 2x dimensions and use `deviceScaleFactor: 2`
 
 ## Color Schemes
 

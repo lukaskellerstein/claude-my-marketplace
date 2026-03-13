@@ -92,6 +92,138 @@ Pick a header font with personality and pair it with a clean body font. These ar
 
 ---
 
+## Premium Design Techniques (Canva-Level Quality)
+
+These techniques are what separate professional presentations from generic AI-generated slides. **Use them aggressively.**
+
+### Full-Bleed Photo Backgrounds with Dark Overlay
+
+The single most impactful technique. Use a relevant AI-generated or stock photo as a full-bleed background, then overlay a semi-transparent dark shape so text remains readable.
+
+```javascript
+// Full-bleed photo + dark overlay
+slide.background = { data: photoBase64 }; // or { path: "photo.jpg" }
+slide.addShape(pres.shapes.RECTANGLE, {
+  x: 0, y: 0, w: 10, h: 5.625,
+  fill: { color: "000000", transparency: 45 }
+});
+// Now add white text on top — it pops beautifully
+```
+
+**When to use:** Title slides, section dividers, closing slides, quote slides, any slide that needs visual impact. Aim for at least 2-3 photo-backed slides per deck.
+
+### Gradient Backgrounds via Generated Images
+
+PptxGenJS doesn't support gradient fills natively, but you can generate a gradient image and use it as a background. Use `sharp` or an AI image generator.
+
+```javascript
+// Generate a gradient image with sharp
+const sharp = require("sharp");
+async function makeGradientBg(w, h, colorTop, colorBottom) {
+  const svg = `<svg width="${w}" height="${h}">
+    <defs><linearGradient id="g" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="${colorTop}"/>
+      <stop offset="100%" stop-color="${colorBottom}"/>
+    </linearGradient></defs>
+    <rect width="${w}" height="${h}" fill="url(#g)"/>
+  </svg>`;
+  const buf = await sharp(Buffer.from(svg)).png().toBuffer();
+  return "image/png;base64," + buf.toString("base64");
+}
+
+// Use as slide background
+slide.background = { data: await makeGradientBg(1920, 1080, "#1E2761", "#0D1333") };
+```
+
+### Half-Image Layouts (Split Slides)
+
+Place a photo on one half (left or right) with content on the other. The photo should be full-height with no margins — edge-to-edge on its side.
+
+```javascript
+// Left half = image, right half = content
+slide.addImage({
+  path: imagePath,
+  x: 0, y: 0, w: 5, h: 5.625,
+  sizing: { type: "cover", w: 5, h: 5.625 }
+});
+// Content goes on right side: x: 5.5, w: 4
+```
+
+### Decorative Geometric Shapes
+
+Add subtle decorative elements — large transparent circles, diagonal accent bars, corner shapes — to break up flat backgrounds. These add visual interest without competing with content.
+
+```javascript
+// Large decorative circle (partially off-slide for visual interest)
+slide.addShape(pres.shapes.OVAL, {
+  x: 7.5, y: -1, w: 4, h: 4,
+  fill: { color: accent, transparency: 85 }
+});
+
+// Diagonal accent strip (use a thin rotated rectangle)
+slide.addShape(pres.shapes.RECTANGLE, {
+  x: -1, y: 4.5, w: 12, h: 0.08,
+  fill: { color: accent, transparency: 60 },
+  rotate: -3
+});
+
+// Corner dot pattern (small circles)
+for (let row = 0; row < 4; row++) {
+  for (let col = 0; col < 4; col++) {
+    slide.addShape(pres.shapes.OVAL, {
+      x: 8.5 + col * 0.25, y: 0.3 + row * 0.25, w: 0.08, h: 0.08,
+      fill: { color: accent, transparency: 70 }
+    });
+  }
+}
+```
+
+### Elevated Cards with Rounded Corners
+
+Use `ROUNDED_RECTANGLE` with soft shadows for modern card UI. Cards should feel like they float above the background.
+
+```javascript
+const makeCardStyle = () => ({
+  fill: { color: "FFFFFF" },
+  rectRadius: 0.15,
+  shadow: { type: "outer", color: "000000", blur: 8, offset: 3, angle: 135, opacity: 0.12 }
+});
+
+slide.addShape(pres.shapes.ROUNDED_RECTANGLE, {
+  x: 0.5, y: 1.3, w: 4.2, h: 3.5,
+  ...makeCardStyle()
+});
+```
+
+### Color-Blocked Sections
+
+Instead of a plain white slide, split the slide into 2-3 horizontal or vertical color blocks.
+
+```javascript
+// Top band (dark) + bottom section (light)
+slide.addShape(pres.shapes.RECTANGLE, {
+  x: 0, y: 0, w: 10, h: 2.2,
+  fill: { color: primary }
+});
+// Title goes in the dark band, content in the light area below
+```
+
+### Visual Rhythm Across the Deck
+
+A Canva-quality deck follows a deliberate visual rhythm:
+
+1. **Slide 1 (Title):** Full-bleed photo + dark overlay, large white text
+2. **Slide 2-3 (Content):** Light background with cards or columns
+3. **Slide 4 (Impact):** Dark background or another photo-backed slide — breaks monotony
+4. **Slide 5-7 (Content):** Alternate between light/accent backgrounds, use split-image layouts
+5. **Slide 8 (Data):** Chart on clean background
+6. **Slide 9 (Quote/Testimonial):** Full-bleed photo + overlay
+7. **Slide 10 (Closing):** Gradient or photo background, centered CTA
+
+**Rule: Never have more than 2 consecutive slides with the same background treatment.**
+
+---
+
 ## Common Design Mistakes to Avoid
 
 1. **Repeating the same layout** — vary between columns, cards, callouts, and charts across slides.
@@ -99,8 +231,11 @@ Pick a header font with personality and pair it with a clean body font. These ar
 3. **Weak size contrast** — if your title and body look similar in size, increase the title.
 4. **Defaulting to blue** — choose colors that reflect the specific topic.
 5. **Inconsistent spacing** — pick a standard gap and stick with it.
-6. **Text-only slides** — every slide should have a visual element (shape, icon, chart, or image).
+6. **Text-only slides** — every slide should have a visual element (shape, icon, chart, or image). **Use AI-generated images when no other visual is available.**
 7. **Too many bullet points** — if a slide has more than 5 bullets, split it into two slides or use a different layout.
 8. **Low-contrast text or icons** — test that text is legible against its background. Light gray on cream is unreadable.
 9. **Accent lines under titles** — these are a hallmark of AI-generated slides. Use white space or background color changes instead.
 10. **All slides with white backgrounds** — use the dark/light sandwich structure for visual rhythm.
+11. **Flat, shadowless cards** — always add soft shadows to card elements for depth.
+12. **No photography** — professional decks use images. Generate topic-relevant images via AI for at least title, section divider, and closing slides.
+13. **Generic stock imagery** — when generating images, make them specific to the topic. "Abstract blue wave" is lazy. "Aerial view of solar farm at sunset" is specific and impactful.

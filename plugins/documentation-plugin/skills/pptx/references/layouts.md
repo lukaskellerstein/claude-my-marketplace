@@ -6,20 +6,40 @@ All examples assume `LAYOUT_16x9` (10" × 5.625") and use placeholder color vari
 
 ---
 
-## 1. Title Slide (Dark)
+## 1. Title Slide (Photo Background)
 
-Full-width dark background with large centered title and subtitle.
+Full-bleed photo background with dark overlay and large white text. This is the premium default — use this instead of plain dark backgrounds.
 
 **When to use:** Opening slide, section dividers, closing slide.
 
-```javascript
-function addTitleSlide(pres, { title, subtitle, primary, accent }) {
-  const slide = pres.addSlide();
-  slide.background = { color: primary };
+**Image sizing:** Generate the background photo at **16:9** (1920×1080). Make it specific to the presentation topic.
 
-  // Accent bar at top
+```javascript
+function addTitleSlide(pres, { title, subtitle, bgImageData, primary, accent }) {
+  const slide = pres.addSlide();
+
+  // Full-bleed photo background
+  if (bgImageData) {
+    slide.background = { data: bgImageData };
+  } else {
+    slide.background = { color: primary };
+  }
+
+  // Dark overlay for text readability
   slide.addShape(pres.shapes.RECTANGLE, {
-    x: 0, y: 0, w: 10, h: 0.06, fill: { color: accent }
+    x: 0, y: 0, w: 10, h: 5.625,
+    fill: { color: "000000", transparency: 45 }
+  });
+
+  // Decorative accent element (large transparent circle, top-right)
+  slide.addShape(pres.shapes.OVAL, {
+    x: 7, y: -1.5, w: 5, h: 5,
+    fill: { color: accent, transparency: 80 }
+  });
+
+  // Accent bar
+  slide.addShape(pres.shapes.RECTANGLE, {
+    x: 0.8, y: 1.3, w: 1.5, h: 0.06, fill: { color: accent }
   });
 
   slide.addText(title, {
@@ -30,7 +50,7 @@ function addTitleSlide(pres, { title, subtitle, primary, accent }) {
 
   slide.addText(subtitle, {
     x: 0.8, y: 3.2, w: 8.4, h: 0.8,
-    fontSize: 18, fontFace: "Calibri", color: "CADCFC",
+    fontSize: 18, fontFace: "Calibri", color: "EEEEEE",
     align: "left"
   });
 
@@ -40,36 +60,49 @@ function addTitleSlide(pres, { title, subtitle, primary, accent }) {
 
 ---
 
-## 2. Two-Column (Text + Visual)
+## 2. Split-Image Slide (Text + Full-Height Photo)
 
-Text on left, image/chart/visual on right (or vice versa). The most versatile content layout.
+Photo fills one half edge-to-edge, content on the other half. Much more impactful than a small inset image.
 
 **When to use:** Explaining a concept alongside an illustration, before/after comparisons, feature descriptions.
 
+**Image sizing:** Generate the image at **9:16 or 1:1** (not 16:9!) — it fills a tall, narrow space (5" × 5.625").
+
 ```javascript
-function addTwoColumnSlide(pres, { title, bodyText, imagePath, primary }) {
+function addSplitImageSlide(pres, { title, bodyText, imageData, imageSide, primary, accent }) {
+  // imageSide: "left" or "right"
   const slide = pres.addSlide();
   slide.background = { color: "FFFFFF" };
 
+  const imgX = imageSide === "left" ? 0 : 5;
+  const contentX = imageSide === "left" ? 5.4 : 0.5;
+
+  // Full-height image (edge-to-edge on its side)
+  slide.addImage({
+    data: imageData,
+    x: imgX, y: 0, w: 5, h: 5.625,
+    sizing: { type: "cover", w: 5, h: 5.625 }
+  });
+
+  // Color accent strip at the edge where image meets content
+  const stripX = imageSide === "left" ? 5 : 4.94;
+  slide.addShape(pres.shapes.RECTANGLE, {
+    x: stripX, y: 0, w: 0.06, h: 5.625,
+    fill: { color: accent }
+  });
+
   // Title
   slide.addText(title, {
-    x: 0.5, y: 0.3, w: 9, h: 0.7,
+    x: contentX, y: 0.5, w: 4.2, h: 0.8,
     fontSize: 28, fontFace: "Georgia", color: primary,
     bold: true, margin: 0
   });
 
-  // Left column — text
+  // Body text
   slide.addText(bodyText, {
-    x: 0.5, y: 1.3, w: 4.2, h: 3.5,
+    x: contentX, y: 1.5, w: 4.2, h: 3.5,
     fontSize: 15, fontFace: "Calibri", color: "333333",
     valign: "top", align: "left"
-  });
-
-  // Right column — image
-  slide.addImage({
-    path: imagePath,
-    x: 5.2, y: 1.3, w: 4.3, h: 3.5,
-    sizing: { type: "cover", w: 4.3, h: 3.5 }
   });
 
   return slide;
@@ -127,7 +160,7 @@ async function addIconRowsSlide(pres, { title, items, primary, accent }) {
 
 ## 4. Stat Callout Cards
 
-2–4 large numbers in cards with labels underneath. For presenting key metrics.
+2–4 large numbers in elevated rounded cards with labels underneath. For presenting key metrics.
 
 **When to use:** KPIs, results, metrics, achievements, data highlights.
 
@@ -135,7 +168,13 @@ async function addIconRowsSlide(pres, { title, items, primary, accent }) {
 function addStatCardsSlide(pres, { title, stats, primary, secondary, accent }) {
   // stats: [{ value: "42%", label: "Conversion Rate" }, ...]
   const slide = pres.addSlide();
-  slide.background = { color: "F8F8F8" };
+  slide.background = { color: "F5F5F5" };
+
+  // Decorative background circles
+  slide.addShape(pres.shapes.OVAL, {
+    x: -1.5, y: 3.5, w: 4, h: 4,
+    fill: { color: primary, transparency: 92 }
+  });
 
   slide.addText(title, {
     x: 0.5, y: 0.3, w: 9, h: 0.7,
@@ -150,32 +189,33 @@ function addStatCardsSlide(pres, { title, stats, primary, secondary, accent }) {
   for (let i = 0; i < count; i++) {
     const x = startX + i * (cardW + 0.4);
 
-    // Card background
-    const makeCardShadow = () => ({
-      type: "outer", color: "000000", blur: 4, offset: 2, angle: 135, opacity: 0.1
-    });
-    slide.addShape(pres.shapes.RECTANGLE, {
-      x, y: 1.4, w: cardW, h: 3.0,
+    // Elevated rounded card
+    const makeCardStyle = () => ({
       fill: { color: "FFFFFF" },
-      shadow: makeCardShadow()
+      rectRadius: 0.15,
+      shadow: { type: "outer", color: "000000", blur: 8, offset: 3, angle: 135, opacity: 0.12 }
+    });
+    slide.addShape(pres.shapes.ROUNDED_RECTANGLE, {
+      x, y: 1.4, w: cardW, h: 3.0,
+      ...makeCardStyle()
     });
 
-    // Accent bar at top of card
-    slide.addShape(pres.shapes.RECTANGLE, {
-      x, y: 1.4, w: cardW, h: 0.06,
-      fill: { color: accent }
+    // Colored icon circle at top of card
+    slide.addShape(pres.shapes.OVAL, {
+      x: x + cardW / 2 - 0.3, y: 1.7, w: 0.6, h: 0.6,
+      fill: { color: accent, transparency: 15 }
     });
 
     // Big number
     slide.addText(stats[i].value, {
-      x, y: 1.8, w: cardW, h: 1.2,
+      x, y: 2.5, w: cardW, h: 1.0,
       fontSize: 48, fontFace: "Georgia", color: primary,
       bold: true, align: "center", valign: "middle"
     });
 
     // Label
     slide.addText(stats[i].label, {
-      x, y: 3.1, w: cardW, h: 0.8,
+      x: x + 0.2, y: 3.5, w: cardW - 0.4, h: 0.7,
       fontSize: 13, fontFace: "Calibri", color: "666666",
       align: "center", valign: "top"
     });
@@ -368,27 +408,47 @@ function addComparisonSlide(pres, { title, leftTitle, leftItems, rightTitle, rig
 
 ---
 
-## 8. Quote / Testimonial
+## 8. Quote / Testimonial (Photo Background)
 
-Large quote with attribution. High visual impact with minimal text.
+Large quote with attribution over a full-bleed photo. Maximum visual impact.
 
 **When to use:** Customer quotes, expert opinions, mission statements.
 
+**Image sizing:** Generate the background photo at **16:9** (1920×1080). Choose atmospheric, moody imagery relevant to the quote's theme.
+
 ```javascript
-function addQuoteSlide(pres, { quote, author, role, primary }) {
+function addQuoteSlide(pres, { quote, author, role, bgImageData, primary, accent }) {
   const slide = pres.addSlide();
-  slide.background = { color: primary };
+
+  // Full-bleed photo background
+  if (bgImageData) {
+    slide.background = { data: bgImageData };
+  } else {
+    slide.background = { color: primary };
+  }
+
+  // Dark overlay
+  slide.addShape(pres.shapes.RECTANGLE, {
+    x: 0, y: 0, w: 10, h: 5.625,
+    fill: { color: "000000", transparency: 40 }
+  });
+
+  // Accent bar before quote
+  slide.addShape(pres.shapes.RECTANGLE, {
+    x: 1.2, y: 1.3, w: 0.06, h: 2.5,
+    fill: { color: accent }
+  });
 
   // Large opening quote mark
   slide.addText("\u201C", {
-    x: 0.5, y: 0.5, w: 2, h: 1.5,
+    x: 0.3, y: 0.3, w: 2, h: 1.5,
     fontSize: 120, fontFace: "Georgia", color: "FFFFFF",
-    bold: true, transparency: 30, margin: 0
+    bold: true, transparency: 40, margin: 0
   });
 
   // Quote text
   slide.addText(quote, {
-    x: 1.2, y: 1.5, w: 7.6, h: 2.5,
+    x: 1.6, y: 1.5, w: 7.2, h: 2.5,
     fontSize: 22, fontFace: "Georgia", color: "FFFFFF",
     italic: true, align: "left", valign: "middle"
   });
@@ -396,8 +456,8 @@ function addQuoteSlide(pres, { quote, author, role, primary }) {
   // Author
   slide.addText([
     { text: author, options: { bold: true, fontSize: 16, color: "FFFFFF", breakLine: true } },
-    { text: role, options: { fontSize: 13, color: "CADCFC" } }
-  ], { x: 1.2, y: 4.2, w: 7.6, h: 0.8, align: "left", margin: 0 });
+    { text: role, options: { fontSize: 13, color: "DDDDDD" } }
+  ], { x: 1.6, y: 4.2, w: 7.2, h: 0.8, align: "left", margin: 0 });
 
   return slide;
 }
@@ -446,38 +506,62 @@ function addChartSlide(pres, { title, annotation, chartType, chartData, chartOpt
 
 ---
 
-## 10. Closing Slide (Call to Action)
+## 10. Closing Slide (Photo Background + CTA)
 
-Dark background with centered CTA or contact info.
+Full-bleed photo with overlay and centered call-to-action. Mirrors the title slide for visual bookending.
 
 **When to use:** Last slide, next steps, contact information, thank you.
 
+**Image sizing:** Generate at **16:9** (1920×1080). Can reuse the title slide photo or pick a complementary image.
+
 ```javascript
-function addClosingSlide(pres, { headline, subtext, contactInfo, primary, accent }) {
+function addClosingSlide(pres, { headline, subtext, contactInfo, bgImageData, primary, accent }) {
   const slide = pres.addSlide();
-  slide.background = { color: primary };
+
+  // Full-bleed photo background (or gradient fallback)
+  if (bgImageData) {
+    slide.background = { data: bgImageData };
+  } else {
+    slide.background = { color: primary };
+  }
+
+  // Dark overlay
+  slide.addShape(pres.shapes.RECTANGLE, {
+    x: 0, y: 0, w: 10, h: 5.625,
+    fill: { color: "000000", transparency: 50 }
+  });
+
+  // Decorative elements
+  slide.addShape(pres.shapes.OVAL, {
+    x: -2, y: -2, w: 6, h: 6,
+    fill: { color: accent, transparency: 85 }
+  });
+  slide.addShape(pres.shapes.OVAL, {
+    x: 7, y: 3, w: 5, h: 5,
+    fill: { color: accent, transparency: 88 }
+  });
 
   // Accent bar
   slide.addShape(pres.shapes.RECTANGLE, {
-    x: 4.5, y: 1.8, w: 1, h: 0.04, fill: { color: accent }
+    x: 4.25, y: 1.6, w: 1.5, h: 0.05, fill: { color: accent }
   });
 
   slide.addText(headline, {
-    x: 1, y: 2.0, w: 8, h: 1,
+    x: 1, y: 1.8, w: 8, h: 1,
     fontSize: 36, fontFace: "Georgia", color: "FFFFFF",
     bold: true, align: "center", valign: "middle"
   });
 
   slide.addText(subtext, {
-    x: 1, y: 3.1, w: 8, h: 0.6,
-    fontSize: 16, fontFace: "Calibri", color: "CADCFC",
+    x: 1, y: 3.0, w: 8, h: 0.6,
+    fontSize: 16, fontFace: "Calibri", color: "EEEEEE",
     align: "center"
   });
 
   if (contactInfo) {
     slide.addText(contactInfo, {
-      x: 1, y: 4.2, w: 8, h: 0.6,
-      fontSize: 14, fontFace: "Calibri", color: "FFFFFF",
+      x: 1, y: 4.0, w: 8, h: 0.6,
+      fontSize: 14, fontFace: "Calibri", color: "DDDDDD",
       align: "center"
     });
   }
@@ -492,26 +576,41 @@ function addClosingSlide(pres, { headline, subtext, contactInfo, primary, accent
 
 | Content Type | Recommended Layouts |
 |-------------|-------------------|
-| Opening / section divider | Title Slide (Dark) |
+| Opening / section divider | Title Slide (Photo Background) |
 | Feature list / key points | Icon + Text Rows |
 | KPIs / metrics / results | Stat Callout Cards |
-| Explaining a concept | Two-Column (Text + Visual) |
+| Explaining a concept | Split-Image Slide |
 | Comparing options | Comparison (Side by Side) |
 | Strategy pillars / categories | Content Grid (2×2) |
 | Process / workflow / roadmap | Timeline / Process Flow |
-| Customer quote / testimonial | Quote / Testimonial |
+| Customer quote / testimonial | Quote / Testimonial (Photo Background) |
 | Data / charts / trends | Chart Slide |
-| Closing / CTA / contact | Closing Slide |
+| Closing / CTA / contact | Closing Slide (Photo Background) |
+
+### Image Generation Plan
+
+Before generating slides, plan which slides need images and at what aspect ratio:
+
+| Slide | Image Type | Aspect Ratio | Notes |
+|-------|-----------|--------------|-------|
+| Title | Full-bleed background | 16:9 | Topic-specific, atmospheric |
+| Split-Image | Half-slide photo | 9:10 or 1:1 | Relevant to slide content |
+| Quote | Full-bleed background | 16:9 | Moody, atmospheric |
+| Closing | Full-bleed background | 16:9 | Can reuse title photo |
+
+**Generate all needed images BEFORE starting the PptxGenJS script.** This avoids mid-script interruptions.
 
 For a 10-slide deck, a good rhythm might be:
 
-1. Title Slide (Dark)
-2. Two-Column — agenda or overview
-3. Icon + Text Rows — key features
-4. Stat Callout Cards — metrics
-5. Content Grid — strategy pillars
-6. Chart Slide — data/trends
-7. Timeline — roadmap
-8. Two-Column — deep dive
-9. Quote — testimonial
-10. Closing Slide
+1. **Title Slide (Photo BG)** — full-bleed image + dark overlay, white text
+2. **Split-Image** — photo left, agenda/overview right
+3. **Icon + Text Rows** — key features on light background
+4. **Stat Callout Cards** — metrics with elevated rounded cards
+5. **Content Grid** — strategy pillars on light background
+6. **Chart Slide** — data/trends on clean background
+7. **Split-Image** — photo right, deep dive left (alternate side from slide 2)
+8. **Timeline** — roadmap on light background
+9. **Quote (Photo BG)** — testimonial over atmospheric image
+10. **Closing Slide (Photo BG)** — CTA over image, bookends with title
+
+**Key rule: At least 3 slides should have photo backgrounds. Never more than 2 consecutive plain-background slides.**

@@ -40,8 +40,51 @@ Before writing any code, plan:
 2. **Slide types** — pick from the layout catalog (see [references/layouts.md](references/layouts.md))
 3. **Color palette** — pick a palette that matches the topic (see [references/design.md](references/design.md))
 4. **Font pairing** — pick a header + body font combo (see [references/design.md](references/design.md))
+5. **Image plan** — decide which slides need generated images (at minimum: title, one section divider, and closing). For each image, note:
+   - What the image should depict (specific to the topic, not generic)
+   - The aspect ratio matching its placement (see Image Sizing Rules above)
+   - Whether it's a full-bleed background (16:9) or a half-slide photo (9:10 / 1:1)
 
 Vary slide layouts. Monotonous decks with the same layout repeated are the most common failure. Use at least 3 different layout types across a deck.
+
+**Generate all planned images BEFORE writing the PptxGenJS script.** This avoids mid-script interruptions and ensures images are ready when needed.
+
+### Design Quality Target
+
+Aim for Canva-level presentation quality. Read the Premium Design Techniques section in [references/design.md](references/design.md). Key requirements:
+- At least 3 slides with full-bleed photo backgrounds + dark overlay
+- Elevated rounded cards with soft shadows instead of flat rectangles
+- Decorative geometric shapes for visual interest
+- Never more than 2 consecutive plain-background slides
+- Topic-specific AI-generated images, not generic abstractions
+
+## Image Sizing Rules
+
+When generating images (via AI image generation or any other source) for use in the presentation, **always match the image aspect ratio to its placement dimensions on the slide**. Mismatched aspect ratios cause distortion.
+
+### How to calculate
+
+1. Determine the placement box dimensions from the layout code (the `w` and `h` values in `addImage`)
+2. Calculate the aspect ratio: `w / h`
+3. Generate the image at that aspect ratio
+
+### Common placement sizes and their aspect ratios
+
+| Placement | w × h (inches) | Aspect Ratio | Generate At |
+|-----------|----------------|--------------|-------------|
+| Full-bleed background | 10 × 5.625 | 16:9 | 1920×1080 or 16:9 |
+| Half-slide (left/right column) | 4.3 × 3.5 | ~1.23:1 | 1230×1000 or 5:4 |
+| Half-slide (tall) | 5 × 5.625 | ~0.89:1 | 890×1000 or 9:10 |
+| Quarter block (2×2 grid) | 4.3 × 1.8 | ~2.4:1 | 2400×1000 or 12:5 |
+| Hero image (wide strip) | 9 × 3.0 | 3:1 | 2700×900 or 3:1 |
+| Square icon/photo | 2 × 2 | 1:1 | 1:1 |
+
+### Rules
+
+- **NEVER generate all images at 16:9 by default** — only use 16:9 for full-bleed backgrounds
+- **Use `sizing: { type: "cover", w: W, h: H }`** on every `addImage` call so images fill their box without distortion
+- If the exact ratio doesn't match a standard option, pick the closest standard aspect ratio (1:1, 4:3, 3:2, 16:9, 9:16, etc.)
+- For AI-generated images, include the target aspect ratio in the generation prompt/parameters
 
 ## Step 3: Generate the Presentation
 
