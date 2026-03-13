@@ -1,0 +1,29 @@
+{
+  "companyAnnouncements": ["Welcome to My marketplace server"],
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Edit",
+      "Glob",
+      "Grep",
+      "NotebookEdit",
+      "NotebookRead",
+      "Read",
+      "SlashCommand",
+      "Task",
+      "TodoWrite",
+      "WebFetch",
+      "WebSearch",
+      "Write",
+      "Search",
+      "BashOutput",
+      "KillShell",
+      "Skill"
+    ],
+    "deny": ["Bash(rm -rf /)", "Bash(rm -rf ~)"],
+    "ask": []
+  },
+  "enabledPlugins": {
+    "plugin-dev@claude-plugins-official": true
+  }
+}

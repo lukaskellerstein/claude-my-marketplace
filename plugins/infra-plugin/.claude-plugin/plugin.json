@@ -1,7 +1,7 @@
 {
   "name": "infra-plugin",
   "version": "1.0.0",
-  "description": "Infra plugin",
+  "description": "Infrastructure management for Kubernetes/GKE, Istio service mesh, and authentication (Keycloak, OAuth2-proxy). Includes Helm charts, Terraform IaC, and Traefik reverse proxy.",
   "author": {
     "name": "Lukas Kellerstein"
   },
@@ -10,7 +10,17 @@
     "google cloud",
     "keycloak",
     "oauth2-proxy",
-    "istio"
+    "istio",
+    "helm",
+    "terraform",
+    "traefik"
   ],
-  "skills": ["./skills/options"]
+  "skills": [
+    "./skills/auth",
+    "./skills/helm",
+    "./skills/istio",
+    "./skills/kubernetes",
+    "./skills/terraform",
+    "./skills/traefik"
+  ]
 }

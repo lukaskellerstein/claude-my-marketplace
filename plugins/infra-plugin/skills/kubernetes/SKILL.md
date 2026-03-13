@@ -239,7 +239,7 @@ metadata:
 
 **Manage GCP resources from Kubernetes:**
 
-See [CONFIG_CONNECTOR.md](references/CONFIG_CONNECTOR.md) for complete setup and usage patterns.
+See [CONFIG_CONNECTOR.md](CONFIG_CONNECTOR.md) for complete setup and usage patterns.
 
 ### GKE Networking
 
@@ -268,7 +268,7 @@ spec:
 - Control plane is private
 - Use Cloud NAT for egress
 - VPC peering for internal access
-- See [PRIVATE_CLUSTERS.md](references/PRIVATE_CLUSTERS.md) for setup
+- See [PRIVATE_CLUSTERS.md](PRIVATE_CLUSTERS.md) for setup
 
 ## Manifest Patterns
 
@@ -526,7 +526,7 @@ securityContext:
 - **Pod Security Policies/Standards**: Enforce pod security requirements
 - **Private clusters**: Isolate control plane
 
-See [SECURITY.md](references/SECURITY.md) for detailed security configurations.
+See [SECURITY.md](SECURITY.md) for detailed security configurations.
 
 ## Backup and Disaster Recovery
 
@@ -714,11 +714,11 @@ gcloud container operations describe OPERATION_ID --region REGION
 
 For detailed information on advanced features, see:
 
-- [CONFIG_CONNECTOR.md](references/CONFIG_CONNECTOR.md) - Manage GCP resources from Kubernetes
-- [PRIVATE_CLUSTERS.md](references/PRIVATE_CLUSTERS.md) - Setup and networking for private GKE clusters
-- [SECURITY.md](references/SECURITY.md) - Comprehensive security configurations
-- [CI_CD.md](references/CI_CD.md) - GitOps and continuous deployment patterns
-- [MULTI_CLUSTER.md](references/MULTI_CLUSTER.md) - Multi-cluster management and Anthos
+- [CONFIG_CONNECTOR.md](CONFIG_CONNECTOR.md) - Manage GCP resources from Kubernetes
+- [PRIVATE_CLUSTERS.md](PRIVATE_CLUSTERS.md) - Setup and networking for private GKE clusters
+- [SECURITY.md](SECURITY.md) - Comprehensive security configurations
+- [CI_CD.md](CI_CD.md) - GitOps and continuous deployment patterns
+- [MULTI_CLUSTER.md](MULTI_CLUSTER.md) - Multi-cluster management and Anthos
 
 ## Package Requirements
 

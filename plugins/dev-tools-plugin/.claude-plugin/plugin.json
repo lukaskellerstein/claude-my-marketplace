@@ -1,0 +1,24 @@
+{
+  "name": "dev-tools-plugin",
+  "version": "1.0.0",
+  "description": "General developer tooling — git workflows, code hygiene, and dependency management.",
+  "author": {
+    "name": "Lukas Kellerstein"
+  },
+  "keywords": [
+    "git",
+    "pr",
+    "pull-request",
+    "dead-code",
+    "dependencies",
+    "cleanup"
+  ],
+  "skills": [
+    "./skills/git-pr",
+    "./skills/dead-code",
+    "./skills/update-dependencies"
+  ],
+  "agents": [
+    "./agents/dead-code-analyzer"
+  ]
+}
