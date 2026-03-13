@@ -98,12 +98,16 @@ composition but with [different subject/scene/modification]
 | `16:9` | Banners, hero images, video thumbnails, slides |
 | `9:16` | Mobile stories, vertical video thumbnails, phone wallpapers |
 
-## Working with Generated Images
+## Output Handling — MEDIA_OUTPUT_DIR
 
-After generation, the image is saved to `MEDIA_OUTPUT_DIR` (if configured) or returned as base64. You can:
+**When `MEDIA_OUTPUT_DIR` is set** (recommended): The MCP server saves the generated image to a file and returns only the file path. Always use just this path — do NOT request or embed the raw image data. This is critical because all MCP request/response messages are stored in the conversation history, and large base64 payloads pollute the context window, degrading performance.
 
-1. **Use in documentation** — reference the generated file path in markdown
-2. **Use as reference** — pass the generated image back as a `reference_image` for variations
+**When `MEDIA_OUTPUT_DIR` is not set**: The MCP server has no choice but to return the image as base64 data in the response. This works but is suboptimal for conversation history size.
+
+After generation you can:
+
+1. **Use in documentation** — reference the returned file path in markdown
+2. **Use as reference** — pass the file path back as a `reference_image` for variations
 3. **Iterate** — refine the prompt based on results and regenerate
 
 ## Tips

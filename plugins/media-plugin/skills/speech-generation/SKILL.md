@@ -150,6 +150,12 @@ Style: "Expressive storyteller voice, varied pacing — slower
 ### Multi-language consideration
 The tool generates speech based on the text language. Write text in the target language for non-English output.
 
+## Output Handling — MEDIA_OUTPUT_DIR
+
+**When `MEDIA_OUTPUT_DIR` is set** (recommended): The MCP server saves the generated speech audio to a file and returns only the file path. Always use just this path — do NOT request or embed the raw audio data. This is critical because all MCP request/response messages are stored in the conversation history, and large base64 payloads pollute the context window, degrading performance.
+
+**When `MEDIA_OUTPUT_DIR` is not set**: The MCP server has no choice but to return the audio as base64 data in the response. This works but is suboptimal for conversation history size.
+
 ## Combining with Other Media Skills
 
 ### Voiceover + Video

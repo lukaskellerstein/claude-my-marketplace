@@ -122,11 +122,15 @@ smooth 2-second loop
 | `16:9` | YouTube, presentations, demos, landscape content |
 | `9:16` | TikTok, Instagram Reels, YouTube Shorts, mobile-first |
 
-## Working with Generated Videos
+## Output Handling — MEDIA_OUTPUT_DIR
 
-After generation, the video file is saved to `MEDIA_OUTPUT_DIR` or returned as base64.
+**When `MEDIA_OUTPUT_DIR` is set** (recommended): The MCP server saves the generated video to a file and returns only the file path. Always use just this path — do NOT request or embed the raw video data. This is critical because all MCP request/response messages are stored in the conversation history, and large base64 payloads pollute the context window, degrading performance.
 
-- **Convert to GIF**: If the user wants a GIF, generate the video first, then convert using ffmpeg: `ffmpeg -i video.mp4 -vf "fps=15,scale=480:-1" output.gif`
+**When `MEDIA_OUTPUT_DIR` is not set**: The MCP server has no choice but to return the video as base64 data in the response. This works but is suboptimal for conversation history size.
+
+After generation you can:
+
+- **Convert to GIF**: `ffmpeg -i video.mp4 -vf "fps=15,scale=480:-1" output.gif`
 - **Extract frames**: `ffmpeg -i video.mp4 -vf "fps=1" frame_%04d.png`
 - **Trim**: `ffmpeg -i video.mp4 -ss 00:00:01 -to 00:00:03 -c copy trimmed.mp4`
 

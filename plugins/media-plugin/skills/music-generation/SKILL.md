@@ -139,6 +139,12 @@ The prompt system uses weights to blend musical concepts. Higher weight = more i
 | 0.7-0.9 | Creative — more experimental and surprising results |
 | 1.0+ | Highly experimental — may diverge significantly from prompt |
 
+## Output Handling — MEDIA_OUTPUT_DIR
+
+**When `MEDIA_OUTPUT_DIR` is set** (recommended): The MCP server saves the generated audio to a file and returns only the file path. Always use just this path — do NOT request or embed the raw audio data. This is critical because all MCP request/response messages are stored in the conversation history, and large base64 payloads pollute the context window, degrading performance.
+
+**When `MEDIA_OUTPUT_DIR` is not set**: The MCP server has no choice but to return the audio as base64 data in the response. This works but is suboptimal for conversation history size.
+
 ## Tips
 
 - Start with a moderate temperature (0.5) and adjust based on results
