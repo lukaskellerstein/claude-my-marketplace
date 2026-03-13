@@ -27,9 +27,12 @@
     "media-mcp": {
       "type": "stdio",
       "command": "uvx",
-      "args": ["media-mcp"],
+      "args": [
+        "media-mcp"
+      ],
       "env": {
-        "GEMINI_API_KEY": "${GEMINI_API_KEY}"
+        "GEMINI_API_KEY": "${GEMINI_API_KEY}",
+        "MEDIA_OUTPUT_DIR": "${MEDIA_OUTPUT_DIR}"
       },
       "description": "AI-powered media generation (image, video, music, speech) via Google Gemini"
     }
