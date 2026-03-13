@@ -8,12 +8,20 @@
   },
   "plugins": [
     {
-      "name": "finance-plugin",
-      "source": "./plugins/finance-plugin"
+      "name": "dev-tools-plugin",
+      "source": "./plugins/dev-tools-plugin"
     },
     {
-      "name": "pr-review-plugin",
-      "source": "./plugins/pr-review-plugin"
+      "name": "documentation-plugin",
+      "source": "./plugins/documentation-plugin"
+    },
+    {
+      "name": "infra-plugin",
+      "source": "./plugins/infra-plugin"
+    },
+    {
+      "name": "media-plugin",
+      "source": "./plugins/media-plugin"
     }
   ]
 }
