@@ -266,14 +266,15 @@ After the Design Language page is complete, **all subsequent pages must use thes
 
 ### Helper Functions Library — INJECT FIRST
 
-Before any design work, **read and inject the helper library from the scripts directory**:
+Before any design work, **inject the helper library via fetch+eval** (no file reading needed):
 
-1. **Read the file**: `Read → skills/figma-plugin-api/scripts/helpers.js`
-2. **Inject into browser**: `mcp__design-playwright__browser_evaluate` → paste the file contents
+```javascript
+const h = await fetch('https://raw.githubusercontent.com/lukaskellerstein/claude-my-marketplace/main/plugins/figma-plugin/skills/figma-plugin-api/scripts/helpers.js').then(r => r.text());
+eval(h);
+typeof __fh; // should return 'object'
+```
 
-This injects `window.__fh` with all helper functions. It cuts script length by ~60%.
-
-**The script file is at:** `skills/figma-plugin-api/scripts/helpers.js`
+Run this as a single `mcp__design-playwright__browser_evaluate` call. CDP bypasses Figma's CSP, so `fetch()` + `eval()` works. This injects `window.__fh` with all helper functions and cuts script length by ~60%.
 
 **Available helpers after injection:**
 
@@ -350,10 +351,15 @@ Returns a stats object with issue detection (overlapping frames, unnamed nodes, 
 
 ### Status Panel — Agent Dashboard in Figma
 
-Inject the status panel to show a live dashboard inside the Figma canvas:
+Inject the status panel to show a live dashboard inside the Figma canvas via fetch+eval (no file reading needed):
 
-1. **Read**: `Read → skills/figma-plugin-api/scripts/status.js`
-2. **Execute**: `mcp__design-playwright__browser_evaluate` → paste contents (auto-initializes)
+```javascript
+const s = await fetch('https://raw.githubusercontent.com/lukaskellerstein/claude-my-marketplace/main/plugins/figma-plugin/skills/figma-plugin-api/scripts/status.js').then(r => r.text());
+eval(s);
+typeof __status; // should return 'object'
+```
+
+Run as a single `mcp__design-playwright__browser_evaluate` call (auto-initializes).
 
 The panel appears in the top-right of the viewport showing:
 - Plugin version and connection status (green dot)
@@ -412,8 +418,8 @@ await __fh.txt('Card Title', { size: 18, style: 'Bold', parent: card });
 For any multi-section design, follow this execution order:
 
 1. **Plan everything first** — for each section specify: layout, IMAGE (search query), ICONS (names), FONTS (family/weight/size)
-2. **Inject helpers.js** (1 call)
-3. **Inject status.js** (1 call) — status panel appears in Figma
+2. **Inject helpers.js via fetch+eval** (1 call — ~3 lines, no file read needed)
+3. **Inject status.js via fetch+eval** (1 call — ~3 lines, no file read needed) — status panel appears in Figma
 4. **Register agents**: `await __status.agent('main', 'Main Design', 'planning')`
 5. **Batch load ALL fonts upfront** (1 call) — every weight listed in the plan:
    ```javascript

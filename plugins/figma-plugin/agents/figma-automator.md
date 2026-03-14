@@ -193,10 +193,19 @@ curl -s https://unpkg.com/lucide-static/icons/search.svg
 
 ### Step 4: Inject Scripts
 
-**Read and inject** from the scripts directory in this order:
+**Inject both scripts via fetch+eval** (no file reading needed):
 
-1. `Read → skills/figma-plugin-api/scripts/helpers.js` → inject via `browser_evaluate`
-2. `Read → skills/figma-plugin-api/scripts/status.js` → inject via `browser_evaluate` (status panel appears in Figma)
+```javascript
+// helpers.js
+const h = await fetch('https://raw.githubusercontent.com/lukaskellerstein/claude-my-marketplace/main/plugins/figma-plugin/skills/figma-plugin-api/scripts/helpers.js').then(r => r.text());
+eval(h);
+
+// status.js
+const s = await fetch('https://raw.githubusercontent.com/lukaskellerstein/claude-my-marketplace/main/plugins/figma-plugin/skills/figma-plugin-api/scripts/status.js').then(r => r.text());
+eval(s);
+```
+
+Run each as a separate `mcp__design-playwright__browser_evaluate` call. CDP bypasses Figma's CSP, so `fetch()` + `eval()` works.
 
 Then register agents and load fonts:
 ```javascript
