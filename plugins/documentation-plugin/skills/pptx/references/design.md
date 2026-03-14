@@ -29,6 +29,22 @@ Choose colors that match the topic — never default to generic blue. Each palet
 - **Text on light backgrounds**: Use the primary color or a dark neutral (`333333`, `1A1A1A`).
 - **Accent color**: Reserve for call-to-action elements, key numbers, icons, or small highlights. Never use as a background.
 
+### CSS Custom Properties for Palettes
+
+When using the HTML visual layer, set the palette via CSS custom properties:
+
+```css
+:root {
+  --primary: #1E2761;
+  --primary-dark: #0D1333;
+  --secondary: #CADCFC;
+  --accent: #FFFFFF;
+  --bg-light: #F5F5F5;
+}
+```
+
+This lets you change the entire deck's look by swapping a few values. See [html-templates.md](html-templates.md) for the full shared CSS foundation.
+
 ---
 
 ## Font Pairings
@@ -96,123 +112,145 @@ Pick a header font with personality and pair it with a clean body font. These ar
 
 These techniques are what separate professional presentations from generic AI-generated slides. **Use them aggressively.**
 
+The hybrid HTML/CSS + PptxGenJS workflow makes most of these techniques straightforward. Use the HTML visual layer for backgrounds and decorative elements, PptxGenJS for editable text.
+
 ### Full-Bleed Photo Backgrounds with Dark Overlay
 
-The single most impactful technique. Use a relevant AI-generated or stock photo as a full-bleed background, then overlay a semi-transparent dark shape so text remains readable.
+The single most impactful technique. Use a relevant AI-generated or stock photo as a full-bleed background, then overlay a semi-transparent dark layer so text remains readable.
 
-```javascript
-// Full-bleed photo + dark overlay
-slide.background = { data: photoBase64 }; // or { path: "photo.jpg" }
-slide.addShape(pres.shapes.RECTANGLE, {
-  x: 0, y: 0, w: 10, h: 5.625,
-  fill: { color: "000000", transparency: 45 }
-});
-// Now add white text on top — it pops beautifully
+**In the HTML visual layer:**
+```css
+.slide-photo-bg {
+  background-image: url('photo.jpg');
+  background-size: cover;
+  background-position: center;
+}
+.slide-photo-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+}
 ```
 
 **When to use:** Title slides, section dividers, closing slides, quote slides, any slide that needs visual impact. Aim for at least 2-3 photo-backed slides per deck.
 
-### Gradient Backgrounds via Generated Images
+### Gradient Backgrounds
 
-PptxGenJS doesn't support gradient fills natively, but you can generate a gradient image and use it as a background. Use `sharp` or an AI image generator.
+Use CSS gradients in the HTML visual layer for rich, smooth color transitions that PptxGenJS can't produce natively.
 
-```javascript
-// Generate a gradient image with sharp
-const sharp = require("sharp");
-async function makeGradientBg(w, h, colorTop, colorBottom) {
-  const svg = `<svg width="${w}" height="${h}">
-    <defs><linearGradient id="g" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="${colorTop}"/>
-      <stop offset="100%" stop-color="${colorBottom}"/>
-    </linearGradient></defs>
-    <rect width="${w}" height="${h}" fill="url(#g)"/>
-  </svg>`;
-  const buf = await sharp(Buffer.from(svg)).png().toBuffer();
-  return "image/png;base64," + buf.toString("base64");
-}
+```css
+/* Linear gradient */
+background: linear-gradient(135deg, #1E2761 0%, #0D1333 60%, #F96167 100%);
 
-// Use as slide background
-slide.background = { data: await makeGradientBg(1920, 1080, "#1E2761", "#0D1333") };
+/* Radial gradient (spotlight) */
+background: radial-gradient(ellipse at 30% 40%, #1E2761 0%, #0D1333 70%);
+
+/* Multi-stop gradient */
+background: linear-gradient(160deg, #0D1333 0%, #1E2761 40%, #2D1B69 100%);
 ```
+
+Use gradients for title slides, closing slides, and any slide that needs visual richness without a photo.
 
 ### Half-Image Layouts (Split Slides)
 
-Place a photo on one half (left or right) with content on the other. The photo should be full-height with no margins — edge-to-edge on its side.
-
-```javascript
-// Left half = image, right half = content
-slide.addImage({
-  path: imagePath,
-  x: 0, y: 0, w: 5, h: 5.625,
-  sizing: { type: "cover", w: 5, h: 5.625 }
-});
-// Content goes on right side: x: 5.5, w: 4
-```
+Place a photo on one half (left or right) with content on the other. The photo should be full-height with no margins — edge-to-edge on its side. Use the HTML visual layer for the photo placement and accent strip.
 
 ### Decorative Geometric Shapes
 
-Add subtle decorative elements — large transparent circles, diagonal accent bars, corner shapes — to break up flat backgrounds. These add visual interest without competing with content.
+Add subtle decorative elements to break up flat backgrounds. Use CSS in the HTML visual layer:
 
-```javascript
-// Large decorative circle (partially off-slide for visual interest)
-slide.addShape(pres.shapes.OVAL, {
-  x: 7.5, y: -1, w: 4, h: 4,
-  fill: { color: accent, transparency: 85 }
-});
+```css
+/* Large transparent circle (partially off-slide) */
+.deco-circle {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.12;
+  width: 600px; height: 600px;
+  top: -150px; right: -100px;
+}
 
-// Diagonal accent strip (use a thin rotated rectangle)
-slide.addShape(pres.shapes.RECTANGLE, {
-  x: -1, y: 4.5, w: 12, h: 0.08,
-  fill: { color: accent, transparency: 60 },
-  rotate: -3
-});
+/* Diagonal accent strip */
+.deco-diagonal {
+  position: absolute;
+  background: var(--accent);
+  opacity: 0.3;
+  width: 2200px; height: 8px;
+  transform: rotate(-3deg);
+  top: 850px; left: -100px;
+}
 
-// Corner dot pattern (small circles)
-for (let row = 0; row < 4; row++) {
-  for (let col = 0; col < 4; col++) {
-    slide.addShape(pres.shapes.OVAL, {
-      x: 8.5 + col * 0.25, y: 0.3 + row * 0.25, w: 0.08, h: 0.08,
-      fill: { color: accent, transparency: 70 }
-    });
-  }
+/* Dot pattern */
+.dot-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 12px);
+  gap: 16px;
+}
+.dot-grid span {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 0.4;
 }
 ```
 
-### Elevated Cards with Rounded Corners
+### Elevated Cards with Rounded Corners and Shadows
 
-Use `ROUNDED_RECTANGLE` with soft shadows for modern card UI. Cards should feel like they float above the background.
+Use CSS `box-shadow` and `border-radius` in the HTML visual layer for modern card styling that PptxGenJS can't match:
 
-```javascript
-const makeCardStyle = () => ({
-  fill: { color: "FFFFFF" },
-  rectRadius: 0.15,
-  shadow: { type: "outer", color: "000000", blur: 8, offset: 3, angle: 135, opacity: 0.12 }
-});
+```css
+.card {
+  background: #FFFFFF;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
 
-slide.addShape(pres.shapes.ROUNDED_RECTANGLE, {
-  x: 0.5, y: 1.3, w: 4.2, h: 3.5,
-  ...makeCardStyle()
-});
+/* Glass-morphism card (on dark/photo backgrounds) */
+.card-glass {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(12px);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
 ```
 
 ### Color-Blocked Sections
 
-Instead of a plain white slide, split the slide into 2-3 horizontal or vertical color blocks.
+Instead of a plain white slide, split the slide into 2-3 horizontal or vertical color blocks using CSS:
 
-```javascript
-// Top band (dark) + bottom section (light)
-slide.addShape(pres.shapes.RECTANGLE, {
-  x: 0, y: 0, w: 10, h: 2.2,
-  fill: { color: primary }
-});
-// Title goes in the dark band, content in the light area below
+```css
+/* Top band (dark) */
+.top-band {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 240px;
+  background: var(--primary);
+}
+/* Title goes in the dark band, content in the light area below */
 ```
+
+### CSS Design Reference
+
+Key CSS properties for slide design in the HTML visual layer:
+
+| Property | Use For |
+|---|---|
+| `linear-gradient()`, `radial-gradient()` | Rich background gradients |
+| `box-shadow` | Elevated card depth |
+| `border-radius` | Rounded cards and elements |
+| `backdrop-filter: blur()` | Frosted glass overlays |
+| `opacity` / `rgba()` | Transparent overlays and decorative shapes |
+| `background-size: cover` | Full-bleed photo backgrounds |
+| `transform: rotate()` | Diagonal accent elements |
+| `CSS Grid` / `Flexbox` | Precise layout of decorative elements |
+| CSS custom properties (`--var`) | Palette theming across all slides |
 
 ### Visual Rhythm Across the Deck
 
 A Canva-quality deck follows a deliberate visual rhythm:
 
-1. **Slide 1 (Title):** Full-bleed photo + dark overlay, large white text
+1. **Slide 1 (Title):** Full-bleed photo/gradient + dark overlay, large white text
 2. **Slide 2-3 (Content):** Light background with cards or columns
 3. **Slide 4 (Impact):** Dark background or another photo-backed slide — breaks monotony
 4. **Slide 5-7 (Content):** Alternate between light/accent backgrounds, use split-image layouts
@@ -236,6 +274,6 @@ A Canva-quality deck follows a deliberate visual rhythm:
 8. **Low-contrast text or icons** — test that text is legible against its background. Light gray on cream is unreadable.
 9. **Accent lines under titles** — these are a hallmark of AI-generated slides. Use white space or background color changes instead.
 10. **All slides with white backgrounds** — use the dark/light sandwich structure for visual rhythm.
-11. **Flat, shadowless cards** — always add soft shadows to card elements for depth.
+11. **Flat, shadowless cards** — use CSS `box-shadow` in the HTML visual layer for depth.
 12. **No photography** — professional decks use images. Generate topic-relevant images via AI for at least title, section divider, and closing slides.
 13. **Generic stock imagery** — when generating images, make them specific to the topic. "Abstract blue wave" is lazy. "Aerial view of solar farm at sunset" is specific and impactful.
