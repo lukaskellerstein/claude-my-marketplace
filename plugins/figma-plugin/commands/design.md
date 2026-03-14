@@ -1,7 +1,7 @@
 ---
 description: Design a website, app, or UI in Figma — orchestrates parallel agents for structure and media
 argument-hint: "<description> <figma-url>"
-allowed-tools: ["Read", "Write", "Bash", "Agent", "WebSearch", "WebFetch", "mcp__design-playwright__browser_navigate", "mcp__design-playwright__browser_evaluate", "mcp__design-playwright__browser_snapshot", "mcp__design-playwright__browser_click", "mcp__plugin_media-plugin_media-mcp__generate_image", "mcp__plugin_media-plugin_media-mcp__generate_video", "mcp__plugin_media-plugin_media-mcp__generate_music", "mcp__plugin_media-plugin_media-mcp__generate_speech"]
+allowed-tools: ["Read", "Write", "Bash", "Agent", "WebSearch", "WebFetch", "mcp__design-playwright__browser_navigate", "mcp__design-playwright__browser_evaluate", "mcp__design-playwright__browser_snapshot", "mcp__design-playwright__browser_click"]
 ---
 
 # /design — Figma Design Orchestrator
