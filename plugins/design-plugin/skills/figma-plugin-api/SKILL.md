@@ -34,6 +34,88 @@ Execute Figma Plugin API commands directly in the browser using Playwright's `mc
 - **Do NOT try alternative solutions** like using the REST API or manually interacting with the Figma UI. Always use the Plugin API via `evaluate_script`.
 - **Do NOT try to draw icons manually** with basic shapes. Always fetch pre-made SVGs from icon libraries (see **icon-library** skill) and insert with `figma.createNodeFromSvg()`.
 
+## Creative Design Philosophy
+
+**Make designs alive, modern, and visually rich. Don't be boring.**
+
+### Use Media — Images, Video, Music
+
+Designs should not be flat wireframes with grey boxes. Use the **media-plugin** to generate real visual content:
+
+- **Images** — generate hero images, background visuals, product photos, illustrations, and placeholder images using `mcp__media-mcp__generate_image`. Use actual generated images instead of empty rectangles.
+- **Videos / GIFs / Animations** — for hero sections, product demos, onboarding flows, or loading states, generate video/GIF content using `mcp__media-mcp__generate_video`. Place video thumbnails or animated previews in the design.
+- **Music / Audio** — when designing media players, podcast UIs, or audio experiences, generate sample audio using `mcp__media-mcp__generate_music` or `mcp__media-mcp__generate_speech` so the design has real content to reference.
+
+After generating media assets, insert them into Figma as image fills:
+```javascript
+// Insert a generated image into a frame
+const imageData = await figma.createImageAsync(imageUrl);
+frame.fills = [{ type: "IMAGE", imageHash: imageData.hash, scaleMode: "FILL" }];
+```
+
+### Use Icons Everywhere
+
+Icons make UI feel professional and intuitive. **Always use the icon-library skill** to fetch real SVG icons from Lucide, Heroicons, or Tabler. Use icons for:
+- Navigation items (home, search, settings, profile)
+- Action buttons (edit, delete, share, download)
+- Status indicators (check, alert, info, warning)
+- Feature cards and list items
+- Empty states and placeholders
+
+### Be Creative
+
+- Use **gradients** instead of flat colors for hero sections and CTAs
+- Add **shadows and depth** — cards should feel elevated, not flat
+- Use **rounded corners** generously — modern UIs use 8-16px radii
+- Apply **micro-interactions hints** — show hover states, focus rings, transitions
+- Use **rich typography** — mix font weights, sizes, and colors for hierarchy
+- Add **visual rhythm** — vary section heights, use whitespace intentionally
+
+## Design Language Page — CREATE THIS FIRST
+
+**When creating a new design from scratch**, always start by creating a dedicated **"Design Language"** page in the Figma file. This page defines the visual foundation that all other pages must follow.
+
+### Step 0 (before any other design work): Create the Design Language page
+
+```javascript
+const designLanguagePage = figma.createPage();
+designLanguagePage.name = "🎨 Design Language";
+```
+
+The Design Language page must include these sections:
+
+#### 1. Color Palette
+- Primary, secondary, accent colors (with full scales: 50-950)
+- Neutral/gray scale
+- Semantic colors: success, warning, error, info
+- Create as Figma Paint Styles (`figma.createPaintStyle()`) so they can be reused across all pages
+
+#### 2. Typography Scale
+- Heading styles: H1 through H6 (with font family, size, weight, line-height)
+- Body text: large, base, small, caption
+- Create as Figma Text Styles (`figma.createTextStyle()`) for reuse
+
+#### 3. Spacing & Grid
+- Spacing scale visualization (4px grid: 4, 8, 12, 16, 24, 32, 48, 64)
+- Layout grid definition (columns, gutters, margins)
+
+#### 4. Effects
+- Shadow scale: sm, base, md, lg, xl
+- Create as Figma Effect Styles (`figma.createEffectStyle()`)
+- Border radius scale: sm (4px), base (8px), md (12px), lg (16px), xl (24px), full (9999px)
+
+#### 5. Icon Set
+- Fetch and display the core icons needed for the project using the **icon-library** skill
+- Organize in a grid showing icon name + visual
+
+#### 6. Core UI Components
+- Buttons (primary, secondary, outline, ghost — with states: default, hover, disabled)
+- Input fields (text, select, checkbox, radio, toggle)
+- Cards, badges, tags, avatars
+- Build as Figma Components (`figma.createComponent()`) so instances can be used across pages
+
+After the Design Language page is complete, **all subsequent pages must use these defined styles, colors, components, and icons**. Never introduce one-off values — always reference the design language.
+
 ## Connection Workflow — FOLLOW THESE STEPS EVERY TIME
 
 ### Step 1: Navigate to Figma
