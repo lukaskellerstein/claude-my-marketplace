@@ -10,7 +10,7 @@
 //   4. Call __status.done(id) when an agent finishes
 //   5. Call __status.remove() to clean up when done
 
-const STATUS_VERSION = '1.8.0';
+const STATUS_VERSION = '1.8.1';
 const STATUS_PANEL_NAME = '⚡ Claude Design Status';
 
 window.__status = {
