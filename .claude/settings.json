@@ -29,9 +29,7 @@
       "ToolSearch",
       "WebFetch",
       "WebSearch",
-      "Write",
-      "mcp__playwright",
-      "mcp__shadcn"
+      "Write"
     ],
     "deny": [
       "Bash(rm -rf /)",
