@@ -251,7 +251,7 @@ window.__status = {
     panel.appendChild(footer);
 
     const footerText = figma.createText();
-    footerText.characters = `design-plugin v${STATUS_VERSION} • helpers.js injected`;
+    footerText.characters = `figma-plugin v${STATUS_VERSION} • helpers.js injected`;
     footerText.fontSize = 9;
     footerText.fontName = { family: 'Inter', style: 'Regular' };
     footerText.fills = [{ type: 'SOLID', color: { r: 0.35, g: 0.35, b: 0.45 } }];

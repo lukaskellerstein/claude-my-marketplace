@@ -26,7 +26,7 @@ Infrastructure management for Kubernetes/GKE, Istio, Helm, Terraform, Traefik, a
 
 - **Skills:** auth, helm, istio, kubernetes, terraform, traefik
 
-### [design-plugin](plugins/design-plugin)
+### [figma-plugin](plugins/figma-plugin)
 
 Design and Figma integration — automate Figma via Plugin API in the browser, extract design tokens, generate code from designs, audit design systems, and use pre-made icon libraries (Lucide, Heroicons, Tabler) for clean SVG icons.
 
