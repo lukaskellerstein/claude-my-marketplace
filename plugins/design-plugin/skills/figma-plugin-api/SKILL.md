@@ -19,6 +19,8 @@ Execute Figma Plugin API commands directly in the browser using Playwright's `mc
 - User wants to batch-create or batch-update design elements
 - User wants to inspect or extract information from a Figma file in the browser
 - User mentions "Figma Plugin API", "automate Figma", "script Figma"
+- User provides a Figma URL and describes what should be created or changed
+- User asks to "design something in Figma"
 
 ## When NOT to Use
 
@@ -26,26 +28,51 @@ Execute Figma Plugin API commands directly in the browser using Playwright's `mc
 - User wants to extract design tokens from a Figma URL → use **design-tokens** skill
 - User wants to add icons to Figma → use **icon-library** skill first to get SVG, then this skill to insert it
 
-## Prerequisites
+## Rules of Engagement
 
-1. Figma must be open in a browser tab (not the desktop app)
-2. The user must have a Figma file open with edit access
-3. The Figma Plugin API console must be accessible (use the Plugin Developer Console or run a local plugin)
+- **Always explain in plain English what you are about to do.** Assume the user cannot read code.
+- **Do NOT try alternative solutions** like using the REST API or manually interacting with the Figma UI. Always use the Plugin API via `evaluate_script`.
+- **Do NOT try to draw icons manually** with basic shapes. Always fetch pre-made SVGs from icon libraries (see **icon-library** skill) and insert with `figma.createNodeFromSvg()`.
 
-### Accessing the Plugin Console
+## Connection Workflow — FOLLOW THESE STEPS EVERY TIME
 
-To run Plugin API code in the browser, the user needs to open the **Developer Console** in Figma:
+### Step 1: Navigate to Figma
 
-1. Open the Figma file in the browser
-2. Go to **Menu → Plugins → Development → Open console** (or use the Plugin API directly via a dev plugin)
-3. Alternatively, the user can create a minimal plugin that exposes an eval endpoint
+Use `mcp__playwright__browser_navigate` to go to the Figma file URL.
 
-For Playwright automation, navigate to the Figma file URL first:
+- If the user provided a Figma URL → navigate directly to it
+- If no URL → navigate to `https://www.figma.com/` and ask the user to open a specific design file
+
+Then prompt the user to **log in** if they are not already logged in.
+
+### Step 2: Verify `figma` global access
+
+Use `mcp__playwright__browser_evaluate` to confirm you have access to the `figma` global object:
+
+```javascript
+typeof figma !== 'undefined' ? 'connected' : 'not connected'
 ```
-mcp__playwright__browser_navigate → https://www.figma.com/design/<file-key>/...
-```
 
-Then use `mcp__playwright__browser_evaluate` to execute Plugin API code.
+- If `"connected"` → proceed to Step 3
+- If `"not connected"` or `"figma is not defined"` → see **Troubleshooting** below
+
+### Step 3: Execute the user's request
+
+Use `mcp__playwright__browser_evaluate` to run JavaScript code that interacts with the Figma Plugin API. Perform tasks such as creating shapes, modifying properties, applying styles, or extracting information.
+
+Always explain what you're about to do before executing.
+
+## Troubleshooting
+
+If `figma` is not defined:
+
+1. **Check permissions** — make sure the user has **edit access** to the file and permission to run plugins. If they don't, suggest **creating a new branch** on the file (which grants edit access).
+2. **Open and close any plugin** — there is a known bug where the `figma` global is not available until a plugin has been opened at least once in the file. Instruct the user to:
+   - Go to **Menu → Plugins → Find more plugins**
+   - Open any plugin (e.g., a simple utility plugin)
+   - Close the plugin
+   - Then try again
+3. If it still doesn't work, ask the user to **refresh the page** and repeat steps 1-2.
 
 ## Figma Plugin API Reference
 
