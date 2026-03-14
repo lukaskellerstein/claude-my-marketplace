@@ -90,7 +90,7 @@ Section: Pricing (3 tiers)
 
 2. **Pexels / Pixabay** — fallback if Unsplash doesn't have the subject.
 
-3. **AI generation** — only for things that don't exist as stock photos (fantasy, sci-fi, custom illustrations, specific compositions). Use `mcp__media-mcp__generate_image`.
+3. **AI generation** — only for things that don't exist as stock photos (fantasy, sci-fi, custom illustrations, specific compositions). Use `mcp__plugin_media-plugin_media-mcp__generate_image`.
 
 **Image sizing guide:**
 
@@ -122,14 +122,14 @@ __figb.circle({ size: 48, image: avatarHash, parent: row });
 ### Videos / GIFs — When They Add Design Value
 
 Use occasionally, not everywhere:
-- Hero sections with motion → `mcp__media-mcp__generate_video`
+- Hero sections with motion → `mcp__plugin_media-plugin_media-mcp__generate_video`
 - Product demo previews
 - Background ambient motion
 - Use video thumbnails as image fills with a play button overlay
 
 ### Music / Audio
 
-When designing media players, podcast UIs, or audio experiences, generate sample audio using `mcp__media-mcp__generate_music` or `mcp__media-mcp__generate_speech`.
+When designing media players, podcast UIs, or audio experiences, generate sample audio using `mcp__plugin_media-plugin_media-mcp__generate_music` or `mcp__plugin_media-plugin_media-mcp__generate_speech`.
 
 ### Icons Are Part of the Design — NOT an Afterthought
 
@@ -415,128 +415,92 @@ const card = __figb.frame('Card', { w: 320, h: 200, direction: 'VERTICAL', p: 16
 await __figb.txt('Card Title', { size: 18, style: 'Bold', parent: card });
 ```
 
-### Chunked Execution Order
+### Chunked Execution Order — ALWAYS PARALLELIZE ASSET GATHERING
 
-For any multi-section design, follow this execution order:
+**Speed is critical.** Never gather assets sequentially. Always spawn parallel agents for icons and images while building the Design Language page in Figma.
+
+```
+┌─ MAIN THREAD ─────────────────────────────────────────────────────────┐
+│                                                                        │
+│  1. Plan (sections, images, icons, fonts)                             │
+│  2. Spawn 2 parallel Agents + start Figma work simultaneously:       │
+│                                                                        │
+│     ┌─ Agent: Icons ──────────┐  ┌─ Agent: Images ─────────────────┐ │
+│     │ curl all icon SVGs from │  │ WebSearch Unsplash for each     │ │
+│     │ Lucide/Heroicons        │  │ image in the plan, collect URLs │ │
+│     │ Return: { name: svg }   │  │ Return: { section: url }       │ │
+│     └─────────────────────────┘  └─────────────────────────────────┘ │
+│                                                                        │
+│     ┌─ Main: Figma (in parallel with agents above) ─────────────────┐ │
+│     │ • Init status panel: await __figs.init()                      │ │
+│     │ • Load fonts: await __figb.fonts(...)                         │ │
+│     │ • Create Design Language page (colors, typography, effects)   │ │
+│     └───────────────────────────────────────────────────────────────┘ │
+│                                                                        │
+│  3. Collect agent results (icons map + image URLs)                    │
+│  4. Build sections — each chunk has icons + images baked in          │
+│  5. Verify + cleanup                                                  │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+**Step-by-step:**
 
 1. **Plan everything first** — for each section specify: layout, IMAGE (search query), ICONS (names), FONTS (family/weight/size)
-2. **Verify Figma Bridge**: `typeof __figb === 'object'` (auto-injected by extension)
-3. **Initialize status panel**: `await __figs.init()`
-4. **Register agents**: `await __figs.agent('main', 'Main Design', 'planning')`
-5. **Batch load ALL fonts upfront** (1 call) — every weight listed in the plan:
+2. **Spawn 3 tasks in parallel** (use Agent tool with multiple calls in a single message):
+   - **Agent A (Icons)**: fetch all icon SVGs via curl — return a map of `{ iconName: svgString }`
+   - **Agent B (Images)**: search Unsplash for all images — return a map of `{ sectionName: imageUrl }`
+   - **Main thread (Figma)**: init status panel, load fonts, build Design Language page
+3. **Collect results** from both agents
+4. **Build sections** — each chunk script has icons and image URLs baked in:
    ```javascript
-   await __figb.fonts(['Inter','Regular'], ['Inter','Medium'], ['Inter','Semi Bold'], ['Inter','Bold']);
+   const hero = __figb.frame('Hero', { w: 1440, h: 500, direction: 'VERTICAL', p: 64, mainAlign: 'CENTER', clip: true });
+   const heroImg = await __figb.loadImage('https://images.unsplash.com/photo-xxx?w=1440&q=80');
+   hero.fills = [{ type: 'IMAGE', imageHash: heroImg, scaleMode: 'FILL' }];
+   const overlay = __figb.rect({ name: 'Overlay', w: 1440, h: 500, fill: __figb.rgb(0,0,0), opacity: 0.4, absolute: true, parent: hero });
+   await __figb.txt('Your Journey Starts Here', { size: 48, style: 'Bold', fill: __figb.hex('#FFF'), parent: hero });
+   const btnRow = __figb.frame('Buttons', { direction: 'HORIZONTAL', gap: 16, parent: hero });
+   const btn = __figb.frame('CTA', { direction: 'HORIZONTAL', gap: 8, px: 24, py: 12, radius: 8, fill: __figb.hex('#3B82F6'), crossAlign: 'CENTER', parent: btnRow });
+   __figb.icon(playSvg, { name: 'Icon/Play', size: 18, parent: btn });
+   await __figb.txt('Watch Trailer', { size: 14, style: 'Semi Bold', fill: __figb.hex('#FFF'), parent: btn });
    ```
-6. **Fetch ALL icons for the page** (parallel curl calls) — every icon listed in the plan:
-   ```bash
-   curl -s https://unpkg.com/lucide-static/icons/home.svg
-   curl -s https://unpkg.com/lucide-static/icons/search.svg
-   # ... all icons needed
-   ```
-7. **Create page** (1 call): `__figb.page('Dashboard')`
-8. **Section by section** (1 call each, max 30 lines):
-   - Each section script loads its **images inline** (`__figb.loadImage()`)
-   - Each section script inserts its **icons inline** (`__figb.icon(svg)`)
-   - Each section script uses **fonts that were pre-loaded** in step 5
-   - Example chunk:
-     ```javascript
-     // Chunk: Hero section — image + icon + text in one script
-     const hero = __figb.frame('Hero', { w: 1440, h: 500, direction: 'VERTICAL', p: 64, mainAlign: 'CENTER', clip: true });
-     const heroImg = await __figb.loadImage('https://images.unsplash.com/photo-xxx?w=1440&q=80');
-     hero.fills = [{ type: 'IMAGE', imageHash: heroImg, scaleMode: 'FILL' }];
-     const overlay = __figb.rect({ name: 'Overlay', w: 1440, h: 500, fill: __figb.rgb(0,0,0), opacity: 0.4, absolute: true, parent: hero });
-     await __figb.txt('Your Journey Starts Here', { size: 48, style: 'Bold', fill: __figb.hex('#FFF'), parent: hero });
-     const btnRow = __figb.frame('Buttons', { direction: 'HORIZONTAL', gap: 16, parent: hero });
-     const btn = __figb.frame('CTA', { direction: 'HORIZONTAL', gap: 8, px: 24, py: 12, radius: 8, fill: __figb.hex('#3B82F6'), crossAlign: 'CENTER', parent: btnRow });
-     __figb.icon(playSvg, { name: 'Icon/Play', size: 18, parent: btn });
-     await __figb.txt('Watch Trailer', { size: 14, style: 'Semi Bold', fill: __figb.hex('#FFF'), parent: btn });
-     ```
-   - **No frame without its image. No button without its icon. No text without the right font.**
-9. **Verify** (`__figb.verify()` + snapshot) — check `images > 0`, `vectors > 0` (icons)
-10. **Mark done**: `await __figs.done('main')`
-11. **Cleanup** (when all work is finished): `__figs.remove()`
+5. **Verify** (`__figb.verify()` + snapshot) — check `images > 0`, `vectors > 0` (icons)
+6. **Mark done**: `await __figs.done('main')`
+7. **Cleanup**: `__figs.remove()`
 
 **Key rules:**
+- **ALWAYS parallelize** — icons agent + images agent + Figma setup run simultaneously
 - Images and frames are built together in the same chunk
 - Icons are inserted inline when building each element
 - Fonts are batch-loaded once upfront, then used freely in all chunks
-- There is no separate "add images/icons/fonts" step — everything is designed together
+- No frame without its image. No button without its icon.
 
-### Multi-Page Designs — Parallel Subagent Architecture
+### Multi-Page Designs — Scale the Parallelism
 
-For multi-page designs, **parallelize planning AND asset gathering** across subagents. Only Figma execution is sequential (single browser).
+For multi-page designs, spawn **one agent per page** that handles both icons AND images for that page. The main thread builds the Design Language page while all page agents gather assets in parallel.
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  ORCHESTRATOR (main session)                            │
-│                                                         │
-│  1. Create master plan (pages + sections)               │
-│  2. Execute Design Language page (sequential, in Figma) │
-│  3. Spawn parallel Agents — one per page:               │
-│     Each agent:                                         │
-│     a. Searches Unsplash for all images needed          │
-│     b. Fetches all icons from Lucide/Heroicons          │
-│     c. Generates AI images if stock not found           │
-│     d. Returns structured scripts array with assets     │
-│  4. Collect results from all agents                     │
-│  5. Execute all scripts sequentially in Figma           │
-│  6. Run verify.js after each page                       │
-└─────────────────────────────────────────────────────────┘
+┌─ MAIN THREAD ──────────────────────────────────────────┐
+│  1. Create master plan (all pages + sections)          │
+│  2. Build Design Language page in Figma                │
+│  3. Spawn parallel Agents — one per page:              │
+│     Each agent does ALL asset work for its page:       │
+│     a. Fetches all icons from Lucide/Heroicons         │
+│     b. Searches Unsplash for all images                │
+│     c. Generates AI images if stock not found          │
+│     d. Returns scripts array with assets baked in      │
+│  4. Collect results from all agents                    │
+│  5. Execute all scripts sequentially in Figma          │
+│  6. Run __figb.verify() after each page                │
+└────────────────────────────────────────────────────────┘
          │              │              │
     ┌────┴────┐    ┌────┴────┐    ┌────┴────┐
     │ Agent A  │   │ Agent B  │   │ Agent C  │
-    │ Dashboard│   │ Settings │   │ Analytics│
-    │ planning │   │ planning │   │ planning │
-    │ + assets │   │ + assets │   │ + assets │
+    │ Page 1   │   │ Page 2   │   │ Page 3   │
+    │ icons +  │   │ icons +  │   │ icons +  │
+    │ images   │   │ images   │   │ images   │
     └─────────┘    └─────────┘    └─────────┘
     (parallel)     (parallel)     (parallel)
 ```
-
-**How to spawn parallel agents** — use the Agent tool with multiple calls in a single message:
-
-Each agent receives:
-- The design system tokens (from Design Language page)
-- That page's section list — **each section specifies its IMAGE, ICONS, and FONTS**
-- Instruction to use `__figb` helpers (reference the helpers.js API table above)
-- Instruction to keep scripts <30 lines each
-- **Must do**: search Unsplash for all images, fetch all icon SVGs from Lucide
-- **Must return**: array of script strings where every script has images, icons, and fonts baked in
-
-**Example section spec given to a subagent:**
-```
-Page: Dashboard
-Font Stack: Inter (Regular, Medium, Semi Bold, Bold)
-
-Sections:
-  1. Hero:
-     - IMAGE: "modern SaaS dashboard on screen, dark theme" → search Unsplash
-     - ICONS: play-circle (Watch Demo btn), arrow-right (Get Started btn)
-     - FONTS: Inter Bold 48px (heading), Inter Regular 18px (subheading), Inter Semi Bold 14px (buttons)
-     - Layout: full-width 1440×500, image bg, dark overlay, heading, subheading, 2 CTA buttons
-
-  2. Stats Row:
-     - ICONS: trending-up, users, dollar-sign, activity (one per stat card)
-     - FONTS: Inter Bold 32px (numbers), Inter Regular 14px (labels)
-     - Layout: 4 stat cards in a row
-
-  3. Features (3 cards):
-     - IMAGE per card: "cloud computing", "data analytics chart", "security shield"
-     - ICONS: cloud, bar-chart, shield (one per card header)
-     - FONTS: Inter Semi Bold 20px (title), Inter Regular 14px (description)
-     - Layout: 3 cards with image top, icon+title, description
-
-  4. Testimonials (3 cards):
-     - IMAGE per card: "professional headshot portrait" × 3
-     - ICONS: star (rating), quote (decoration)
-     - FONTS: Inter Regular 16px (quote), Inter Medium 14px (name), Inter Regular 12px (role)
-
-  5. CTA Banner:
-     - ICONS: arrow-right (CTA button)
-     - FONTS: Inter Bold 32px (heading), Inter Semi Bold 16px (button)
-     - Layout: gradient background, heading, button
-```
-
-**Key insight:** Each agent spends most of its time on WebSearch/WebFetch for images and icons — this is the real parallelism win. Running 3 agents in parallel = 3x faster asset gathering.
 
 **Each agent's returned scripts must have everything baked in:**
 ```javascript
