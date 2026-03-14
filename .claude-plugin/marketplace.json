@@ -24,8 +24,8 @@
       "source": "./plugins/media-plugin"
     },
     {
-      "name": "design-plugin",
-      "source": "./plugins/design-plugin"
+      "name": "figma-plugin",
+      "source": "./plugins/figma-plugin"
     }
   ]
 }
