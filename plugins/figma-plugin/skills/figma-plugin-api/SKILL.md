@@ -264,18 +264,11 @@ After the Design Language page is complete, **all subsequent pages must use thes
 
 **Rule of thumb:** If a script is over 30 lines, split it.
 
-### Helper Functions Library — INJECT FIRST
+### Helper Functions Library — AUTO-INJECTED
 
-Before any design work, **read and inject the helper library from the scripts directory**:
+`__fh` (helpers) and `__status` (status panel) are **auto-injected** via Playwright's `--init-script` flag on every page load. No manual injection step is needed — they are available immediately after navigating to any Figma file.
 
-1. **Read the file**: `Read → skills/figma-plugin-api/scripts/helpers.js`
-2. **Inject into browser**: `mcp__design-playwright__browser_evaluate` → paste the file contents
-
-This injects `window.__fh` with all helper functions. It cuts script length by ~60%.
-
-**The script file is at:** `skills/figma-plugin-api/scripts/helpers.js`
-
-**Available helpers after injection:**
+**Available helpers (`window.__fh`):**
 
 | Helper | Description | Example |
 |---|---|---|
@@ -350,10 +343,7 @@ Returns a stats object with issue detection (overlapping frames, unnamed nodes, 
 
 ### Status Panel — Agent Dashboard in Figma
 
-Inject the status panel to show a live dashboard inside the Figma canvas:
-
-1. **Read**: `Read → skills/figma-plugin-api/scripts/status.js`
-2. **Execute**: `mcp__design-playwright__browser_evaluate` → paste contents (auto-initializes)
+The status panel is **auto-injected** via `--init-script` and initializes automatically on Figma pages. No manual injection needed.
 
 The panel appears in the top-right of the viewport showing:
 - Plugin version and connection status (green dot)
@@ -375,7 +365,7 @@ The panel appears in the top-right of the viewport showing:
 
 Each status has a color-coded dot (yellow=planning, blue=fetching, green=done, red=error).
 
-**When to use:** Inject after helpers.js whenever running multi-step or multi-agent designs. Update agent status at each step. Remove when the design is complete.
+**When to use:** Both are auto-injected on every page. Just use the `__status` API directly whenever running multi-step or multi-agent designs. Update agent status at each step. Remove when the design is complete.
 
 ### Using Helpers in Scripts
 
@@ -412,24 +402,23 @@ await __fh.txt('Card Title', { size: 18, style: 'Bold', parent: card });
 For any multi-section design, follow this execution order:
 
 1. **Plan everything first** — for each section specify: layout, IMAGE (search query), ICONS (names), FONTS (family/weight/size)
-2. **Inject helpers.js** (1 call)
-3. **Inject status.js** (1 call) — status panel appears in Figma
-4. **Register agents**: `await __status.agent('main', 'Main Design', 'planning')`
-5. **Batch load ALL fonts upfront** (1 call) — every weight listed in the plan:
+2. **`__fh` and `__status` are auto-injected** — no action needed (available on every page via `--init-script`)
+3. **Register agents**: `await __status.agent('main', 'Main Design', 'planning')`
+4. **Batch load ALL fonts upfront** (1 call) — every weight listed in the plan:
    ```javascript
    await __fh.fonts(['Inter','Regular'], ['Inter','Medium'], ['Inter','Semi Bold'], ['Inter','Bold']);
    ```
-6. **Fetch ALL icons for the page** (parallel curl calls) — every icon listed in the plan:
+5. **Fetch ALL icons for the page** (parallel curl calls) — every icon listed in the plan:
    ```bash
    curl -s https://unpkg.com/lucide-static/icons/home.svg
    curl -s https://unpkg.com/lucide-static/icons/search.svg
    # ... all icons needed
    ```
-7. **Create page** (1 call): `__fh.page('Dashboard')`
-8. **Section by section** (1 call each, max 30 lines):
+6. **Create page** (1 call): `__fh.page('Dashboard')`
+7. **Section by section** (1 call each, max 30 lines):
    - Each section script loads its **images inline** (`__fh.loadImage()`)
    - Each section script inserts its **icons inline** (`__fh.icon(svg)`)
-   - Each section script uses **fonts that were pre-loaded** in step 5
+   - Each section script uses **fonts that were pre-loaded** in step 4
    - Example chunk:
      ```javascript
      // Chunk: Hero section — image + icon + text in one script
@@ -444,9 +433,9 @@ For any multi-section design, follow this execution order:
      await __fh.txt('Watch Trailer', { size: 14, style: 'Semi Bold', fill: __fh.hex('#FFF'), parent: btn });
      ```
    - **No frame without its image. No button without its icon. No text without the right font.**
-9. **Verify** (run verify.js + snapshot) — check `images > 0`, `vectors > 0` (icons)
-10. **Mark done**: `await __status.done('main')`
-11. **Cleanup** (when all work is finished): `__status.remove()`
+8. **Verify** (run verify.js + snapshot) — check `images > 0`, `vectors > 0` (icons)
+9. **Mark done**: `await __status.done('main')`
+10. **Cleanup** (when all work is finished): `__status.remove()`
 
 **Key rules:**
 - Images and frames are built together in the same chunk

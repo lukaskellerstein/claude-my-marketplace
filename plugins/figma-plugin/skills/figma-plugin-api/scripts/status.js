@@ -1,16 +1,15 @@
-// Figma Status Panel — inject via mcp__design-playwright__browser_evaluate
+// Figma Status Panel — auto-injected via Playwright --init-script
 // Creates a persistent visual status panel in the Figma file showing:
 //   - Plugin version and connection status
 //   - Active agents/subagents and their progress
 //
 // Usage:
-//   1. Inject helpers.js first (required)
-//   2. Inject this file to create the status panel
-//   3. Call __status.agent(id, name, status) to track agents
-//   4. Call __status.done(id) when an agent finishes
-//   5. Call __status.remove() to clean up when done
+//   1. Auto-injected on every page (no manual injection needed)
+//   2. Call __status.agent(id, name, status) to track agents
+//   3. Call __status.done(id) when an agent finishes
+//   4. Call __status.remove() to clean up when done
 
-const STATUS_VERSION = '1.4.0';
+const STATUS_VERSION = '1.8.0';
 const STATUS_PANEL_NAME = '⚡ Claude Design Status';
 
 window.__status = {
@@ -326,7 +325,9 @@ window.__status = {
   }),
 };
 
-// Auto-initialize on injection
-(async () => { await __status.init(); })();
+// Auto-initialize on injection (only on Figma pages)
+if (typeof figma !== 'undefined') {
+  (async () => { await __status.init(); })();
+}
 
 '__status panel injected — v' + STATUS_VERSION

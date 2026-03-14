@@ -161,7 +161,7 @@ Section 4 — CTA Banner:
 - Page 2: [name] → Agent B (search images + fetch icons + return scripts)
 
 ### Execution Order (sequential)
-1. Inject helpers.js + status.js
+1. __fh and __status are auto-injected (no action needed)
 2. Batch load ALL fonts from Font Stack
 3. Fetch ALL icons listed across all sections
 4. Create Design Language page (if new)
@@ -191,14 +191,11 @@ curl -s https://unpkg.com/lucide-static/icons/search.svg
 
 **Key:** Images are searched BEFORE execution starts, but they're loaded INTO Figma as part of each section's script — not in a separate pass.
 
-### Step 4: Inject Scripts
+### Step 4: Register Agents & Load Fonts
 
-**Read and inject** from the scripts directory in this order:
+**`__fh` (helpers) and `__status` (status panel) are auto-injected** via `--init-script` on every page load — no manual injection needed.
 
-1. `Read → skills/figma-plugin-api/scripts/helpers.js` → inject via `browser_evaluate`
-2. `Read → skills/figma-plugin-api/scripts/status.js` → inject via `browser_evaluate` (status panel appears in Figma)
-
-Then register agents and load fonts:
+Register agents and load fonts:
 ```javascript
 // Register agents on the status panel
 await __status.agent('main', 'Design Orchestrator', 'planning');
