@@ -146,47 +146,72 @@ Generate images via media-plugin tools:
 - Avatar/profile images
 - Any visual content the design needs
 
-### Step 4: Execute in Figma
+### Step 4: Inject Helper Library
 
-Run Plugin API code via `mcp__playwright__browser_evaluate`. Key patterns:
+**ALWAYS inject the `__fh` helper library first** (defined in the figma-plugin-api skill) via `mcp__playwright__browser_evaluate`. This cuts script length by ~60%:
 
-**Always load fonts first:**
 ```javascript
-await figma.loadFontAsync({ family: "Inter", style: "Regular" });
-await figma.loadFontAsync({ family: "Inter", style: "Bold" });
+// Single evaluate call to inject all helpers
+window.__fh = { frame: ..., txt: ..., rect: ..., icon: ..., rgb: ..., hex: ..., shadow: ..., find: ..., findAll: ..., page: ..., fonts: ... };
+'helpers injected'
 ```
 
-**Build from outside in** — create parent containers first, then children:
+Then batch-load all fonts needed:
 ```javascript
-const page = figma.createFrame();
-page.name = "Dashboard";
-page.layoutMode = "HORIZONTAL";
-// ... then create and append children
+await __fh.fonts(['Inter','Regular'], ['Inter','Bold'], ['Inter','Semi Bold']);
 ```
 
-**Insert icons using createNodeFromSvg:**
+### Step 5: Execute in Chunked Scripts
+
+**Never write monolithic scripts.** Break into small chunks of max 5 UI elements (~15-30 lines each).
+
+Execute one chunk per `mcp__playwright__browser_evaluate` call:
+
 ```javascript
-const iconSvg = `<svg>...</svg>`; // fetched from Lucide
-const icon = figma.createNodeFromSvg(iconSvg);
-icon.name = "Icon/Home";
-parent.appendChild(icon);
+// Chunk 1: Create page + outer frame
+__fh.page('Dashboard');
+const main = __fh.frame('Main', { w: 1440, h: 900, direction: 'VERTICAL' });
+
+// Chunk 2: Header (separate evaluate call)
+const header = __fh.frame('Header', { w: 1440, h: 64, direction: 'HORIZONTAL', px: 24, fill: __fh.rgb(255,255,255), parent: __fh.find('Main') });
+await __fh.txt('AppName', { size: 20, style: 'Bold', parent: header });
+
+// Chunk 3: Hero section (separate evaluate call)
+const hero = __fh.frame('Hero', { w: 1440, h: 400, direction: 'VERTICAL', p: 64, fill: __fh.hex('#1E3A8A'), parent: __fh.find('Main') });
+await __fh.txt('Welcome Back', { size: 48, style: 'Bold', fill: __fh.rgb(255,255,255), parent: hero });
 ```
 
-### Step 5: Verify and Present
+**Key pattern:** Each chunk finds its parent using `__fh.find('ParentName')`, so chunks are independent and self-contained.
 
-After automation completes:
+### Step 6: Verify After Each Page
+
+After completing each page:
 - Use `mcp__playwright__browser_snapshot` to verify the result visually
-- Select the created elements: `figma.currentPage.selection = [rootNode]`
-- Zoom to show the result: `figma.viewport.scrollAndZoomIntoView([rootNode])`
-- Report what was created and any issues
+- Check for overlapping frames, missing text, misaligned elements
+- Select created elements: `figma.currentPage.selection = [rootNode]`
+- Zoom to show result: `figma.viewport.scrollAndZoomIntoView([rootNode])`
+- Fix issues with small targeted scripts (not full rewrites)
+
+Common fixes:
+```javascript
+// Fix overlapping
+const section = __fh.find('stats_section');
+section.y = __fh.find('header').y + __fh.find('header').height + 32;
+
+// Fix missing gap
+__fh.find('main_container').itemSpacing = 24;
+```
 
 ## Code Execution Guidelines
 
-- **Chunk large operations** — don't try to create 50+ nodes in a single evaluate call. Break into logical groups (e.g., create frame structure, then populate content, then apply styles).
-- **Use async/await** — font loading and node lookups are async.
-- **Return data for verification** — end evaluate calls with a return statement showing what was created.
-- **Handle errors** — wrap operations in try/catch and return error details.
-- **Name everything** — set `.name` on all created nodes for a clean layer panel.
+- **Max 30 lines per script** — if it's longer, split it into multiple evaluate calls
+- **Use `__fh` helpers** — never write verbose Plugin API code when a helper exists
+- **Name everything** — every frame and element gets a `.name` so later chunks can find them with `__fh.find()`
+- **Use async/await** — font loading and node lookups are async
+- **Return data for verification** — end evaluate calls with a return statement
+- **Handle errors** — wrap operations in try/catch and return error details
+- **Build outside-in** — create parent containers first, populate children in subsequent chunks
+- **Use auto-layout aggressively** — it eliminates manual x/y positioning (the #1 source of bugs)
 
 ## Common Automation Patterns
 

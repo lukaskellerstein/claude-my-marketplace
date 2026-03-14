@@ -116,6 +116,202 @@ The Design Language page must include these sections:
 
 After the Design Language page is complete, **all subsequent pages must use these defined styles, colors, components, and icons**. Never introduce one-off values — always reference the design language.
 
+## Execution Strategy — Chunked Scripts + Helper Library
+
+### Why Chunked Execution
+
+**Never write monolithic scripts.** Long scripts are slow, hard to debug, and if they fail halfway through you lose everything. Instead:
+
+- Break work into **small chunks of max 5 UI elements** (~15-30 lines each)
+- Execute each chunk via a separate `mcp__playwright__browser_evaluate` call
+- Verify after critical sections with `mcp__playwright__browser_snapshot`
+- If a chunk fails, only that small piece needs to be retried
+
+### Script Size Guidelines
+
+| Script type       | Target lines | Example                              |
+|-------------------|-------------|---------------------------------------|
+| Page setup        | 3–5         | Create page, set background           |
+| Navigation bar    | 15–25       | Frame + logo + links + avatar         |
+| Card grid         | 20–30       | Loop creating N cards in auto-layout  |
+| Form section      | 15–25       | Labels + inputs + button              |
+| Table             | 20–30       | Header row + data rows in loop        |
+| Single component  | 10–15       | One button, one card, one input       |
+
+**Rule of thumb:** If a script is over 30 lines, split it.
+
+### Helper Functions Library — INJECT FIRST
+
+Before any design work, inject this utility library into the Figma console via `mcp__playwright__browser_evaluate`. This cuts script length by ~60% and makes all subsequent scripts faster and more readable.
+
+```javascript
+window.__fh = {
+  // Create a frame (auto-layout container)
+  frame: (name, opts = {}) => {
+    const f = figma.createFrame();
+    f.name = name;
+    f.resize(opts.w || 1440, opts.h || 900);
+    if (opts.fill) f.fills = [{ type: 'SOLID', color: opts.fill }];
+    if (opts.radius) f.cornerRadius = opts.radius;
+    if (opts.autoLayout || opts.direction) {
+      f.layoutMode = opts.direction || 'VERTICAL';
+      f.primaryAxisSizingMode = opts.mainSize || 'AUTO';
+      f.counterAxisSizingMode = opts.crossSize || 'FIXED';
+      f.itemSpacing = opts.gap || 0;
+      f.paddingTop = opts.py || opts.p || 0;
+      f.paddingBottom = opts.py || opts.p || 0;
+      f.paddingLeft = opts.px || opts.p || 0;
+      f.paddingRight = opts.px || opts.p || 0;
+    }
+    if (opts.effects) f.effects = opts.effects;
+    if (opts.parent) opts.parent.appendChild(f);
+    else figma.currentPage.appendChild(f);
+    return f;
+  },
+
+  // Create text node
+  txt: async (content, opts = {}) => {
+    const t = figma.createText();
+    await figma.loadFontAsync({ family: opts.font || 'Inter', style: opts.style || 'Regular' });
+    t.characters = content;
+    t.fontSize = opts.size || 16;
+    t.fontName = { family: opts.font || 'Inter', style: opts.style || 'Regular' };
+    if (opts.fill) t.fills = [{ type: 'SOLID', color: opts.fill }];
+    if (opts.align) t.textAlignHorizontal = opts.align;
+    if (opts.lineHeight) t.lineHeight = { value: opts.lineHeight, unit: 'PIXELS' };
+    if (opts.parent) opts.parent.appendChild(t);
+    return t;
+  },
+
+  // Create rectangle
+  rect: (opts = {}) => {
+    const r = figma.createRectangle();
+    r.name = opts.name || 'Rectangle';
+    r.resize(opts.w || 100, opts.h || 100);
+    if (opts.fill) r.fills = [{ type: 'SOLID', color: opts.fill }];
+    if (opts.radius) r.cornerRadius = opts.radius;
+    if (opts.parent) opts.parent.appendChild(r);
+    return r;
+  },
+
+  // Insert SVG icon (from icon-library fetch)
+  icon: (svgString, opts = {}) => {
+    const node = figma.createNodeFromSvg(svgString);
+    node.name = opts.name || 'Icon';
+    node.resize(opts.size || 24, opts.size || 24);
+    if (opts.parent) opts.parent.appendChild(node);
+    return node;
+  },
+
+  // RGB shorthand (accepts 0-255, converts to Figma 0-1 range)
+  rgb: (r, g, b) => ({ r: r/255, g: g/255, b: b/255 }),
+
+  // Hex to Figma color
+  hex: (h) => {
+    const r = parseInt(h.slice(1, 3), 16) / 255;
+    const g = parseInt(h.slice(3, 5), 16) / 255;
+    const b = parseInt(h.slice(5, 7), 16) / 255;
+    return { r, g, b };
+  },
+
+  // Drop shadow shorthand
+  shadow: (x, y, radius, opacity) => [{
+    type: 'DROP_SHADOW', color: { r: 0, g: 0, b: 0, a: opacity || 0.1 },
+    offset: { x: x || 0, y: y || 2 }, radius: radius || 8,
+    visible: true, blendMode: 'NORMAL'
+  }],
+
+  // Find node by name in current page
+  find: (name) => figma.currentPage.findOne(n => n.name === name),
+
+  // Find all nodes by name pattern
+  findAll: (pattern) => figma.currentPage.findAll(n => n.name.includes(pattern)),
+
+  // Switch page by name (create if missing)
+  page: (name) => {
+    let p = figma.root.children.find(c => c.name === name);
+    if (!p) { p = figma.createPage(); p.name = name; }
+    figma.currentPage = p;
+    return p;
+  },
+
+  // Batch load fonts
+  fonts: async (...styles) => {
+    for (const s of styles) {
+      await figma.loadFontAsync({ family: s[0] || 'Inter', style: s[1] || 'Regular' });
+    }
+  }
+};
+'helpers injected'
+```
+
+### Using Helpers in Scripts
+
+After injection, all subsequent scripts become much shorter:
+
+```javascript
+// WITHOUT helpers (verbose, ~20 lines)
+const card = figma.createFrame();
+card.name = "Card";
+card.resize(320, 200);
+card.layoutMode = "VERTICAL";
+card.paddingTop = 16; card.paddingBottom = 16;
+card.paddingLeft = 16; card.paddingRight = 16;
+card.itemSpacing = 12;
+card.primaryAxisSizingMode = "AUTO";
+card.cornerRadius = 12;
+card.fills = [{ type: "SOLID", color: { r: 1, g: 1, b: 1 } }];
+card.effects = [{ type: "DROP_SHADOW", color: { r:0, g:0, b:0, a:0.1 }, offset: { x:0, y:2 }, radius: 8, visible: true, blendMode: "NORMAL" }];
+figma.currentPage.appendChild(card);
+await figma.loadFontAsync({ family: "Inter", style: "Bold" });
+const title = figma.createText();
+title.characters = "Card Title";
+title.fontSize = 18;
+title.fontName = { family: "Inter", style: "Bold" };
+card.appendChild(title);
+
+// WITH helpers (~5 lines)
+const card = __fh.frame('Card', { w: 320, h: 200, direction: 'VERTICAL', p: 16, gap: 12, radius: 12, fill: __fh.rgb(255,255,255), effects: __fh.shadow(0, 2, 8, 0.1) });
+await __fh.txt('Card Title', { size: 18, style: 'Bold', parent: card });
+```
+
+### Chunked Execution Order
+
+For any multi-section design, follow this execution order:
+
+1. **Inject helpers** (1 call)
+2. **Batch load fonts** (1 call): `await __fh.fonts(['Inter','Regular'], ['Inter','Bold'], ['Inter','Semi Bold'])`
+3. **Create page** (1 call): `__fh.page('Dashboard')`
+4. **Section by section** (1 call each, max 30 lines):
+   - Header/nav
+   - Hero section
+   - Content sections
+   - Footer
+5. **Verify** (snapshot after each page)
+
+### Multi-Page Designs — Parallel Planning
+
+For designs with multiple pages, use **parallel subagent planning**:
+
+- Planning is parallelizable (each page can be planned independently)
+- Execution is sequential (single browser connection)
+- Spawn one Agent per page to generate scripts in parallel
+- Collect all scripts, then execute sequentially
+
+```
+Orchestrator:
+  1. Create master plan (pages + sections)
+  2. Spawn Agent per page → each returns array of scripts
+  3. Execute all scripts sequentially via browser_evaluate
+  4. Verify after each page
+```
+
+Each subagent receives:
+- The design system tokens (from Design Language page)
+- That page's section list
+- Instruction to use `__fh` helpers
+- Instruction to keep scripts <30 lines
+
 ## Connection Workflow — FOLLOW THESE STEPS EVERY TIME
 
 ### Step 1: Navigate to Figma
