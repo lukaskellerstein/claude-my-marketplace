@@ -177,18 +177,32 @@ curl -s https://unpkg.com/lucide-static/icons/search.svg
 curl -s https://unpkg.com/lucide-static/icons/settings.svg
 ```
 
-### Step 4: Inject Helper Library
+### Step 4: Inject Scripts
 
-**Read and inject** the helper library from the scripts directory:
+**Read and inject** from the scripts directory in this order:
 
-1. `Read → skills/figma-plugin-api/scripts/helpers.js`
-2. `mcp__design-playwright__browser_evaluate` → paste file contents
+1. `Read → skills/figma-plugin-api/scripts/helpers.js` → inject via `browser_evaluate`
+2. `Read → skills/figma-plugin-api/scripts/status.js` → inject via `browser_evaluate` (status panel appears in Figma)
 
-This injects `window.__fh` with all helper functions (~60% shorter scripts).
-
-Then batch-load fonts:
+Then register agents and load fonts:
 ```javascript
+// Register agents on the status panel
+await __status.agent('main', 'Design Orchestrator', 'planning');
+// For multi-page: register each page agent
+await __status.agent('p1', 'Dashboard Page', 'planning');
+await __status.agent('p2', 'Settings Page', 'planning');
+
+// Load fonts
 await __fh.fonts(['Inter','Regular'], ['Inter','Bold'], ['Inter','Semi Bold']);
+```
+
+Update status as work progresses:
+```javascript
+await __status.update('p1', 'fetching-images', 'Searching Unsplash for hero image...');
+// ... do work ...
+await __status.update('p1', 'executing', 'Building header section...');
+// ... do work ...
+await __status.done('p1');
 ```
 
 ### Step 5: Execute in Chunked Scripts
@@ -237,6 +251,13 @@ __fh.find('main_container').itemSpacing = 24;
 ```
 
 **Critical check:** verify.js reports `images: N` — if `N === 0`, the page has no images and MUST be fixed. Every page needs real images.
+
+### Step 7: Cleanup
+
+When all design work is complete, remove the status panel:
+```javascript
+__status.remove();
+```
 
 ## Code Execution Guidelines
 

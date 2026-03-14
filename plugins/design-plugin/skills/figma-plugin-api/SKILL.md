@@ -232,6 +232,35 @@ After completing a page, **read and run the verification script**:
 
 Returns a stats object with issue detection (overlapping frames, unnamed nodes, empty text, tiny elements).
 
+### Status Panel — Agent Dashboard in Figma
+
+Inject the status panel to show a live dashboard inside the Figma canvas:
+
+1. **Read**: `Read → skills/figma-plugin-api/scripts/status.js`
+2. **Execute**: `mcp__design-playwright__browser_evaluate` → paste contents (auto-initializes)
+
+The panel appears in the top-right of the viewport showing:
+- Plugin version and connection status (green dot)
+- Active agents count and their current task/status
+
+**API (available as `__status` after injection):**
+
+| Method | Description | Example |
+|---|---|---|
+| `__status.init()` | Create/reset the panel | `await __status.init()` |
+| `__status.agent(id, name, status, task)` | Register or update an agent | `await __status.agent('a1', 'Dashboard', 'planning')` |
+| `__status.update(id, status, task)` | Update agent status | `await __status.update('a1', 'fetching-images', 'Searching Unsplash...')` |
+| `__status.done(id)` | Mark agent as completed | `await __status.done('a1')` |
+| `__status.error(id, message)` | Mark agent as failed | `await __status.error('a1', 'Image load failed')` |
+| `__status.remove()` | Remove panel (cleanup) | `__status.remove()` |
+| `__status.info()` | Get status data | `__status.info()` |
+
+**Status values:** `planning`, `fetching-images`, `fetching-icons`, `fetching-assets`, `generating`, `executing`, `verifying`, `done`, `error`
+
+Each status has a color-coded dot (yellow=planning, blue=fetching, green=done, red=error).
+
+**When to use:** Inject after helpers.js whenever running multi-step or multi-agent designs. Update agent status at each step. Remove when the design is complete.
+
 ### Using Helpers in Scripts
 
 After injection, all subsequent scripts become much shorter:
@@ -266,15 +295,18 @@ await __fh.txt('Card Title', { size: 18, style: 'Bold', parent: card });
 
 For any multi-section design, follow this execution order:
 
-1. **Inject helpers** (1 call)
-2. **Batch load fonts** (1 call): `await __fh.fonts(['Inter','Regular'], ['Inter','Bold'], ['Inter','Semi Bold'])`
-3. **Create page** (1 call): `__fh.page('Dashboard')`
-4. **Section by section** (1 call each, max 30 lines):
-   - Header/nav
-   - Hero section
-   - Content sections
-   - Footer
-5. **Verify** (snapshot after each page)
+1. **Inject helpers.js** (1 call)
+2. **Inject status.js** (1 call) — status panel appears in Figma
+3. **Register agents**: `await __status.agent('main', 'Main Design', 'planning')`
+4. **Batch load fonts** (1 call): `await __fh.fonts(['Inter','Regular'], ['Inter','Bold'], ['Inter','Semi Bold'])`
+5. **Update status**: `await __status.update('main', 'fetching-images', 'Searching Unsplash...')`
+6. **Fetch images & icons** (parallel where possible)
+7. **Update status**: `await __status.update('main', 'executing', 'Building header...')`
+8. **Create page** (1 call): `__fh.page('Dashboard')`
+9. **Section by section** (1 call each, max 30 lines) — update status per section
+10. **Verify** (run verify.js + snapshot)
+11. **Mark done**: `await __status.done('main')`
+12. **Cleanup** (when all work is finished): `__status.remove()`
 
 ### Multi-Page Designs — Parallel Subagent Architecture
 
