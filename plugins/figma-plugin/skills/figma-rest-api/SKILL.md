@@ -21,8 +21,8 @@ Access Figma file data programmatically via the REST API using curl. This works 
 
 ## When NOT to Use
 
-- User wants to **modify** Figma designs → use **figma-plugin-api** skill (requires browser)
-- User wants to create new elements → use **figma-plugin-api** skill
+- User wants to **modify** Figma designs → use **figma-bridge** skill (requires browser)
+- User wants to create new elements → use **figma-bridge** skill
 
 ## Authentication
 

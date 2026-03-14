@@ -20,7 +20,7 @@ Convert Figma design data into clean, production-ready frontend code.
 
 ## When NOT to Use
 
-- User wants to modify the Figma design itself → use **figma-plugin-api** skill
+- User wants to modify the Figma design itself → use **figma-bridge** skill
 - User wants to extract just tokens/variables → use **design-tokens** skill
 
 ## Workflow

@@ -1,32 +1,39 @@
 ---
-name: figma-plugin-api
+name: figma-bridge
 description: >
-  Automate Figma designs by executing Figma Plugin API commands in the browser via Playwright.
-  Use when the user asks to create, modify, or inspect Figma elements programmatically — nodes, frames,
-  components, auto-layout, styles, variables, or text. Requires Figma to be open in the browser.
-  Use when the user says "create a frame in Figma", "add auto-layout", "update Figma styles",
-  "generate components in Figma", "modify Figma design", "run Figma plugin code", or similar.
+  Use for ANY manipulation of Figma designs — creating, modifying, inspecting, or automating
+  anything in a Figma file via the browser. This is the primary skill for all Figma design work.
+  Requires the Figma Bridge Chrome extension (provides __figb and __figs globals) and Figma
+  open in the browser. Use when the user says "create in Figma", "design in Figma", "modify Figma",
+  "add to Figma", "build a layout", "make a component", "update styles", or ANY Figma-related
+  design task. Also covers icons, images, typography, auto-layout, gradients, shadows, and
+  design system creation.
 ---
 
-# Figma Plugin API — Browser Automation
+# Figma Bridge — Browser Automation
 
-Execute Figma Plugin API commands directly in the browser using Playwright's `mcp__design-playwright__browser_evaluate` tool. This enables programmatic creation and modification of Figma designs.
+Create and manipulate Figma designs directly in the browser using the **Figma Bridge** Chrome extension and Playwright's `mcp__design-playwright__browser_evaluate` tool. The extension auto-injects `__figb` (helpers) and `__figs` (status panel) into every Figma page.
 
 ## When to Use
 
-- User wants to create or modify Figma elements (frames, rectangles, text, components)
-- User wants to apply auto-layout, styles, or constraints programmatically
+- **ANY manipulation of a Figma design** — this is the go-to skill for all Figma work
+- User wants to create or modify elements (frames, rectangles, text, components, icons, images)
+- User wants to apply auto-layout, styles, effects, gradients, or constraints
 - User wants to batch-create or batch-update design elements
+- User wants to build a design system, component library, or full page layout
 - User wants to inspect or extract information from a Figma file in the browser
-- User mentions "Figma Plugin API", "automate Figma", "script Figma"
 - User provides a Figma URL and describes what should be created or changed
-- User asks to "design something in Figma"
+- User asks to "design something", "create a layout", "build a page", "make a component"
 
 ## When NOT to Use
 
 - User wants to read Figma file data without the browser open → use **figma-rest-api** skill
 - User wants to extract design tokens from a Figma URL → use **design-tokens** skill
-- User wants to add icons to Figma → use **icon-library** skill first to get SVG, then this skill to insert it
+
+## Prerequisites
+
+The **Figma Bridge** Chrome extension must be installed. It auto-injects helpers on every Figma page.
+Install: clone `https://github.com/lukaskellerstein/figma-bridge` → `chrome://extensions` → Load unpacked.
 
 ## Rules of Engagement
 

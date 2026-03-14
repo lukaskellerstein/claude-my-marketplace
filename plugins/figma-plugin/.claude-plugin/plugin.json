@@ -1,6 +1,6 @@
 {
   "name": "figma-plugin",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "description": "Design and Figma integration for Claude Code — automate Figma via Plugin API in the browser, extract design tokens, generate code from designs, audit design systems, and use pre-made icon libraries (Lucide, Heroicons, Tabler) for clean SVG icons in Figma.",
   "author": {
     "name": "Lukas Kellerstein"
@@ -8,7 +8,7 @@
   "keywords": [
     "design",
     "figma",
-    "figma-plugin-api",
+    "figma-bridge",
     "design-tokens",
     "design-system",
     "icons",
@@ -24,7 +24,7 @@
     "wcag"
   ],
   "skills": [
-    "./skills/figma-plugin-api",
+    "./skills/figma-bridge",
     "./skills/figma-rest-api",
     "./skills/design-tokens",
     "./skills/design-to-code",

@@ -20,7 +20,7 @@ Extract design tokens from Figma files and generate code-ready token files in va
 
 ## When NOT to Use
 
-- User wants to modify the design in Figma → use **figma-plugin-api** skill
+- User wants to modify the design in Figma → use **figma-bridge** skill
 - User wants to audit the design system for issues → use **design-system** skill
 
 ## Token Categories
