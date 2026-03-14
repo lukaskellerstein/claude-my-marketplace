@@ -48,22 +48,30 @@ Execute Figma Plugin API commands directly in the browser using Playwright's `mc
 **RIGHT approach (always do this):**
 1. Plan layout AND decide what image each section needs → 2. Search for images → 3. Build frames WITH images already loaded
 
-**Every section plan must include an image specification:**
+**Every section plan must include IMAGE, ICON, and FONT specifications:**
 ```
 Section: Hero
   - Layout: full-width, 500px height, centered text overlay
   - IMAGE: "Mars planet surface, red landscape, dramatic sky" → search Unsplash
+  - ICONS: play-circle (Watch Trailer button)
+  - FONTS: Inter Bold 48px (heading), Inter Regular 18px (subheading), Inter Semi Bold 14px (buttons)
   - Text: "Your Journey to Mars Starts Here"
   - CTA buttons: "Explore Packages", "Watch Trailer"
 
 Section: Featured Destinations (3 cards)
   - IMAGE per card: "Mars Olympus Mons mountain", "Mars canyon Valles Marineris", "Mars Jezero crater"
+  - ICONS: map-pin (location), arrow-right (CTA)
+  - FONTS: Inter Bold 20px (title), Inter Regular 14px (description), Inter Semi Bold 14px (price)
   - Each card: image (top), title, description, price, CTA button
 
 Section: Pricing (3 tiers)
   - IMAGE for highlighted tier: "Mars landing spacecraft"
+  - ICONS: check (feature list items), star (popular badge), rocket (CTA), shield (guarantee)
+  - FONTS: Inter Bold 28px (price), Inter Medium 16px (tier name), Inter Regular 14px (features)
   - Cards with icon lists, price, CTA
 ```
+
+**The plan IS the design.** If icons, images, and fonts aren't in the plan, they won't be in the design.
 
 **Image sourcing priority:**
 
@@ -116,14 +124,67 @@ Use occasionally, not everywhere:
 
 When designing media players, podcast UIs, or audio experiences, generate sample audio using `mcp__media-mcp__generate_music` or `mcp__media-mcp__generate_speech`.
 
-### Use Icons Everywhere
+### Icons Are Part of the Design — NOT an Afterthought
 
-Icons make UI feel professional and intuitive. **Always use the icon-library skill** to fetch real SVG icons from Lucide, Heroicons, or Tabler. Use icons for:
-- Navigation items (home, search, settings, profile)
-- Action buttons (edit, delete, share, download)
-- Status indicators (check, alert, info, warning)
-- Feature cards and list items
-- Empty states and placeholders
+**Icons are a FIRST-CLASS design element.** Plan them during section design, fetch them before building, insert them inline.
+
+**WRONG:** Build a nav bar → "I should add icons" → text-only nav
+**RIGHT:** Plan nav WITH icons (home, search, bell, user) → fetch SVGs → build nav with icons inline
+
+**Every UI element that could have an icon SHOULD have an icon:**
+- Navigation items → home, search, settings, profile, bell, menu
+- Action buttons → edit, trash-2, share, download, plus, x
+- Status indicators → check-circle, alert-triangle, info, x-circle
+- Feature cards → each feature gets a relevant icon
+- List items → check, arrow-right, chevron-right
+- Empty states → inbox, search, file-text
+- Form fields → mail, lock, user, eye, eye-off
+- Social proof → star, heart, thumbs-up, users
+- Pricing features → check (included), x (excluded)
+
+**Fetch icons BEFORE building sections** — use the **icon-library** skill:
+```bash
+# Fetch all icons needed for the page in one batch
+curl -s https://unpkg.com/lucide-static/icons/home.svg
+curl -s https://unpkg.com/lucide-static/icons/search.svg
+curl -s https://unpkg.com/lucide-static/icons/bell.svg
+curl -s https://unpkg.com/lucide-static/icons/user.svg
+```
+
+Then insert inline when building each section:
+```javascript
+const nav = __fh.frame('Nav', { direction: 'HORIZONTAL', gap: 24, crossAlign: 'CENTER', parent: header });
+__fh.icon(homeSvg, { name: 'Icon/Home', size: 20, parent: nav });
+await __fh.txt('Home', { size: 14, style: 'Medium', parent: nav });
+```
+
+**NEVER skip icons** — a button without an icon, a nav without icons, or a feature list without icons looks unfinished.
+
+### Fonts Are Part of the Design — Choose During Planning
+
+**Font choices define the design's personality.** Choose fonts during planning, not during execution.
+
+**Every plan must specify the font stack:**
+```
+Font Stack:
+  - Primary: Inter (headings + body)
+  - Weights needed: Regular (400), Medium (500), Semi Bold (600), Bold (700)
+  - Heading scale: H1=48px Bold, H2=36px Bold, H3=28px Semi Bold, H4=20px Semi Bold
+  - Body: 16px Regular, 14px Regular (secondary), 12px Regular (caption)
+  - Buttons: 14px Semi Bold (primary), 14px Medium (secondary)
+```
+
+**Load ALL needed font weights upfront** — before any section scripts:
+```javascript
+await __fh.fonts(
+  ['Inter', 'Regular'],
+  ['Inter', 'Medium'],
+  ['Inter', 'Semi Bold'],
+  ['Inter', 'Bold']
+);
+```
+
+**Font loading is expensive.** Loading fonts once upfront is much faster than loading them per-section. List every weight you'll need in the plan and batch-load them all.
 
 ### Be Creative
 
@@ -350,30 +411,48 @@ await __fh.txt('Card Title', { size: 18, style: 'Bold', parent: card });
 
 For any multi-section design, follow this execution order:
 
-1. **Inject helpers.js** (1 call)
-2. **Inject status.js** (1 call) — status panel appears in Figma
-3. **Register agents**: `await __status.agent('main', 'Main Design', 'planning')`
-4. **Plan with images** — for each section, decide what image it needs (search query, subject)
-5. **Batch load fonts** (1 call): `await __fh.fonts(['Inter','Regular'], ['Inter','Bold'], ['Inter','Semi Bold'])`
-6. **Create page** (1 call): `__fh.page('Dashboard')`
-7. **Section by section** (1 call each, max 30 lines):
-   - Each section script **searches for and loads its images inline**
-   - Build frame + load image + add content = one chunk
-   - Example chunk for a hero section:
+1. **Plan everything first** — for each section specify: layout, IMAGE (search query), ICONS (names), FONTS (family/weight/size)
+2. **Inject helpers.js** (1 call)
+3. **Inject status.js** (1 call) — status panel appears in Figma
+4. **Register agents**: `await __status.agent('main', 'Main Design', 'planning')`
+5. **Batch load ALL fonts upfront** (1 call) — every weight listed in the plan:
+   ```javascript
+   await __fh.fonts(['Inter','Regular'], ['Inter','Medium'], ['Inter','Semi Bold'], ['Inter','Bold']);
+   ```
+6. **Fetch ALL icons for the page** (parallel curl calls) — every icon listed in the plan:
+   ```bash
+   curl -s https://unpkg.com/lucide-static/icons/home.svg
+   curl -s https://unpkg.com/lucide-static/icons/search.svg
+   # ... all icons needed
+   ```
+7. **Create page** (1 call): `__fh.page('Dashboard')`
+8. **Section by section** (1 call each, max 30 lines):
+   - Each section script loads its **images inline** (`__fh.loadImage()`)
+   - Each section script inserts its **icons inline** (`__fh.icon(svg)`)
+   - Each section script uses **fonts that were pre-loaded** in step 5
+   - Example chunk:
      ```javascript
-     // Chunk: Hero section (image + text + buttons in one script)
+     // Chunk: Hero section — image + icon + text in one script
      const hero = __fh.frame('Hero', { w: 1440, h: 500, direction: 'VERTICAL', p: 64, mainAlign: 'CENTER', clip: true });
      const heroImg = await __fh.loadImage('https://images.unsplash.com/photo-xxx?w=1440&q=80');
      hero.fills = [{ type: 'IMAGE', imageHash: heroImg, scaleMode: 'FILL' }];
      const overlay = __fh.rect({ name: 'Overlay', w: 1440, h: 500, fill: __fh.rgb(0,0,0), opacity: 0.4, absolute: true, parent: hero });
      await __fh.txt('Your Journey Starts Here', { size: 48, style: 'Bold', fill: __fh.hex('#FFF'), parent: hero });
+     const btnRow = __fh.frame('Buttons', { direction: 'HORIZONTAL', gap: 16, parent: hero });
+     const btn = __fh.frame('CTA', { direction: 'HORIZONTAL', gap: 8, px: 24, py: 12, radius: 8, fill: __fh.hex('#3B82F6'), crossAlign: 'CENTER', parent: btnRow });
+     __fh.icon(playSvg, { name: 'Icon/Play', size: 18, parent: btn });
+     await __fh.txt('Watch Trailer', { size: 14, style: 'Semi Bold', fill: __fh.hex('#FFF'), parent: btn });
      ```
-   - **Never create an empty frame "to fill with an image later"**
-8. **Verify** (run verify.js + snapshot) — check `images: N` count is > 0
-9. **Mark done**: `await __status.done('main')`
-10. **Cleanup** (when all work is finished): `__status.remove()`
+   - **No frame without its image. No button without its icon. No text without the right font.**
+9. **Verify** (run verify.js + snapshot) — check `images > 0`, `vectors > 0` (icons)
+10. **Mark done**: `await __status.done('main')`
+11. **Cleanup** (when all work is finished): `__status.remove()`
 
-**Key rule:** Images and their frames are built together in the same chunk. There is no separate "add images" step.
+**Key rules:**
+- Images and frames are built together in the same chunk
+- Icons are inserted inline when building each element
+- Fonts are batch-loaded once upfront, then used freely in all chunks
+- There is no separate "add images/icons/fonts" step — everything is designed together
 
 ### Multi-Page Designs — Parallel Subagent Architecture
 
@@ -409,34 +488,61 @@ For multi-page designs, **parallelize planning AND asset gathering** across suba
 
 Each agent receives:
 - The design system tokens (from Design Language page)
-- That page's section list — **each section must specify its image needs**
+- That page's section list — **each section specifies its IMAGE, ICONS, and FONTS**
 - Instruction to use `__fh` helpers (reference the helpers.js API table above)
 - Instruction to keep scripts <30 lines each
-- Instruction to search Unsplash first for all images, fetch icons from Lucide
-- **Must return**: array of script strings where **each script already includes its `__fh.loadImage()` calls with real Unsplash URLs** — no placeholder frames
+- **Must do**: search Unsplash for all images, fetch all icon SVGs from Lucide
+- **Must return**: array of script strings where every script has images, icons, and fonts baked in
 
 **Example section spec given to a subagent:**
 ```
 Page: Dashboard
+Font Stack: Inter (Regular, Medium, Semi Bold, Bold)
+
 Sections:
-  1. Hero: full-width background IMAGE("modern SaaS dashboard on screen, dark theme"), overlay, heading, subheading, 2 CTA buttons
-  2. Stats Row: 4 stat cards, each with an icon (trending-up, users, dollar-sign, activity)
-  3. Features: 3 feature cards, each with IMAGE("cloud computing illustration", "data analytics chart", "security shield technology"), title, description
-  4. Testimonials: 3 cards, each with avatar IMAGE("professional headshot portrait"), quote, name, role
-  5. CTA Banner: gradient background, heading, button
+  1. Hero:
+     - IMAGE: "modern SaaS dashboard on screen, dark theme" → search Unsplash
+     - ICONS: play-circle (Watch Demo btn), arrow-right (Get Started btn)
+     - FONTS: Inter Bold 48px (heading), Inter Regular 18px (subheading), Inter Semi Bold 14px (buttons)
+     - Layout: full-width 1440×500, image bg, dark overlay, heading, subheading, 2 CTA buttons
+
+  2. Stats Row:
+     - ICONS: trending-up, users, dollar-sign, activity (one per stat card)
+     - FONTS: Inter Bold 32px (numbers), Inter Regular 14px (labels)
+     - Layout: 4 stat cards in a row
+
+  3. Features (3 cards):
+     - IMAGE per card: "cloud computing", "data analytics chart", "security shield"
+     - ICONS: cloud, bar-chart, shield (one per card header)
+     - FONTS: Inter Semi Bold 20px (title), Inter Regular 14px (description)
+     - Layout: 3 cards with image top, icon+title, description
+
+  4. Testimonials (3 cards):
+     - IMAGE per card: "professional headshot portrait" × 3
+     - ICONS: star (rating), quote (decoration)
+     - FONTS: Inter Regular 16px (quote), Inter Medium 14px (name), Inter Regular 12px (role)
+
+  5. CTA Banner:
+     - ICONS: arrow-right (CTA button)
+     - FONTS: Inter Bold 32px (heading), Inter Semi Bold 16px (button)
+     - Layout: gradient background, heading, button
 ```
 
-**Key insight:** Each agent spends most of its time on WebSearch/WebFetch for images and icons — this is the real parallelism win. Script generation is fast, but searching for 5-10 images per page takes time. Running 3 agents in parallel = 3x faster asset gathering.
+**Key insight:** Each agent spends most of its time on WebSearch/WebFetch for images and icons — this is the real parallelism win. Running 3 agents in parallel = 3x faster asset gathering.
 
-**Each agent's returned scripts must have images baked in — not as a separate step:**
+**Each agent's returned scripts must have everything baked in:**
 ```javascript
-// GOOD: image loaded in the same script as the frame
+// GOOD: image + icon + font all in one script
 const hero = __fh.frame('Hero', { w: 1440, h: 500, clip: true });
-const img = await __fh.loadImage('https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1440&q=80');
+const img = await __fh.loadImage('https://images.unsplash.com/photo-xxx?w=1440&q=80');
 hero.fills = [{ type: 'IMAGE', imageHash: img, scaleMode: 'FILL' }];
+await __fh.txt('Build Faster', { size: 48, style: 'Bold', fill: __fh.hex('#FFF'), parent: hero });
+const btn = __fh.frame('CTA', { direction: 'HORIZONTAL', gap: 8, px: 24, py: 12, fill: __fh.hex('#3B82F6'), radius: 8, parent: hero });
+__fh.icon(arrowRightSvg, { size: 18, parent: btn });
+await __fh.txt('Get Started', { size: 14, style: 'Semi Bold', fill: __fh.hex('#FFF'), parent: btn });
 
-// BAD: frame created without image, "will add later"
-const hero = __fh.frame('Hero', { w: 1440, h: 500, fill: __fh.hex('#1F2937') }); // NO!
+// BAD: empty frame, no image, no icon, wrong font
+const hero = __fh.frame('Hero', { fill: __fh.hex('#1F2937') }); // NO!
 ```
 
 ## Connection Workflow — FOLLOW THESE STEPS EVERY TIME

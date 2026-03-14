@@ -116,9 +116,9 @@ Clarify with the user:
 - Should this follow an existing design system?
 - Does a Design Language page already exist, or should we create one?
 
-### Step 2: Plan the Operations — WITH Images
+### Step 2: Plan the Operations — Images, Icons, Fonts
 
-Break down the task. **Every section must specify what image it needs:**
+Break down the task. **Every section must specify its IMAGE, ICONS, and FONTS:**
 
 ```markdown
 ## Automation Plan
@@ -126,44 +126,55 @@ Break down the task. **Every section must specify what image it needs:**
 ### Prerequisites
 - [ ] Figma file open in browser at [URL]
 - [ ] Design Language page exists (or create one first)
-- [ ] Fonts to load: Inter, ...
+
+### Font Stack
+- Primary: Inter
+- Weights: Regular (400), Medium (500), Semi Bold (600), Bold (700)
+- Scale: H1=48px Bold, H2=36px Bold, H3=24px Semi Bold, Body=16px Regular, Small=14px Regular, Caption=12px Regular, Button=14px Semi Bold
 
 ### Page: Homepage
 Section 1 — Hero:
-  - Layout: full-width 1440×500, text overlay, 2 CTA buttons
   - IMAGE: "futuristic city skyline at night" → search Unsplash
-  - Icons: play-circle (for "Watch Video" button)
+  - ICONS: play-circle (Watch Video btn), arrow-right (Get Started btn)
+  - FONTS: Inter Bold 48px (heading), Inter Regular 18px (sub), Inter Semi Bold 14px (buttons)
+  - Layout: full-width 1440×500, image bg, dark overlay, heading, subheading, 2 CTA buttons
 
 Section 2 — Features (3 cards):
   - IMAGE per card: "cloud computing", "data security lock", "team collaboration"
-  - Icons: cloud, shield, users (from Lucide)
+  - ICONS: cloud, shield, users (card headers), arrow-right (CTA links)
+  - FONTS: Inter Semi Bold 20px (title), Inter Regular 14px (description)
+  - Layout: 3 cards with image, icon+title, description, link
 
 Section 3 — Testimonials (3 cards):
-  - IMAGE per card: "professional headshot portrait" (3 different)
-  - Layout: avatar + quote + name
+  - IMAGE per card: "professional headshot portrait" × 3 different
+  - ICONS: star (rating × 5 per card), quote (decoration)
+  - FONTS: Inter Regular 16px (quote), Inter Medium 14px (name), Inter Regular 12px (role)
+  - Layout: avatar circle, stars, quote, name+role
 
 Section 4 — CTA Banner:
-  - Gradient background (no image)
-  - Icons: arrow-right
+  - ICONS: arrow-right (CTA button)
+  - FONTS: Inter Bold 32px (heading), Inter Semi Bold 16px (button)
+  - Layout: gradient bg, centered heading, button
 
 ### Pages (spawn parallel Agents if > 1 page)
-- Page 1: [name] → Agent A (search images + plan + return scripts)
-- Page 2: [name] → Agent B (search images + plan + return scripts)
+- Page 1: [name] → Agent A (search images + fetch icons + return scripts)
+- Page 2: [name] → Agent B (search images + fetch icons + return scripts)
 
 ### Execution Order (sequential)
 1. Inject helpers.js + status.js
-2. Batch load fonts
-3. Create Design Language page (if new)
-4. Execute each section script (image loaded inside each script)
-5. Run verify.js → check images > 0, fix issues
+2. Batch load ALL fonts from Font Stack
+3. Fetch ALL icons listed across all sections
+4. Create Design Language page (if new)
+5. Execute each section script (images loaded inline, icons inserted inline)
+6. Run verify.js → check images > 0, vectors > 0 (icons), fix issues
 ```
 
 ### Step 3: Search Images & Fetch Icons
 
 **For multi-page designs, spawn parallel Agents** — one per page. Each agent:
-1. Searches Unsplash for every image specified in the section plan
-2. Fetches all icon SVGs from Lucide
-3. Returns scripts where **each script already contains the Unsplash URL inline** in its `__fh.loadImage()` call
+1. Searches Unsplash for every IMAGE specified in the section plan
+2. Fetches every ICON SVG from Lucide listed in the plan
+3. Returns scripts where images, icons, and fonts are all baked into each chunk
 
 **For single-page designs**, search images directly before building each section:
 ```
