@@ -13,7 +13,7 @@ General developer tooling — git workflows, code hygiene, and dependency manage
 
 ### [documentation-plugin](plugins/documentation-plugin)
 
-Documentation management — architecture docs, feature documentation, Mermaid diagrams, D3.js charts, and PowerPoint presentations.
+Documentation management — architecture docs, feature documentation, Mermaid diagrams, D3.js charts, and professional PowerPoint presentations using a hybrid HTML/CSS + PptxGenJS workflow (visual layers designed in HTML/CSS, screenshotted with Playwright as slide backgrounds, with editable text added via PptxGenJS).
 
 - **Skills:** documentation, graph-generation, pptx
 - **Agents:** docs-auditor
@@ -25,6 +25,15 @@ Documentation management — architecture docs, feature documentation, Mermaid d
 Infrastructure management for Kubernetes/GKE, Istio, Helm, Terraform, Traefik, and authentication (Keycloak, OAuth2-proxy).
 
 - **Skills:** auth, helm, istio, kubernetes, terraform, traefik
+
+### [design-plugin](plugins/design-plugin)
+
+Design and Figma integration — automate Figma via Plugin API in the browser, extract design tokens, generate code from designs, audit design systems, and use pre-made icon libraries (Lucide, Heroicons, Tabler) for clean SVG icons.
+
+- **Skills:** figma-plugin-api, figma-rest-api, design-tokens, design-to-code, design-system, icon-library
+- **Agents:** figma-automator, design-auditor
+- **Commands:** design-inspect, design-tokens
+- **MCP:** Playwright
 
 ### [media-plugin](plugins/media-plugin)
 
