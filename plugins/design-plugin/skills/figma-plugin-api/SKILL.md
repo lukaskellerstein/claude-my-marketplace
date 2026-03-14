@@ -38,20 +38,62 @@ Execute Figma Plugin API commands directly in the browser using Playwright's `mc
 
 **Make designs alive, modern, and visually rich. Don't be boring.**
 
-### Use Media — Images, Video, Music
+### Use Real Images — MANDATORY
 
-Designs should not be flat wireframes with grey boxes. Use the **media-plugin** to generate real visual content:
+**Every design MUST include real images.** No grey placeholder boxes. No empty frames. Use real visual content.
 
-- **Images** — generate hero images, background visuals, product photos, illustrations, and placeholder images using `mcp__media-mcp__generate_image`. Use actual generated images instead of empty rectangles.
-- **Videos / GIFs / Animations** — for hero sections, product demos, onboarding flows, or loading states, generate video/GIF content using `mcp__media-mcp__generate_video`. Place video thumbnails or animated previews in the design.
-- **Music / Audio** — when designing media players, podcast UIs, or audio experiences, generate sample audio using `mcp__media-mcp__generate_music` or `mcp__media-mcp__generate_speech` so the design has real content to reference.
+**Image sourcing priority (follow this order):**
 
-After generating media assets, insert them into Figma as image fills:
+1. **Unsplash first** — search for high-quality stock photos using WebSearch/WebFetch. Unsplash images are free and high-quality. Use direct image URLs.
+   ```
+   WebSearch: "site:unsplash.com {subject} photo"
+   ```
+   Then download via:
+   ```bash
+   curl -sL "https://images.unsplash.com/photo-{id}?w=1440&q=80" -o image.jpg
+   ```
+
+2. **Pexels / Pixabay fallback** — if Unsplash doesn't have what you need:
+   ```
+   WebSearch: "site:pexels.com {subject} photo"
+   WebSearch: "site:pixabay.com {subject}"
+   ```
+
+3. **AI generation last resort** — only when stock photos can't match the need (custom illustrations, specific compositions, fantasy/concept art). Use `mcp__media-mcp__generate_image`.
+
+**Where to use images:**
+- Hero sections — always a full-width background image
+- Product/feature cards — each card should have a relevant image
+- Team/about sections — portrait photos
+- Testimonial sections — user avatars
+- Gallery sections — multiple images in a grid
+- Backgrounds — subtle patterns or blurred images behind content
+
+**Insert images into Figma:**
 ```javascript
-// Insert a generated image into a frame
-const imageData = await figma.createImageAsync(imageUrl);
-frame.fills = [{ type: "IMAGE", imageHash: imageData.hash, scaleMode: "FILL" }];
+// Using __fh helper
+const hash = await __fh.loadImage('https://images.unsplash.com/photo-xxx?w=1440&q=80');
+frame.fills = [{ type: 'IMAGE', imageHash: hash, scaleMode: 'FILL' }];
+
+// Or use the imageFrame helper
+await __fh.imageFrame('Hero', { url: 'https://...', w: 1440, h: 400, parent: container });
 ```
+
+### Use Videos / GIFs Occasionally
+
+Add videos/GIFs where they bring **design value** — don't force them everywhere:
+
+- **Hero sections** with motion → generate via `mcp__media-mcp__generate_video`
+- **Product demos** — short animated previews
+- **Onboarding flows** — step animations
+- **Loading/transition states** — micro-animations
+- **Background videos** — subtle ambient motion
+
+Use video thumbnails as image fills in Figma with a play button overlay.
+
+### Music / Audio
+
+When designing media players, podcast UIs, or audio experiences, generate sample audio using `mcp__media-mcp__generate_music` or `mcp__media-mcp__generate_speech`.
 
 ### Use Icons Everywhere
 
@@ -142,108 +184,53 @@ After the Design Language page is complete, **all subsequent pages must use thes
 
 ### Helper Functions Library — INJECT FIRST
 
-Before any design work, inject this utility library into the Figma console via `mcp__design-playwright__browser_evaluate`. This cuts script length by ~60% and makes all subsequent scripts faster and more readable.
+Before any design work, **read and inject the helper library from the scripts directory**:
 
-```javascript
-window.__fh = {
-  // Create a frame (auto-layout container)
-  frame: (name, opts = {}) => {
-    const f = figma.createFrame();
-    f.name = name;
-    f.resize(opts.w || 1440, opts.h || 900);
-    if (opts.fill) f.fills = [{ type: 'SOLID', color: opts.fill }];
-    if (opts.radius) f.cornerRadius = opts.radius;
-    if (opts.autoLayout || opts.direction) {
-      f.layoutMode = opts.direction || 'VERTICAL';
-      f.primaryAxisSizingMode = opts.mainSize || 'AUTO';
-      f.counterAxisSizingMode = opts.crossSize || 'FIXED';
-      f.itemSpacing = opts.gap || 0;
-      f.paddingTop = opts.py || opts.p || 0;
-      f.paddingBottom = opts.py || opts.p || 0;
-      f.paddingLeft = opts.px || opts.p || 0;
-      f.paddingRight = opts.px || opts.p || 0;
-    }
-    if (opts.effects) f.effects = opts.effects;
-    if (opts.parent) opts.parent.appendChild(f);
-    else figma.currentPage.appendChild(f);
-    return f;
-  },
+1. **Read the file**: `Read → skills/figma-plugin-api/scripts/helpers.js`
+2. **Inject into browser**: `mcp__design-playwright__browser_evaluate` → paste the file contents
 
-  // Create text node
-  txt: async (content, opts = {}) => {
-    const t = figma.createText();
-    await figma.loadFontAsync({ family: opts.font || 'Inter', style: opts.style || 'Regular' });
-    t.characters = content;
-    t.fontSize = opts.size || 16;
-    t.fontName = { family: opts.font || 'Inter', style: opts.style || 'Regular' };
-    if (opts.fill) t.fills = [{ type: 'SOLID', color: opts.fill }];
-    if (opts.align) t.textAlignHorizontal = opts.align;
-    if (opts.lineHeight) t.lineHeight = { value: opts.lineHeight, unit: 'PIXELS' };
-    if (opts.parent) opts.parent.appendChild(t);
-    return t;
-  },
+This injects `window.__fh` with all helper functions. It cuts script length by ~60%.
 
-  // Create rectangle
-  rect: (opts = {}) => {
-    const r = figma.createRectangle();
-    r.name = opts.name || 'Rectangle';
-    r.resize(opts.w || 100, opts.h || 100);
-    if (opts.fill) r.fills = [{ type: 'SOLID', color: opts.fill }];
-    if (opts.radius) r.cornerRadius = opts.radius;
-    if (opts.parent) opts.parent.appendChild(r);
-    return r;
-  },
+**The script file is at:** `skills/figma-plugin-api/scripts/helpers.js`
 
-  // Insert SVG icon (from icon-library fetch)
-  icon: (svgString, opts = {}) => {
-    const node = figma.createNodeFromSvg(svgString);
-    node.name = opts.name || 'Icon';
-    node.resize(opts.size || 24, opts.size || 24);
-    if (opts.parent) opts.parent.appendChild(node);
-    return node;
-  },
+**Available helpers after injection:**
 
-  // RGB shorthand (accepts 0-255, converts to Figma 0-1 range)
-  rgb: (r, g, b) => ({ r: r/255, g: g/255, b: b/255 }),
+| Helper | Description | Example |
+|---|---|---|
+| `__fh.frame(name, opts)` | Create frame with auto-layout | `__fh.frame('Card', { w: 320, direction: 'VERTICAL', p: 16, gap: 12 })` |
+| `__fh.comp(name, opts)` | Create reusable Component | `__fh.comp('Button', { direction: 'HORIZONTAL', p: 12 })` |
+| `__fh.txt(content, opts)` | Create text (async, loads font) | `await __fh.txt('Hello', { size: 24, style: 'Bold' })` |
+| `__fh.rect(opts)` | Create rectangle | `__fh.rect({ w: 200, h: 100, fill: __fh.hex('#F00'), radius: 8 })` |
+| `__fh.circle(opts)` | Create ellipse/circle | `__fh.circle({ size: 48, fill: __fh.hex('#3B82F6') })` |
+| `__fh.line(opts)` | Create line/divider | `__fh.line({ w: 300, color: __fh.hex('#E5E7EB') })` |
+| `__fh.icon(svg, opts)` | Insert SVG icon | `__fh.icon(svgString, { name: 'Icon/Search', size: 24 })` |
+| `__fh.recolor(node, color)` | Recolor SVG icon | `__fh.recolor(iconNode, __fh.hex('#FFF'))` |
+| `__fh.loadImage(url)` | Load image → hash | `const hash = await __fh.loadImage('https://...')` |
+| `__fh.imageFrame(name, opts)` | Frame with image fill | `await __fh.imageFrame('Hero', { url: '...', w: 1440, h: 400 })` |
+| `__fh.rgb(r, g, b)` | 0-255 → Figma color | `__fh.rgb(59, 130, 246)` |
+| `__fh.hex(h)` | Hex → Figma color | `__fh.hex('#3B82F6')` |
+| `__fh.gradient(hex1, hex2)` | Linear gradient fill | `__fh.gradient('#1E3A8A', '#3B82F6')` |
+| `__fh.shadow(x, y, r, a)` | Drop shadow effect | `__fh.shadow(0, 4, 12, 0.15)` |
+| `__fh.shadowMd()` | Medium elevation | Card shadow |
+| `__fh.shadowLg()` | Large elevation | Modal shadow |
+| `__fh.paintStyle(name, color)` | Create Paint Style | `__fh.paintStyle('Primary/500', __fh.hex('#3B82F6'))` |
+| `__fh.textStyle(name, opts)` | Create Text Style (async) | `await __fh.textStyle('Heading/H1', { size: 36, style: 'Bold' })` |
+| `__fh.effectStyle(name, fx)` | Create Effect Style | `__fh.effectStyle('Shadow/md', __fh.shadowMd())` |
+| `__fh.find(name)` | Find node by exact name | `__fh.find('Header')` |
+| `__fh.findAll(pattern)` | Find nodes by name pattern | `__fh.findAll('Card')` |
+| `__fh.page(name)` | Switch/create page | `__fh.page('Dashboard')` |
+| `__fh.fonts(...styles)` | Batch load fonts (async) | `await __fh.fonts(['Inter','Regular'], ['Inter','Bold'])` |
+| `__fh.zoomTo(nodes)` | Zoom viewport to nodes | `__fh.zoomTo(frame)` |
+| `__fh.select(nodes)` | Select nodes | `__fh.select([card1, card2])` |
 
-  // Hex to Figma color
-  hex: (h) => {
-    const r = parseInt(h.slice(1, 3), 16) / 255;
-    const g = parseInt(h.slice(3, 5), 16) / 255;
-    const b = parseInt(h.slice(5, 7), 16) / 255;
-    return { r, g, b };
-  },
+### Verification Script
 
-  // Drop shadow shorthand
-  shadow: (x, y, radius, opacity) => [{
-    type: 'DROP_SHADOW', color: { r: 0, g: 0, b: 0, a: opacity || 0.1 },
-    offset: { x: x || 0, y: y || 2 }, radius: radius || 8,
-    visible: true, blendMode: 'NORMAL'
-  }],
+After completing a page, **read and run the verification script**:
 
-  // Find node by name in current page
-  find: (name) => figma.currentPage.findOne(n => n.name === name),
+1. **Read**: `Read → skills/figma-plugin-api/scripts/verify.js`
+2. **Execute**: `mcp__design-playwright__browser_evaluate` → paste contents
 
-  // Find all nodes by name pattern
-  findAll: (pattern) => figma.currentPage.findAll(n => n.name.includes(pattern)),
-
-  // Switch page by name (create if missing)
-  page: (name) => {
-    let p = figma.root.children.find(c => c.name === name);
-    if (!p) { p = figma.createPage(); p.name = name; }
-    figma.currentPage = p;
-    return p;
-  },
-
-  // Batch load fonts
-  fonts: async (...styles) => {
-    for (const s of styles) {
-      await figma.loadFontAsync({ family: s[0] || 'Inter', style: s[1] || 'Regular' });
-    }
-  }
-};
-'helpers injected'
-```
+Returns a stats object with issue detection (overlapping frames, unnamed nodes, empty text, tiny elements).
 
 ### Using Helpers in Scripts
 
@@ -289,28 +276,47 @@ For any multi-section design, follow this execution order:
    - Footer
 5. **Verify** (snapshot after each page)
 
-### Multi-Page Designs — Parallel Planning
+### Multi-Page Designs — Parallel Subagent Architecture
 
-For designs with multiple pages, use **parallel subagent planning**:
-
-- Planning is parallelizable (each page can be planned independently)
-- Execution is sequential (single browser connection)
-- Spawn one Agent per page to generate scripts in parallel
-- Collect all scripts, then execute sequentially
+For multi-page designs, **parallelize planning AND asset gathering** across subagents. Only Figma execution is sequential (single browser).
 
 ```
-Orchestrator:
-  1. Create master plan (pages + sections)
-  2. Spawn Agent per page → each returns array of scripts
-  3. Execute all scripts sequentially via browser_evaluate
-  4. Verify after each page
+┌─────────────────────────────────────────────────────────┐
+│  ORCHESTRATOR (main session)                            │
+│                                                         │
+│  1. Create master plan (pages + sections)               │
+│  2. Execute Design Language page (sequential, in Figma) │
+│  3. Spawn parallel Agents — one per page:               │
+│     Each agent:                                         │
+│     a. Searches Unsplash for all images needed          │
+│     b. Fetches all icons from Lucide/Heroicons          │
+│     c. Generates AI images if stock not found           │
+│     d. Returns structured scripts array with assets     │
+│  4. Collect results from all agents                     │
+│  5. Execute all scripts sequentially in Figma           │
+│  6. Run verify.js after each page                       │
+└─────────────────────────────────────────────────────────┘
+         │              │              │
+    ┌────┴────┐    ┌────┴────┐    ┌────┴────┐
+    │ Agent A  │   │ Agent B  │   │ Agent C  │
+    │ Dashboard│   │ Settings │   │ Analytics│
+    │ planning │   │ planning │   │ planning │
+    │ + assets │   │ + assets │   │ + assets │
+    └─────────┘    └─────────┘    └─────────┘
+    (parallel)     (parallel)     (parallel)
 ```
 
-Each subagent receives:
+**How to spawn parallel agents** — use the Agent tool with multiple calls in a single message:
+
+Each agent receives:
 - The design system tokens (from Design Language page)
-- That page's section list
-- Instruction to use `__fh` helpers
-- Instruction to keep scripts <30 lines
+- That page's section list with descriptions
+- Instruction to use `__fh` helpers (reference the helpers.js API table above)
+- Instruction to keep scripts <30 lines each
+- Instruction to search Unsplash first for all images, fetch icons from Lucide
+- **Must return**: array of script strings + list of image URLs + list of icon SVGs
+
+**Key insight:** Each agent spends most of its time on WebSearch/WebFetch for images and icons — this is the real parallelism win. Script generation is fast, but searching for 5-10 images per page takes time. Running 3 agents in parallel = 3x faster asset gathering.
 
 ## Connection Workflow — FOLLOW THESE STEPS EVERY TIME
 
@@ -511,94 +517,48 @@ variable.setValueForMode(collection.defaultModeId, { r: 0, g: 0.4, b: 1, a: 1 })
 node.setBoundVariable("fills", 0, variable.id);
 ```
 
-## Common Patterns
+## Common Patterns (using __fh helpers)
 
-### Create a card component
+### Card with image, icon, and text
 
 ```javascript
-// Create card frame with auto-layout
-const card = figma.createFrame();
-card.name = "Card";
-card.resize(320, 200);
-card.layoutMode = "VERTICAL";
-card.paddingTop = card.paddingRight = card.paddingBottom = card.paddingLeft = 16;
-card.itemSpacing = 12;
-card.primaryAxisSizingMode = "AUTO";
-card.cornerRadius = 12;
-card.fills = [{ type: "SOLID", color: { r: 1, g: 1, b: 1 } }];
-card.effects = [{
-  type: "DROP_SHADOW",
-  color: { r: 0, g: 0, b: 0, a: 0.1 },
-  offset: { x: 0, y: 2 },
-  radius: 8,
-  visible: true,
-  blendMode: "NORMAL"
-}];
-
-// Add title
-await figma.loadFontAsync({ family: "Inter", style: "Bold" });
-const title = figma.createText();
-title.characters = "Card Title";
-title.fontSize = 18;
-title.fontName = { family: "Inter", style: "Bold" };
-card.appendChild(title);
-
-// Add description
-await figma.loadFontAsync({ family: "Inter", style: "Regular" });
-const desc = figma.createText();
-desc.characters = "Card description text goes here.";
-desc.fontSize = 14;
-desc.fills = [{ type: "SOLID", color: { r: 0.4, g: 0.4, b: 0.4 } }];
-card.appendChild(desc);
-
-figma.currentPage.appendChild(card);
+const card = __fh.frame('Card', { w: 320, direction: 'VERTICAL', radius: 12, fill: __fh.hex('#FFF'), effects: __fh.shadowMd(), clip: true });
+// Image from Unsplash
+await __fh.imageFrame('CardImage', { url: 'https://images.unsplash.com/photo-xxx?w=640&q=80', w: 320, h: 180, parent: card });
+const content = __fh.frame('CardContent', { w: 320, direction: 'VERTICAL', p: 16, gap: 8, parent: card });
+await __fh.txt('Card Title', { size: 18, style: 'Bold', parent: content });
+await __fh.txt('Description text goes here.', { size: 14, fill: __fh.hex('#6B7280'), parent: content });
 ```
 
-### Insert SVG icon into Figma
+### Icon + text row (nav item, list item)
 
 ```javascript
-// Use figma.createNodeFromSvg() — this is the BEST way to add icons
-const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>`;
-const iconNode = figma.createNodeFromSvg(svgString);
-iconNode.name = "Icon/Circle";
-iconNode.resize(24, 24);
-figma.currentPage.appendChild(iconNode);
+const row = __fh.frame('NavItem', { direction: 'HORIZONTAL', gap: 12, py: 8, px: 16, crossAlign: 'CENTER', parent: nav });
+__fh.icon(searchSvg, { name: 'Icon/Search', size: 20, parent: row });
+await __fh.txt('Search', { size: 14, fill: __fh.hex('#374151'), parent: row });
 ```
 
-### Batch-create a color palette
+### Color palette with Paint Styles
 
 ```javascript
-const colors = [
-  { name: "Blue/50", hex: "#EFF6FF" },
-  { name: "Blue/100", hex: "#DBEAFE" },
-  { name: "Blue/500", hex: "#3B82F6" },
-  { name: "Blue/900", hex: "#1E3A8A" },
-];
-
-function hexToFigma(hex) {
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
-  return { r, g, b };
+const colors = [['Blue/50','#EFF6FF'], ['Blue/500','#3B82F6'], ['Blue/900','#1E3A8A']];
+const row = __fh.frame('Colors', { direction: 'HORIZONTAL', gap: 8, mainSize: 'AUTO', crossSize: 'AUTO' });
+for (const [name, hex] of colors) {
+  __fh.paintStyle(name, __fh.hex(hex)); // Creates reusable Figma style
+  __fh.frame(name, { w: 80, h: 80, radius: 8, fill: __fh.hex(hex), parent: row });
 }
+```
 
-const frame = figma.createFrame();
-frame.name = "Color Palette";
-frame.layoutMode = "HORIZONTAL";
-frame.itemSpacing = 8;
-frame.primaryAxisSizingMode = "AUTO";
-frame.counterAxisSizingMode = "AUTO";
+### Hero section with Unsplash background + gradient overlay
 
-for (const c of colors) {
-  const swatch = figma.createFrame();
-  swatch.name = c.name;
-  swatch.resize(80, 80);
-  swatch.cornerRadius = 8;
-  swatch.fills = [{ type: "SOLID", color: hexToFigma(c.hex) }];
-  frame.appendChild(swatch);
-}
-
-figma.currentPage.appendChild(frame);
+```javascript
+const hero = __fh.frame('Hero', { w: 1440, h: 500, direction: 'VERTICAL', p: 64, mainAlign: 'CENTER', clip: true });
+const hash = await __fh.loadImage('https://images.unsplash.com/photo-xxx?w=1440&q=80');
+hero.fills = [{ type: 'IMAGE', imageHash: hash, scaleMode: 'FILL' }];
+// Dark overlay for text readability
+const overlay = __fh.rect({ name: 'Overlay', w: 1440, h: 500, fill: __fh.rgb(0,0,0), parent: hero });
+overlay.opacity = 0.4;
+await __fh.txt('Welcome to Our Platform', { size: 48, style: 'Bold', fill: __fh.hex('#FFF'), parent: hero });
 ```
 
 ## Important Notes

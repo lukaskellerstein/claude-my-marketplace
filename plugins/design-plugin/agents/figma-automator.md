@@ -63,21 +63,37 @@ Insert into Figma using `figma.createNodeFromSvg(svgString)`.
 
 Use icons **everywhere**: navigation, buttons, list items, cards, status indicators, empty states. Icons make UI feel professional.
 
-## CRITICAL: Use Media — Make Designs Alive
+## CRITICAL: Real Images — MANDATORY
 
-Use the **media-plugin** to generate real visual content instead of empty placeholders:
+**Every design MUST include real images.** No grey boxes. No empty frames. Follow this priority:
 
-- **Hero sections** → generate a stunning background image with `mcp__media-mcp__generate_image`
-- **Product cards** → generate product photos or illustrations
-- **User avatars** → generate portrait images
-- **Feature sections** → generate illustrations that match the feature description
-- **Video sections** → generate video thumbnails or animated previews with `mcp__media-mcp__generate_video`
+1. **Unsplash first** — search for stock photos using WebSearch:
+   ```
+   WebSearch: "site:unsplash.com {subject} photo"
+   ```
+   Download via: `curl -sL "https://images.unsplash.com/photo-{id}?w=1440&q=80" -o image.jpg`
 
-After generating, insert into Figma as image fills:
+2. **Pexels / Pixabay** — fallback if Unsplash lacks the subject
+
+3. **AI generation** — last resort for custom illustrations, concepts, or things that don't exist as stock photos. Use `mcp__media-mcp__generate_image`
+
+**Where images go:** hero sections, product cards, feature illustrations, avatars, testimonials, gallery grids, backgrounds.
+
+Insert into Figma:
 ```javascript
-const imageData = await figma.createImageAsync(imageUrl);
-frame.fills = [{ type: "IMAGE", imageHash: imageData.hash, scaleMode: "FILL" }];
+const hash = await __fh.loadImage('https://images.unsplash.com/photo-xxx?w=1440&q=80');
+frame.fills = [{ type: 'IMAGE', imageHash: hash, scaleMode: 'FILL' }];
 ```
+
+## OPTIONAL: Videos / GIFs — When They Add Value
+
+Use `mcp__media-mcp__generate_video` occasionally for:
+- Hero sections with motion
+- Product demo previews
+- Onboarding step animations
+- Background ambient motion
+
+Don't force videos everywhere — use them where motion enhances the design.
 
 ## Automation Workflow
 
@@ -114,49 +130,63 @@ Break down the task into ordered operations:
 - [ ] Figma file open in browser at [URL]
 - [ ] Design Language page exists (or create one first)
 - [ ] Fonts to load: Inter, ...
-- [ ] Icons needed: search, settings, ... (from Lucide)
-- [ ] Images to generate: hero background, product photos, ... (from media-plugin)
 
-### Steps
-1. Create Design Language page (if new design)
-2. Generate media assets (images, videos) via media-plugin
-3. Fetch required icon SVGs from icon libraries
-4. Load required fonts
-5. Create parent frame/page
-6. Create child elements (with auto-layout)
-7. Insert icons and media into frames
-8. Apply styles (colors, typography, effects) from Design Language
-9. Organize and name layers
+### Assets to Gather (per page)
+- [ ] Images: search Unsplash first → fallback to AI generation
+  - Hero: "site:unsplash.com [subject]"
+  - Cards: product/feature images
+  - Avatars: portrait photos
+- [ ] Icons: fetch from Lucide (search, settings, user, ...)
+- [ ] Videos/GIFs: only if it adds design value (optional)
+
+### Pages (spawn parallel Agents if > 1 page)
+- Page 1: [name] → Agent A (plan + fetch assets)
+- Page 2: [name] → Agent B (plan + fetch assets)
+- Page 3: [name] → Agent C (plan + fetch assets)
+
+### Execution Order (sequential, after agents return)
+1. Inject helpers.js
+2. Batch load fonts
+3. Create Design Language page (if new)
+4. Execute Page 1 scripts (section by section)
+5. Run verify.js → fix issues
+6. Execute Page 2 scripts
+7. Run verify.js → fix issues
+8. ...
 ```
 
-### Step 3: Generate Media & Fetch Icons
+### Step 3: Gather Assets — Images & Icons (PARALLEL)
 
-Before executing Figma code, gather all visual assets:
+**For multi-page designs, spawn parallel Agents** — one per page. Each agent:
+1. Searches Unsplash/Pexels for all images needed for that page
+2. Fetches all icon SVGs from Lucide/Heroicons/Tabler
+3. Generates AI images (only if stock photos not found)
+4. Returns: image URLs, icon SVGs, and page scripts using `__fh` helpers
+
+**For single-page designs**, gather assets directly:
 
 ```bash
+# Search for images on Unsplash
+# WebSearch: "site:unsplash.com dashboard analytics hero"
+# Then download the best match
+curl -sL "https://images.unsplash.com/photo-xxx?w=1440&q=80" -o hero.jpg
+
 # Fetch icons in parallel
 curl -s https://unpkg.com/lucide-static/icons/home.svg
 curl -s https://unpkg.com/lucide-static/icons/search.svg
 curl -s https://unpkg.com/lucide-static/icons/settings.svg
 ```
 
-Generate images via media-plugin tools:
-- Hero/background images
-- Product or feature illustrations
-- Avatar/profile images
-- Any visual content the design needs
-
 ### Step 4: Inject Helper Library
 
-**ALWAYS inject the `__fh` helper library first** (defined in the figma-plugin-api skill) via `mcp__design-playwright__browser_evaluate`. This cuts script length by ~60%:
+**Read and inject** the helper library from the scripts directory:
 
-```javascript
-// Single evaluate call to inject all helpers
-window.__fh = { frame: ..., txt: ..., rect: ..., icon: ..., rgb: ..., hex: ..., shadow: ..., find: ..., findAll: ..., page: ..., fonts: ... };
-'helpers injected'
-```
+1. `Read → skills/figma-plugin-api/scripts/helpers.js`
+2. `mcp__design-playwright__browser_evaluate` → paste file contents
 
-Then batch-load all fonts needed:
+This injects `window.__fh` with all helper functions (~60% shorter scripts).
+
+Then batch-load fonts:
 ```javascript
 await __fh.fonts(['Inter','Regular'], ['Inter','Bold'], ['Inter','Semi Bold']);
 ```
@@ -185,14 +215,18 @@ await __fh.txt('Welcome Back', { size: 48, style: 'Bold', fill: __fh.rgb(255,255
 
 ### Step 6: Verify After Each Page
 
-After completing each page:
-- Use `mcp__design-playwright__browser_snapshot` to verify the result visually
-- Check for overlapping frames, missing text, misaligned elements
-- Select created elements: `figma.currentPage.selection = [rootNode]`
-- Zoom to show result: `figma.viewport.scrollAndZoomIntoView([rootNode])`
-- Fix issues with small targeted scripts (not full rewrites)
+After completing each page, run two checks:
 
-Common fixes:
+1. **Automated verification** — read and execute the verify script:
+   - `Read → skills/figma-plugin-api/scripts/verify.js`
+   - `mcp__design-playwright__browser_evaluate` → paste contents
+   - Returns: node counts, image count, and detected issues (overlaps, unnamed nodes, empty text)
+
+2. **Visual verification** — take a screenshot:
+   - `mcp__design-playwright__browser_snapshot`
+   - Check: all sections visible, images loaded, icons present, no grey boxes
+
+3. **Fix issues** with small targeted scripts:
 ```javascript
 // Fix overlapping
 const section = __fh.find('stats_section');
@@ -201,6 +235,8 @@ section.y = __fh.find('header').y + __fh.find('header').height + 32;
 // Fix missing gap
 __fh.find('main_container').itemSpacing = 24;
 ```
+
+**Critical check:** verify.js reports `images: N` — if `N === 0`, the page has no images and MUST be fixed. Every page needs real images.
 
 ## Code Execution Guidelines
 
