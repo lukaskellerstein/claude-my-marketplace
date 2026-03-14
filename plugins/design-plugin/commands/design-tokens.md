@@ -1,7 +1,7 @@
 ---
 description: Extract design tokens from a Figma file and output as CSS, Tailwind, or JSON
 argument-hint: "<figma-url> [--format=css|tailwind|json|style-dictionary] [--output=path]"
-allowed-tools: ["Read", "Write", "Bash", "WebFetch", "mcp__playwright__browser_navigate", "mcp__playwright__browser_evaluate"]
+allowed-tools: ["Read", "Write", "Bash", "WebFetch", "mcp__design-playwright__browser_navigate", "mcp__design-playwright__browser_evaluate"]
 ---
 
 # Extract Design Tokens

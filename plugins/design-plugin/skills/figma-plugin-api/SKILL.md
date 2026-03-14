@@ -10,7 +10,7 @@ description: >
 
 # Figma Plugin API — Browser Automation
 
-Execute Figma Plugin API commands directly in the browser using Playwright's `mcp__playwright__browser_evaluate` tool. This enables programmatic creation and modification of Figma designs.
+Execute Figma Plugin API commands directly in the browser using Playwright's `mcp__design-playwright__browser_evaluate` tool. This enables programmatic creation and modification of Figma designs.
 
 ## When to Use
 
@@ -123,8 +123,8 @@ After the Design Language page is complete, **all subsequent pages must use thes
 **Never write monolithic scripts.** Long scripts are slow, hard to debug, and if they fail halfway through you lose everything. Instead:
 
 - Break work into **small chunks of max 5 UI elements** (~15-30 lines each)
-- Execute each chunk via a separate `mcp__playwright__browser_evaluate` call
-- Verify after critical sections with `mcp__playwright__browser_snapshot`
+- Execute each chunk via a separate `mcp__design-playwright__browser_evaluate` call
+- Verify after critical sections with `mcp__design-playwright__browser_snapshot`
 - If a chunk fails, only that small piece needs to be retried
 
 ### Script Size Guidelines
@@ -142,7 +142,7 @@ After the Design Language page is complete, **all subsequent pages must use thes
 
 ### Helper Functions Library — INJECT FIRST
 
-Before any design work, inject this utility library into the Figma console via `mcp__playwright__browser_evaluate`. This cuts script length by ~60% and makes all subsequent scripts faster and more readable.
+Before any design work, inject this utility library into the Figma console via `mcp__design-playwright__browser_evaluate`. This cuts script length by ~60% and makes all subsequent scripts faster and more readable.
 
 ```javascript
 window.__fh = {
@@ -316,7 +316,7 @@ Each subagent receives:
 
 ### Step 1: Navigate to Figma
 
-Use `mcp__playwright__browser_navigate` to go to the Figma file URL.
+Use `mcp__design-playwright__browser_navigate` to go to the Figma file URL.
 
 - If the user provided a Figma URL → navigate directly to it
 - If no URL → navigate to `https://www.figma.com/` and ask the user to open a specific design file
@@ -325,7 +325,7 @@ Then prompt the user to **log in** if they are not already logged in.
 
 ### Step 2: Verify `figma` global access
 
-Use `mcp__playwright__browser_evaluate` to confirm you have access to the `figma` global object:
+Use `mcp__design-playwright__browser_evaluate` to confirm you have access to the `figma` global object:
 
 ```javascript
 typeof figma !== 'undefined' ? 'connected' : 'not connected'
@@ -336,7 +336,7 @@ typeof figma !== 'undefined' ? 'connected' : 'not connected'
 
 ### Step 3: Execute the user's request
 
-Use `mcp__playwright__browser_evaluate` to run JavaScript code that interacts with the Figma Plugin API. Perform tasks such as creating shapes, modifying properties, applying styles, or extracting information.
+Use `mcp__design-playwright__browser_evaluate` to run JavaScript code that interacts with the Figma Plugin API. Perform tasks such as creating shapes, modifying properties, applying styles, or extracting information.
 
 Always explain what you're about to do before executing.
 

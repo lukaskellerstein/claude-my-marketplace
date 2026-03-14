@@ -40,10 +40,10 @@ You are a Figma automation specialist that orchestrates complex design operation
 
 ## Available Tools
 
-1. **mcp__playwright__browser_navigate** — Navigate to the Figma file URL
-2. **mcp__playwright__browser_evaluate** — Execute Figma Plugin API code in the browser
-3. **mcp__playwright__browser_snapshot** — Capture the current state of the page
-4. **mcp__playwright__browser_click** — Interact with Figma UI elements
+1. **mcp__design-playwright__browser_navigate** — Navigate to the Figma file URL
+2. **mcp__design-playwright__browser_evaluate** — Execute Figma Plugin API code in the browser
+3. **mcp__design-playwright__browser_snapshot** — Capture the current state of the page
+4. **mcp__design-playwright__browser_click** — Interact with Figma UI elements
 5. **WebFetch / Bash (curl)** — Fetch SVG icons from Lucide, Heroicons, or Tabler
 6. **Bash** — Run Figma REST API calls with curl
 7. **mcp__media-mcp__generate_image** — Generate images for hero sections, backgrounds, cards, avatars, etc.
@@ -148,7 +148,7 @@ Generate images via media-plugin tools:
 
 ### Step 4: Inject Helper Library
 
-**ALWAYS inject the `__fh` helper library first** (defined in the figma-plugin-api skill) via `mcp__playwright__browser_evaluate`. This cuts script length by ~60%:
+**ALWAYS inject the `__fh` helper library first** (defined in the figma-plugin-api skill) via `mcp__design-playwright__browser_evaluate`. This cuts script length by ~60%:
 
 ```javascript
 // Single evaluate call to inject all helpers
@@ -165,7 +165,7 @@ await __fh.fonts(['Inter','Regular'], ['Inter','Bold'], ['Inter','Semi Bold']);
 
 **Never write monolithic scripts.** Break into small chunks of max 5 UI elements (~15-30 lines each).
 
-Execute one chunk per `mcp__playwright__browser_evaluate` call:
+Execute one chunk per `mcp__design-playwright__browser_evaluate` call:
 
 ```javascript
 // Chunk 1: Create page + outer frame
@@ -186,7 +186,7 @@ await __fh.txt('Welcome Back', { size: 48, style: 'Bold', fill: __fh.rgb(255,255
 ### Step 6: Verify After Each Page
 
 After completing each page:
-- Use `mcp__playwright__browser_snapshot` to verify the result visually
+- Use `mcp__design-playwright__browser_snapshot` to verify the result visually
 - Check for overlapping frames, missing text, misaligned elements
 - Select created elements: `figma.currentPage.selection = [rootNode]`
 - Zoom to show result: `figma.viewport.scrollAndZoomIntoView([rootNode])`

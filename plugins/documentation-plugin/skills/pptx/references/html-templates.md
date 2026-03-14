@@ -423,9 +423,9 @@ This ensures visual elements in the HTML (cards, shapes, accent lines) align pre
 ### Preview (fast iteration loop)
 
 ```
-1. mcp__playwright__browser_resize → width: 1920, height: 1080, deviceScaleFactor: 1
-2. mcp__playwright__browser_navigate → file:///absolute/path/to/slides.html
-3. mcp__playwright__browser_take_screenshot
+1. mcp__docs-playwright__browser_resize → width: 1920, height: 1080, deviceScaleFactor: 1
+2. mcp__docs-playwright__browser_navigate → file:///absolute/path/to/slides.html
+3. mcp__docs-playwright__browser_take_screenshot
 ```
 
 Iterate: edit HTML/CSS → reload → screenshot → inspect → repeat.
@@ -438,11 +438,11 @@ For production screenshots, screenshot each slide section individually at exactl
 
 **Option B: Single HTML file** — use Playwright's `browser_evaluate` to isolate each section:
 ```
-1. mcp__playwright__browser_resize → width: 1920, height: 1080, deviceScaleFactor: 1
-2. mcp__playwright__browser_navigate → file:///path/to/slides.html
+1. mcp__docs-playwright__browser_resize → width: 1920, height: 1080, deviceScaleFactor: 1
+2. mcp__docs-playwright__browser_navigate → file:///path/to/slides.html
 3. For each slide:
-   a. mcp__playwright__browser_evaluate → document.querySelector('#slide-N').scrollIntoView()
-   b. mcp__playwright__browser_take_screenshot
+   a. mcp__docs-playwright__browser_evaluate → document.querySelector('#slide-N').scrollIntoView()
+   b. mcp__docs-playwright__browser_take_screenshot
 ```
 
 The saved screenshots become the `slide.background = { data: base64png }` in the PptxGenJS script.

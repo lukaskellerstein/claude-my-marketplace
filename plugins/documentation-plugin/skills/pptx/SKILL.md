@@ -154,9 +154,9 @@ Use the Playwright MCP to preview the HTML file. This is the fast iteration loop
 ### Playwright Commands for Slide Preview
 
 ```
-1. mcp__playwright__browser_resize → width: 1920, height: 1080, deviceScaleFactor: 1
-2. mcp__playwright__browser_navigate → file:///absolute/path/to/slides.html
-3. mcp__playwright__browser_take_screenshot
+1. mcp__docs-playwright__browser_resize → width: 1920, height: 1080, deviceScaleFactor: 1
+2. mcp__docs-playwright__browser_navigate → file:///absolute/path/to/slides.html
+3. mcp__docs-playwright__browser_take_screenshot
 ```
 
 **Important settings:**

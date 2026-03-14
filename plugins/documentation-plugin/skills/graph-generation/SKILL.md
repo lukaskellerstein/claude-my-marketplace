@@ -79,10 +79,10 @@ To generate a high-resolution mermaid diagram as a PNG image:
 ### Playwright Steps
 
 ```
-1. mcp__playwright__browser_resize → width: 1200, height: 800, deviceScaleFactor: 2
-2. mcp__playwright__browser_navigate → file:///absolute/path/to/diagram.html
-3. mcp__playwright__browser_wait_for → selector: ".mermaid svg", state: "visible"
-4. mcp__playwright__browser_take_screenshot → saves high-res PNG
+1. mcp__docs-playwright__browser_resize → width: 1200, height: 800, deviceScaleFactor: 2
+2. mcp__docs-playwright__browser_navigate → file:///absolute/path/to/diagram.html
+3. mcp__docs-playwright__browser_wait_for → selector: ".mermaid svg", state: "visible"
+4. mcp__docs-playwright__browser_take_screenshot → saves high-res PNG
 ```
 
 **Key settings for readable output:**
@@ -394,8 +394,8 @@ Generate data-driven charts, maps, and visualizations as image files using **D3.
 Every D3 graph follows this 3-step process:
 
 1. **Write a self-contained HTML file** with inline D3.js code (loaded from CDN)
-2. **Open it in Playwright** with high-DPI settings using `mcp__playwright__browser_navigate`
-3. **Screenshot it** using `mcp__playwright__browser_take_screenshot` to save as high-res PNG
+2. **Open it in Playwright** with high-DPI settings using `mcp__docs-playwright__browser_navigate`
+3. **Screenshot it** using `mcp__docs-playwright__browser_take_screenshot` to save as high-res PNG
 
 ### Step 1: Write the HTML File
 
@@ -429,14 +429,14 @@ Create a single `.html` file with:
 ### Step 2: Open in Playwright with High-DPI
 
 ```
-1. mcp__playwright__browser_resize → width: 1200, height: 800, deviceScaleFactor: 2
-2. mcp__playwright__browser_navigate → file:///absolute/path/to/chart.html
+1. mcp__docs-playwright__browser_resize → width: 1200, height: 800, deviceScaleFactor: 2
+2. mcp__docs-playwright__browser_navigate → file:///absolute/path/to/chart.html
 ```
 
 ### Step 3: Screenshot
 
 ```
-mcp__playwright__browser_take_screenshot → saves high-res PNG to desired output path
+mcp__docs-playwright__browser_take_screenshot → saves high-res PNG to desired output path
 ```
 
 ### Alternative: Extract SVG
@@ -444,7 +444,7 @@ mcp__playwright__browser_take_screenshot → saves high-res PNG to desired outpu
 Instead of a screenshot, extract the SVG markup directly (resolution-independent):
 
 ```
-mcp__playwright__browser_evaluate → document.querySelector('svg').outerHTML
+mcp__docs-playwright__browser_evaluate → document.querySelector('svg').outerHTML
 ```
 
 Then write the returned SVG string to a `.svg` file.
@@ -1020,7 +1020,7 @@ Load these as needed for specialized chart types:
 
 ## Sizing and Resolution
 
-**Always use `deviceScaleFactor: 2`** when calling `mcp__playwright__browser_resize` before navigating to any chart HTML. This applies to both Mermaid and D3 charts. This produces crisp, readable text without excessive file sizes.
+**Always use `deviceScaleFactor: 2`** when calling `mcp__docs-playwright__browser_resize` before navigating to any chart HTML. This applies to both Mermaid and D3 charts. This produces crisp, readable text without excessive file sizes.
 
 - Default viewport: `width: 1200, height: 800, deviceScaleFactor: 2` (produces 2400x1600 image)
 - Default chart SVG size: `width=800, height=500` for landscape charts

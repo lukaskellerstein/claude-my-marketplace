@@ -1,7 +1,7 @@
 ---
 description: Inspect a Figma file or node — get structure, styles, components, and properties
 argument-hint: "<figma-url> [--depth=N] [--components] [--styles] [--tokens]"
-allowed-tools: ["Read", "Write", "Bash", "WebFetch", "mcp__playwright__browser_navigate", "mcp__playwright__browser_evaluate", "mcp__playwright__browser_snapshot"]
+allowed-tools: ["Read", "Write", "Bash", "WebFetch", "mcp__design-playwright__browser_navigate", "mcp__design-playwright__browser_evaluate", "mcp__design-playwright__browser_snapshot"]
 ---
 
 # Inspect Figma Design

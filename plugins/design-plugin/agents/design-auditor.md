@@ -32,9 +32,9 @@ You are a design auditor that inspects Figma files for quality, consistency, and
 
 ## Available Tools
 
-1. **mcp__playwright__browser_evaluate** — Execute Figma Plugin API code to inspect the file
-2. **mcp__playwright__browser_navigate** — Navigate to the Figma file
-3. **mcp__playwright__browser_snapshot** — Capture visual state
+1. **mcp__design-playwright__browser_evaluate** — Execute Figma Plugin API code to inspect the file
+2. **mcp__design-playwright__browser_navigate** — Navigate to the Figma file
+3. **mcp__design-playwright__browser_snapshot** — Capture visual state
 4. **Bash** — Run Figma REST API calls for file inspection
 
 ## Audit Workflow
