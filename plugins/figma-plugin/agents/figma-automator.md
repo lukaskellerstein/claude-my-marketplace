@@ -78,12 +78,12 @@ Use icons **everywhere**: navigation, buttons, list items, cards, status indicat
 **Every section script loads its own image — no separate "add images" step:**
 ```javascript
 // GOOD: image and frame built together
-const hero = __fh.frame('Hero', { w: 1440, h: 500, clip: true });
-const img = await __fh.loadImage('https://images.unsplash.com/photo-xxx?w=1440&q=80');
+const hero = __figb.frame('Hero', { w: 1440, h: 500, clip: true });
+const img = await __figb.loadImage('https://images.unsplash.com/photo-xxx?w=1440&q=80');
 hero.fills = [{ type: 'IMAGE', imageHash: img, scaleMode: 'FILL' }];
 
 // BAD: empty frame, "will add image later"
-const hero = __fh.frame('Hero', { w: 1440, h: 500, fill: __fh.hex('#1F2937') }); // NO!
+const hero = __figb.frame('Hero', { w: 1440, h: 500, fill: __figb.hex('#1F2937') }); // NO!
 ```
 
 **Image sizing:** Hero/background `?w=1440&q=80`, Cards `?w=640&q=80`, Avatars `?w=200&q=80`
@@ -161,12 +161,12 @@ Section 4 — CTA Banner:
 - Page 2: [name] → Agent B (search images + fetch icons + return scripts)
 
 ### Execution Order (sequential)
-1. Inject helpers.js + status.js
+1. Verify Figma Bridge is active (`__figb` and `__figs` available)
 2. Batch load ALL fonts from Font Stack
 3. Fetch ALL icons listed across all sections
 4. Create Design Language page (if new)
 5. Execute each section script (images loaded inline, icons inserted inline)
-6. Run verify.js → check images > 0, vectors > 0 (icons), fix issues
+6. Run `__figb.verify()` → check images > 0, vectors > 0 (icons), fix issues
 ```
 
 ### Step 3: Search Images & Fetch Icons
@@ -180,7 +180,7 @@ Section 4 — CTA Banner:
 ```
 WebSearch: "site:unsplash.com futuristic city skyline night"
 → Find best match → extract Unsplash photo URL
-→ Use in script: await __fh.loadImage('https://images.unsplash.com/photo-xxx?w=1440&q=80')
+→ Use in script: await __figb.loadImage('https://images.unsplash.com/photo-xxx?w=1440&q=80')
 ```
 
 Fetch icons:
@@ -191,41 +191,33 @@ curl -s https://unpkg.com/lucide-static/icons/search.svg
 
 **Key:** Images are searched BEFORE execution starts, but they're loaded INTO Figma as part of each section's script — not in a separate pass.
 
-### Step 4: Inject Scripts
+### Step 4: Verify Figma Bridge
 
-**Inject both scripts via fetch+eval** (no file reading needed):
+The **Figma Bridge** Chrome extension auto-injects the helpers. Verify they're available:
 
 ```javascript
-// helpers.js
-const h = await fetch('https://raw.githubusercontent.com/lukaskellerstein/claude-my-marketplace/main/plugins/figma-plugin/skills/figma-plugin-api/scripts/helpers.js').then(r => r.text());
-eval(h);
-
-// status.js
-const s = await fetch('https://raw.githubusercontent.com/lukaskellerstein/claude-my-marketplace/main/plugins/figma-plugin/skills/figma-plugin-api/scripts/status.js').then(r => r.text());
-eval(s);
+typeof __figb === 'object' && typeof __figs === 'object'
 ```
-
-Run each as a separate `mcp__design-playwright__browser_evaluate` call. CDP bypasses Figma's CSP, so `fetch()` + `eval()` works.
 
 Then register agents and load fonts:
 ```javascript
 // Register agents on the status panel
-await __status.agent('main', 'Design Orchestrator', 'planning');
+await __figs.agent('main', 'Design Orchestrator', 'planning');
 // For multi-page: register each page agent
-await __status.agent('p1', 'Dashboard Page', 'planning');
-await __status.agent('p2', 'Settings Page', 'planning');
+await __figs.agent('p1', 'Dashboard Page', 'planning');
+await __figs.agent('p2', 'Settings Page', 'planning');
 
 // Load fonts
-await __fh.fonts(['Inter','Regular'], ['Inter','Bold'], ['Inter','Semi Bold']);
+await __figb.fonts(['Inter','Regular'], ['Inter','Bold'], ['Inter','Semi Bold']);
 ```
 
 Update status as work progresses:
 ```javascript
-await __status.update('p1', 'fetching-images', 'Searching Unsplash for hero image...');
+await __figs.update('p1', 'fetching-images', 'Searching Unsplash for hero image...');
 // ... do work ...
-await __status.update('p1', 'executing', 'Building header section...');
+await __figs.update('p1', 'executing', 'Building header section...');
 // ... do work ...
-await __status.done('p1');
+await __figs.done('p1');
 ```
 
 ### Step 5: Execute in Chunked Scripts
@@ -236,27 +228,26 @@ Execute one chunk per `mcp__design-playwright__browser_evaluate` call:
 
 ```javascript
 // Chunk 1: Create page + outer frame
-__fh.page('Dashboard');
-const main = __fh.frame('Main', { w: 1440, h: 900, direction: 'VERTICAL' });
+__figb.page('Dashboard');
+const main = __figb.frame('Main', { w: 1440, h: 900, direction: 'VERTICAL' });
 
 // Chunk 2: Header (separate evaluate call)
-const header = __fh.frame('Header', { w: 1440, h: 64, direction: 'HORIZONTAL', px: 24, fill: __fh.rgb(255,255,255), parent: __fh.find('Main') });
-await __fh.txt('AppName', { size: 20, style: 'Bold', parent: header });
+const header = __figb.frame('Header', { w: 1440, h: 64, direction: 'HORIZONTAL', px: 24, fill: __figb.rgb(255,255,255), parent: __figb.find('Main') });
+await __figb.txt('AppName', { size: 20, style: 'Bold', parent: header });
 
 // Chunk 3: Hero section (separate evaluate call)
-const hero = __fh.frame('Hero', { w: 1440, h: 400, direction: 'VERTICAL', p: 64, fill: __fh.hex('#1E3A8A'), parent: __fh.find('Main') });
-await __fh.txt('Welcome Back', { size: 48, style: 'Bold', fill: __fh.rgb(255,255,255), parent: hero });
+const hero = __figb.frame('Hero', { w: 1440, h: 400, direction: 'VERTICAL', p: 64, fill: __figb.hex('#1E3A8A'), parent: __figb.find('Main') });
+await __figb.txt('Welcome Back', { size: 48, style: 'Bold', fill: __figb.rgb(255,255,255), parent: hero });
 ```
 
-**Key pattern:** Each chunk finds its parent using `__fh.find('ParentName')`, so chunks are independent and self-contained.
+**Key pattern:** Each chunk finds its parent using `__figb.find('ParentName')`, so chunks are independent and self-contained.
 
 ### Step 6: Verify After Each Page
 
 After completing each page, run two checks:
 
-1. **Automated verification** — read and execute the verify script:
-   - `Read → skills/figma-plugin-api/scripts/verify.js`
-   - `mcp__design-playwright__browser_evaluate` → paste contents
+1. **Automated verification** — run the built-in verify:
+   - `mcp__design-playwright__browser_evaluate` → `__figb.verify()`
    - Returns: node counts, image count, and detected issues (overlaps, unnamed nodes, empty text)
 
 2. **Visual verification** — take a screenshot:
@@ -266,11 +257,11 @@ After completing each page, run two checks:
 3. **Fix issues** with small targeted scripts:
 ```javascript
 // Fix overlapping
-const section = __fh.find('stats_section');
-section.y = __fh.find('header').y + __fh.find('header').height + 32;
+const section = __figb.find('stats_section');
+section.y = __figb.find('header').y + __figb.find('header').height + 32;
 
 // Fix missing gap
-__fh.find('main_container').itemSpacing = 24;
+__figb.find('main_container').itemSpacing = 24;
 ```
 
 **Critical check:** verify.js reports `images: N` — if `N === 0`, the page has no images and MUST be fixed. Every page needs real images.
@@ -279,14 +270,14 @@ __fh.find('main_container').itemSpacing = 24;
 
 When all design work is complete, remove the status panel:
 ```javascript
-__status.remove();
+__figs.remove();
 ```
 
 ## Code Execution Guidelines
 
 - **Max 30 lines per script** — if it's longer, split it into multiple evaluate calls
-- **Use `__fh` helpers** — never write verbose Plugin API code when a helper exists
-- **Name everything** — every frame and element gets a `.name` so later chunks can find them with `__fh.find()`
+- **Use `__figb` helpers** — never write verbose Plugin API code when a helper exists
+- **Name everything** — every frame and element gets a `.name` so later chunks can find them with `__figb.find()`
 - **Use async/await** — font loading and node lookups are async
 - **Return data for verification** — end evaluate calls with a return statement
 - **Handle errors** — wrap operations in try/catch and return error details

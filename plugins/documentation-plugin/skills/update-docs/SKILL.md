@@ -1,6 +1,6 @@
 ---
-name: documentation-management
-description: Documentation structure, organization, and maintenance for software projects. Use when creating, updating, or organizing project documentation, setting up a docs folder structure, writing architecture decision records (ADRs), documenting features, maintaining a documentation index, or ensuring docs stay in sync with code changes. Covers docs-as-code practices, folder conventions, and documentation templates.
+name: update-docs
+description: Update and maintain project documentation structure. Use when updating project docs, maintaining docs folder structure, organizing documentation, creating or updating architecture decision records (ADRs), documenting features, maintaining a documentation index, syncing docs with code changes, or restructuring docs/ folder. Covers docs-as-code practices, folder conventions, and documentation templates. NOT for root README.md — use update-readme for that.
 ---
 
 # Documentation Management

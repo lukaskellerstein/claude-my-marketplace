@@ -98,16 +98,16 @@ Section: Pricing (3 tiers)
 **Insert images into Figma — always use helpers:**
 ```javascript
 // Hero with image background + dark overlay for text readability
-const hero = __fh.frame('Hero', { w: 1440, h: 500, direction: 'VERTICAL', p: 64, mainAlign: 'CENTER', clip: true });
-const hash = await __fh.loadImage('https://images.unsplash.com/photo-xxx?w=1440&q=80');
+const hero = __figb.frame('Hero', { w: 1440, h: 500, direction: 'VERTICAL', p: 64, mainAlign: 'CENTER', clip: true });
+const hash = await __figb.loadImage('https://images.unsplash.com/photo-xxx?w=1440&q=80');
 hero.fills = [{ type: 'IMAGE', imageHash: hash, scaleMode: 'FILL' }];
 
 // Card with image on top
-await __fh.imageFrame('CardImage', { url: 'https://images.unsplash.com/photo-yyy?w=640&q=80', w: 360, h: 200, parent: card });
+await __figb.imageFrame('CardImage', { url: 'https://images.unsplash.com/photo-yyy?w=640&q=80', w: 360, h: 200, parent: card });
 
 // Avatar circle
-const avatarHash = await __fh.loadImage('https://images.unsplash.com/photo-zzz?w=200&q=80');
-__fh.circle({ size: 48, image: avatarHash, parent: row });
+const avatarHash = await __figb.loadImage('https://images.unsplash.com/photo-zzz?w=200&q=80');
+__figb.circle({ size: 48, image: avatarHash, parent: row });
 ```
 
 **CRITICAL:** When building each section, load its image IMMEDIATELY — in the same chunk script that creates the frame. Do NOT create empty frames first and add images later. The image and the frame are one operation.
@@ -153,9 +153,9 @@ curl -s https://unpkg.com/lucide-static/icons/user.svg
 
 Then insert inline when building each section:
 ```javascript
-const nav = __fh.frame('Nav', { direction: 'HORIZONTAL', gap: 24, crossAlign: 'CENTER', parent: header });
-__fh.icon(homeSvg, { name: 'Icon/Home', size: 20, parent: nav });
-await __fh.txt('Home', { size: 14, style: 'Medium', parent: nav });
+const nav = __figb.frame('Nav', { direction: 'HORIZONTAL', gap: 24, crossAlign: 'CENTER', parent: header });
+__figb.icon(homeSvg, { name: 'Icon/Home', size: 20, parent: nav });
+await __figb.txt('Home', { size: 14, style: 'Medium', parent: nav });
 ```
 
 **NEVER skip icons** — a button without an icon, a nav without icons, or a feature list without icons looks unfinished.
@@ -176,7 +176,7 @@ Font Stack:
 
 **Load ALL needed font weights upfront** — before any section scripts:
 ```javascript
-await __fh.fonts(
+await __figb.fonts(
   ['Inter', 'Regular'],
   ['Inter', 'Medium'],
   ['Inter', 'Semi Bold'],
@@ -264,66 +264,64 @@ After the Design Language page is complete, **all subsequent pages must use thes
 
 **Rule of thumb:** If a script is over 30 lines, split it.
 
-### Helper Functions Library — INJECT FIRST
+### Helper Functions Library — AUTO-INJECTED
 
-Before any design work, **inject the helper library via fetch+eval** (no file reading needed):
+The **Figma Bridge** Chrome extension auto-injects `window.__figb` and `window.__figs` on any Figma design page. Verify with a single `mcp__design-playwright__browser_evaluate` call:
 
 ```javascript
-const h = await fetch('https://raw.githubusercontent.com/lukaskellerstein/claude-my-marketplace/main/plugins/figma-plugin/skills/figma-plugin-api/scripts/helpers.js').then(r => r.text());
-eval(h);
-typeof __fh; // should return 'object'
+typeof __figb; // should return 'object'
 ```
 
-Run this as a single `mcp__design-playwright__browser_evaluate` call. CDP bypasses Figma's CSP, so `fetch()` + `eval()` works. This injects `window.__fh` with all helper functions and cuts script length by ~60%.
+This provides all helper functions and cuts script length by ~60%.
 
 **Available helpers after injection:**
 
 | Helper | Description | Example |
 |---|---|---|
 | **Node Creation** | | |
-| `__fh.frame(name, opts)` | Create frame with auto-layout | `__fh.frame('Card', { w: 320, direction: 'VERTICAL', p: 16, gap: 12 })` |
-| `__fh.comp(name, opts)` | Create reusable Component | `__fh.comp('Button', { direction: 'HORIZONTAL', p: 12 })` |
-| `__fh.txt(content, opts)` | Create text (async, loads font) | `await __fh.txt('Hello', { size: 24, style: 'Bold' })` |
-| `__fh.richTxt(segments, opts)` | Rich text with mixed styles (async) | `await __fh.richTxt([{text:'Bold', style:'Bold'}, {text:' normal'}])` |
-| `__fh.rect(opts)` | Create rectangle | `__fh.rect({ w: 200, h: 100, fill: __fh.hex('#F00'), radius: 8 })` |
-| `__fh.circle(opts)` | Create ellipse/circle | `__fh.circle({ size: 48, fill: __fh.hex('#3B82F6') })` |
-| `__fh.line(opts)` | Create line/divider | `__fh.line({ w: 300, color: __fh.hex('#E5E7EB'), dash: [10, 5] })` |
-| `__fh.polygon(opts)` | Create polygon | `__fh.polygon({ sides: 6, size: 80, fill: __fh.hex('#F00') })` |
-| `__fh.star(opts)` | Create star | `__fh.star({ points: 5, size: 48, fill: __fh.hex('#FFD700') })` |
+| `__figb.frame(name, opts)` | Create frame with auto-layout | `__figb.frame('Card', { w: 320, direction: 'VERTICAL', p: 16, gap: 12 })` |
+| `__figb.comp(name, opts)` | Create reusable Component | `__figb.comp('Button', { direction: 'HORIZONTAL', p: 12 })` |
+| `__figb.txt(content, opts)` | Create text (async, loads font) | `await __figb.txt('Hello', { size: 24, style: 'Bold' })` |
+| `__figb.richTxt(segments, opts)` | Rich text with mixed styles (async) | `await __figb.richTxt([{text:'Bold', style:'Bold'}, {text:' normal'}])` |
+| `__figb.rect(opts)` | Create rectangle | `__figb.rect({ w: 200, h: 100, fill: __figb.hex('#F00'), radius: 8 })` |
+| `__figb.circle(opts)` | Create ellipse/circle | `__figb.circle({ size: 48, fill: __figb.hex('#3B82F6') })` |
+| `__figb.line(opts)` | Create line/divider | `__figb.line({ w: 300, color: __figb.hex('#E5E7EB'), dash: [10, 5] })` |
+| `__figb.polygon(opts)` | Create polygon | `__figb.polygon({ sides: 6, size: 80, fill: __figb.hex('#F00') })` |
+| `__figb.star(opts)` | Create star | `__figb.star({ points: 5, size: 48, fill: __figb.hex('#FFD700') })` |
 | **Icons** | | |
-| `__fh.icon(svg, opts)` | Insert SVG icon | `__fh.icon(svgString, { name: 'Icon/Search', size: 24 })` |
-| `__fh.recolor(node, color)` | Recolor SVG icon | `__fh.recolor(iconNode, __fh.hex('#FFF'))` |
+| `__figb.icon(svg, opts)` | Insert SVG icon | `__figb.icon(svgString, { name: 'Icon/Search', size: 24 })` |
+| `__figb.recolor(node, color)` | Recolor SVG icon | `__figb.recolor(iconNode, __figb.hex('#FFF'))` |
 | **Images** | | |
-| `__fh.loadImage(url)` | Load image → hash | `const hash = await __fh.loadImage('https://...')` |
-| `__fh.imageFrame(name, opts)` | Frame with image fill | `await __fh.imageFrame('Hero', { url: '...', w: 1440, h: 400 })` |
+| `__figb.loadImage(url)` | Load image → hash | `const hash = await __figb.loadImage('https://...')` |
+| `__figb.imageFrame(name, opts)` | Frame with image fill | `await __figb.imageFrame('Hero', { url: '...', w: 1440, h: 400 })` |
 | **Colors** | | |
-| `__fh.rgb(r, g, b)` | 0-255 → Figma color | `__fh.rgb(59, 130, 246)` |
-| `__fh.rgba(r, g, b, a)` | RGBA with alpha | `__fh.rgba(0, 0, 0, 0.5)` |
-| `__fh.hex(h)` | Hex → Figma color | `__fh.hex('#3B82F6')` |
+| `__figb.rgb(r, g, b)` | 0-255 → Figma color | `__figb.rgb(59, 130, 246)` |
+| `__figb.rgba(r, g, b, a)` | RGBA with alpha | `__figb.rgba(0, 0, 0, 0.5)` |
+| `__figb.hex(h)` | Hex → Figma color | `__figb.hex('#3B82F6')` |
 | **Gradients** | | |
-| `__fh.gradient(hex1, hex2)` | 2-stop linear gradient | `__fh.gradient('#1E3A8A', '#3B82F6')` |
-| `__fh.gradientMulti(stops, dir)` | Multi-stop linear gradient | `__fh.gradientMulti([{pos:0,hex:'#000'},{pos:0.5,hex:'#F00'},{pos:1,hex:'#FFF'}])` |
-| `__fh.gradientRadial(stops)` | Radial gradient | `__fh.gradientRadial([{pos:0,hex:'#FFF'},{pos:1,hex:'#000'}])` |
-| `__fh.gradientAngular(stops)` | Angular/conic gradient | `__fh.gradientAngular([{pos:0,hex:'#F00'},{pos:0.5,hex:'#00F'},{pos:1,hex:'#F00'}])` |
+| `__figb.gradient(hex1, hex2)` | 2-stop linear gradient | `__figb.gradient('#1E3A8A', '#3B82F6')` |
+| `__figb.gradientMulti(stops, dir)` | Multi-stop linear gradient | `__figb.gradientMulti([{pos:0,hex:'#000'},{pos:0.5,hex:'#F00'},{pos:1,hex:'#FFF'}])` |
+| `__figb.gradientRadial(stops)` | Radial gradient | `__figb.gradientRadial([{pos:0,hex:'#FFF'},{pos:1,hex:'#000'}])` |
+| `__figb.gradientAngular(stops)` | Angular/conic gradient | `__figb.gradientAngular([{pos:0,hex:'#F00'},{pos:0.5,hex:'#00F'},{pos:1,hex:'#F00'}])` |
 | **Effects** | | |
-| `__fh.shadow(x, y, r, a)` | Drop shadow effect | `__fh.shadow(0, 4, 12, 0.15)` |
-| `__fh.shadowMd()` | Medium elevation | Card shadow |
-| `__fh.shadowLg()` | Large elevation | Modal shadow |
-| `__fh.innerShadow(x, y, r, a)` | Inner shadow effect | `__fh.innerShadow(0, 2, 4, 0.1)` |
-| `__fh.blur(radius)` | Layer blur | `frame.effects = __fh.blur(10)` |
-| `__fh.bgBlur(radius)` | Background blur (glassmorphism) | `frame.effects = __fh.bgBlur(20)` |
+| `__figb.shadow(x, y, r, a)` | Drop shadow effect | `__figb.shadow(0, 4, 12, 0.15)` |
+| `__figb.shadowMd()` | Medium elevation | Card shadow |
+| `__figb.shadowLg()` | Large elevation | Modal shadow |
+| `__figb.innerShadow(x, y, r, a)` | Inner shadow effect | `__figb.innerShadow(0, 2, 4, 0.1)` |
+| `__figb.blur(radius)` | Layer blur | `frame.effects = __figb.blur(10)` |
+| `__figb.bgBlur(radius)` | Background blur (glassmorphism) | `frame.effects = __figb.bgBlur(20)` |
 | **Styles** | | |
-| `__fh.paintStyle(name, color)` | Create Paint Style | `__fh.paintStyle('Primary/500', __fh.hex('#3B82F6'))` |
-| `__fh.textStyle(name, opts)` | Create Text Style (async) | `await __fh.textStyle('Heading/H1', { size: 36, style: 'Bold' })` |
-| `__fh.effectStyle(name, fx)` | Create Effect Style | `__fh.effectStyle('Shadow/md', __fh.shadowMd())` |
+| `__figb.paintStyle(name, color)` | Create Paint Style | `__figb.paintStyle('Primary/500', __figb.hex('#3B82F6'))` |
+| `__figb.textStyle(name, opts)` | Create Text Style (async) | `await __figb.textStyle('Heading/H1', { size: 36, style: 'Bold' })` |
+| `__figb.effectStyle(name, fx)` | Create Effect Style | `__figb.effectStyle('Shadow/md', __figb.shadowMd())` |
 | **Navigation** | | |
-| `__fh.find(name)` | Find node by exact name | `__fh.find('Header')` |
-| `__fh.findAll(pattern)` | Find nodes by name pattern | `__fh.findAll('Card')` |
-| `__fh.findType(type)` | Find nodes by type | `__fh.findType('TEXT')` |
-| `__fh.page(name)` | Switch/create page | `__fh.page('Dashboard')` |
-| `__fh.fonts(...styles)` | Batch load fonts (async) | `await __fh.fonts(['Inter','Regular'], ['Inter','Bold'])` |
-| `__fh.zoomTo(nodes)` | Zoom viewport to nodes | `__fh.zoomTo(frame)` |
-| `__fh.select(nodes)` | Select nodes | `__fh.select([card1, card2])` |
+| `__figb.find(name)` | Find node by exact name | `__figb.find('Header')` |
+| `__figb.findAll(pattern)` | Find nodes by name pattern | `__figb.findAll('Card')` |
+| `__figb.findType(type)` | Find nodes by type | `__figb.findType('TEXT')` |
+| `__figb.page(name)` | Switch/create page | `__figb.page('Dashboard')` |
+| `__figb.fonts(...styles)` | Batch load fonts (async) | `await __figb.fonts(['Inter','Regular'], ['Inter','Bold'])` |
+| `__figb.zoomTo(nodes)` | Zoom viewport to nodes | `__figb.zoomTo(frame)` |
+| `__figb.select(nodes)` | Select nodes | `__figb.select([card1, card2])` |
 
 **Common opts supported by all node creation helpers:**
 
@@ -340,42 +338,39 @@ Run this as a single `mcp__design-playwright__browser_evaluate` call. CDP bypass
 | `strokeAlign` | Stroke alignment | `{ strokeAlign: 'INSIDE' }` |
 | `strokeCap` | Stroke cap style | `{ strokeCap: 'ROUND' }` |
 
-### Verification Script
+### Verification
 
-After completing a page, **read and run the verification script**:
+After completing a page, run the built-in verification:
 
-1. **Read**: `Read → skills/figma-plugin-api/scripts/verify.js`
-2. **Execute**: `mcp__design-playwright__browser_evaluate` → paste contents
+```javascript
+__figb.verify()
+```
 
-Returns a stats object with issue detection (overlapping frames, unnamed nodes, empty text, tiny elements).
+Returns a stats object: `{ totalNodes, frames, text, components, instances, images, vectors, issues }` with issue detection (overlapping frames, unnamed nodes, empty text, tiny elements).
 
 ### Status Panel — Agent Dashboard in Figma
 
-Inject the status panel to show a live dashboard inside the Figma canvas via fetch+eval (no file reading needed):
+Figma Bridge auto-injects `__figs`. Initialize the panel with:
 
 ```javascript
-const s = await fetch('https://raw.githubusercontent.com/lukaskellerstein/claude-my-marketplace/main/plugins/figma-plugin/skills/figma-plugin-api/scripts/status.js').then(r => r.text());
-eval(s);
-typeof __status; // should return 'object'
+await __figs.init();
 ```
-
-Run as a single `mcp__design-playwright__browser_evaluate` call (auto-initializes).
 
 The panel appears in the top-right of the viewport showing:
 - Plugin version and connection status (green dot)
 - Active agents count and their current task/status
 
-**API (available as `__status` after injection):**
+**API (available as `__figs` after injection):**
 
 | Method | Description | Example |
 |---|---|---|
-| `__status.init()` | Create/reset the panel | `await __status.init()` |
-| `__status.agent(id, name, status, task)` | Register or update an agent | `await __status.agent('a1', 'Dashboard', 'planning')` |
-| `__status.update(id, status, task)` | Update agent status | `await __status.update('a1', 'fetching-images', 'Searching Unsplash...')` |
-| `__status.done(id)` | Mark agent as completed | `await __status.done('a1')` |
-| `__status.error(id, message)` | Mark agent as failed | `await __status.error('a1', 'Image load failed')` |
-| `__status.remove()` | Remove panel (cleanup) | `__status.remove()` |
-| `__status.info()` | Get status data | `__status.info()` |
+| `__figs.init()` | Create/reset the panel | `await __figs.init()` |
+| `__figs.agent(id, name, status, task)` | Register or update an agent | `await __figs.agent('a1', 'Dashboard', 'planning')` |
+| `__figs.update(id, status, task)` | Update agent status | `await __figs.update('a1', 'fetching-images', 'Searching Unsplash...')` |
+| `__figs.done(id)` | Mark agent as completed | `await __figs.done('a1')` |
+| `__figs.error(id, message)` | Mark agent as failed | `await __figs.error('a1', 'Image load failed')` |
+| `__figs.remove()` | Remove panel (cleanup) | `__figs.remove()` |
+| `__figs.info()` | Get status data | `__figs.info()` |
 
 **Status values:** `planning`, `fetching-images`, `fetching-icons`, `fetching-assets`, `generating`, `executing`, `verifying`, `done`, `error`
 
@@ -409,8 +404,8 @@ title.fontName = { family: "Inter", style: "Bold" };
 card.appendChild(title);
 
 // WITH helpers (~5 lines)
-const card = __fh.frame('Card', { w: 320, h: 200, direction: 'VERTICAL', p: 16, gap: 12, radius: 12, fill: __fh.rgb(255,255,255), effects: __fh.shadow(0, 2, 8, 0.1) });
-await __fh.txt('Card Title', { size: 18, style: 'Bold', parent: card });
+const card = __figb.frame('Card', { w: 320, h: 200, direction: 'VERTICAL', p: 16, gap: 12, radius: 12, fill: __figb.rgb(255,255,255), effects: __figb.shadow(0, 2, 8, 0.1) });
+await __figb.txt('Card Title', { size: 18, style: 'Bold', parent: card });
 ```
 
 ### Chunked Execution Order
@@ -418,12 +413,12 @@ await __fh.txt('Card Title', { size: 18, style: 'Bold', parent: card });
 For any multi-section design, follow this execution order:
 
 1. **Plan everything first** — for each section specify: layout, IMAGE (search query), ICONS (names), FONTS (family/weight/size)
-2. **Inject helpers.js via fetch+eval** (1 call — ~3 lines, no file read needed)
-3. **Inject status.js via fetch+eval** (1 call — ~3 lines, no file read needed) — status panel appears in Figma
-4. **Register agents**: `await __status.agent('main', 'Main Design', 'planning')`
+2. **Verify helpers are available**: `typeof __figb === 'object'` (auto-injected by Figma Bridge)
+3. **Initialize status panel**: `await __figs.init()` (auto-injected by Figma Bridge)
+4. **Register agents**: `await __figs.agent('main', 'Main Design', 'planning')`
 5. **Batch load ALL fonts upfront** (1 call) — every weight listed in the plan:
    ```javascript
-   await __fh.fonts(['Inter','Regular'], ['Inter','Medium'], ['Inter','Semi Bold'], ['Inter','Bold']);
+   await __figb.fonts(['Inter','Regular'], ['Inter','Medium'], ['Inter','Semi Bold'], ['Inter','Bold']);
    ```
 6. **Fetch ALL icons for the page** (parallel curl calls) — every icon listed in the plan:
    ```bash
@@ -431,28 +426,28 @@ For any multi-section design, follow this execution order:
    curl -s https://unpkg.com/lucide-static/icons/search.svg
    # ... all icons needed
    ```
-7. **Create page** (1 call): `__fh.page('Dashboard')`
+7. **Create page** (1 call): `__figb.page('Dashboard')`
 8. **Section by section** (1 call each, max 30 lines):
-   - Each section script loads its **images inline** (`__fh.loadImage()`)
-   - Each section script inserts its **icons inline** (`__fh.icon(svg)`)
+   - Each section script loads its **images inline** (`__figb.loadImage()`)
+   - Each section script inserts its **icons inline** (`__figb.icon(svg)`)
    - Each section script uses **fonts that were pre-loaded** in step 5
    - Example chunk:
      ```javascript
      // Chunk: Hero section — image + icon + text in one script
-     const hero = __fh.frame('Hero', { w: 1440, h: 500, direction: 'VERTICAL', p: 64, mainAlign: 'CENTER', clip: true });
-     const heroImg = await __fh.loadImage('https://images.unsplash.com/photo-xxx?w=1440&q=80');
+     const hero = __figb.frame('Hero', { w: 1440, h: 500, direction: 'VERTICAL', p: 64, mainAlign: 'CENTER', clip: true });
+     const heroImg = await __figb.loadImage('https://images.unsplash.com/photo-xxx?w=1440&q=80');
      hero.fills = [{ type: 'IMAGE', imageHash: heroImg, scaleMode: 'FILL' }];
-     const overlay = __fh.rect({ name: 'Overlay', w: 1440, h: 500, fill: __fh.rgb(0,0,0), opacity: 0.4, absolute: true, parent: hero });
-     await __fh.txt('Your Journey Starts Here', { size: 48, style: 'Bold', fill: __fh.hex('#FFF'), parent: hero });
-     const btnRow = __fh.frame('Buttons', { direction: 'HORIZONTAL', gap: 16, parent: hero });
-     const btn = __fh.frame('CTA', { direction: 'HORIZONTAL', gap: 8, px: 24, py: 12, radius: 8, fill: __fh.hex('#3B82F6'), crossAlign: 'CENTER', parent: btnRow });
-     __fh.icon(playSvg, { name: 'Icon/Play', size: 18, parent: btn });
-     await __fh.txt('Watch Trailer', { size: 14, style: 'Semi Bold', fill: __fh.hex('#FFF'), parent: btn });
+     const overlay = __figb.rect({ name: 'Overlay', w: 1440, h: 500, fill: __figb.rgb(0,0,0), opacity: 0.4, absolute: true, parent: hero });
+     await __figb.txt('Your Journey Starts Here', { size: 48, style: 'Bold', fill: __figb.hex('#FFF'), parent: hero });
+     const btnRow = __figb.frame('Buttons', { direction: 'HORIZONTAL', gap: 16, parent: hero });
+     const btn = __figb.frame('CTA', { direction: 'HORIZONTAL', gap: 8, px: 24, py: 12, radius: 8, fill: __figb.hex('#3B82F6'), crossAlign: 'CENTER', parent: btnRow });
+     __figb.icon(playSvg, { name: 'Icon/Play', size: 18, parent: btn });
+     await __figb.txt('Watch Trailer', { size: 14, style: 'Semi Bold', fill: __figb.hex('#FFF'), parent: btn });
      ```
    - **No frame without its image. No button without its icon. No text without the right font.**
-9. **Verify** (run verify.js + snapshot) — check `images > 0`, `vectors > 0` (icons)
-10. **Mark done**: `await __status.done('main')`
-11. **Cleanup** (when all work is finished): `__status.remove()`
+9. **Verify** (`__figb.verify()` + snapshot) — check `images > 0`, `vectors > 0` (icons)
+10. **Mark done**: `await __figs.done('main')`
+11. **Cleanup** (when all work is finished): `__figs.remove()`
 
 **Key rules:**
 - Images and frames are built together in the same chunk
@@ -495,7 +490,7 @@ For multi-page designs, **parallelize planning AND asset gathering** across suba
 Each agent receives:
 - The design system tokens (from Design Language page)
 - That page's section list — **each section specifies its IMAGE, ICONS, and FONTS**
-- Instruction to use `__fh` helpers (reference the helpers.js API table above)
+- Instruction to use `__figb` helpers (reference the helpers.js API table above)
 - Instruction to keep scripts <30 lines each
 - **Must do**: search Unsplash for all images, fetch all icon SVGs from Lucide
 - **Must return**: array of script strings where every script has images, icons, and fonts baked in
@@ -539,16 +534,16 @@ Sections:
 **Each agent's returned scripts must have everything baked in:**
 ```javascript
 // GOOD: image + icon + font all in one script
-const hero = __fh.frame('Hero', { w: 1440, h: 500, clip: true });
-const img = await __fh.loadImage('https://images.unsplash.com/photo-xxx?w=1440&q=80');
+const hero = __figb.frame('Hero', { w: 1440, h: 500, clip: true });
+const img = await __figb.loadImage('https://images.unsplash.com/photo-xxx?w=1440&q=80');
 hero.fills = [{ type: 'IMAGE', imageHash: img, scaleMode: 'FILL' }];
-await __fh.txt('Build Faster', { size: 48, style: 'Bold', fill: __fh.hex('#FFF'), parent: hero });
-const btn = __fh.frame('CTA', { direction: 'HORIZONTAL', gap: 8, px: 24, py: 12, fill: __fh.hex('#3B82F6'), radius: 8, parent: hero });
-__fh.icon(arrowRightSvg, { size: 18, parent: btn });
-await __fh.txt('Get Started', { size: 14, style: 'Semi Bold', fill: __fh.hex('#FFF'), parent: btn });
+await __figb.txt('Build Faster', { size: 48, style: 'Bold', fill: __figb.hex('#FFF'), parent: hero });
+const btn = __figb.frame('CTA', { direction: 'HORIZONTAL', gap: 8, px: 24, py: 12, fill: __figb.hex('#3B82F6'), radius: 8, parent: hero });
+__figb.icon(arrowRightSvg, { size: 18, parent: btn });
+await __figb.txt('Get Started', { size: 14, style: 'Semi Bold', fill: __figb.hex('#FFF'), parent: btn });
 
 // BAD: empty frame, no image, no icon, wrong font
-const hero = __fh.frame('Hero', { fill: __fh.hex('#1F2937') }); // NO!
+const hero = __figb.frame('Hero', { fill: __figb.hex('#1F2937') }); // NO!
 ```
 
 ## Connection Workflow — FOLLOW THESE STEPS EVERY TIME
@@ -750,55 +745,55 @@ variable.setValueForMode(collection.defaultModeId, { r: 0, g: 0.4, b: 1, a: 1 })
 node.setBoundVariable("fills", 0, variable.id);
 ```
 
-## Common Patterns (using __fh helpers)
+## Common Patterns (using __figb helpers)
 
 ### Card with image, icon, and text
 
 ```javascript
-const card = __fh.frame('Card', { w: 320, direction: 'VERTICAL', radius: 12, fill: __fh.hex('#FFF'), effects: __fh.shadowMd(), clip: true });
+const card = __figb.frame('Card', { w: 320, direction: 'VERTICAL', radius: 12, fill: __figb.hex('#FFF'), effects: __figb.shadowMd(), clip: true });
 // Image from Unsplash
-await __fh.imageFrame('CardImage', { url: 'https://images.unsplash.com/photo-xxx?w=640&q=80', w: 320, h: 180, parent: card });
-const content = __fh.frame('CardContent', { w: 320, direction: 'VERTICAL', p: 16, gap: 8, parent: card });
-await __fh.txt('Card Title', { size: 18, style: 'Bold', parent: content });
-await __fh.txt('Description text goes here.', { size: 14, fill: __fh.hex('#6B7280'), parent: content });
+await __figb.imageFrame('CardImage', { url: 'https://images.unsplash.com/photo-xxx?w=640&q=80', w: 320, h: 180, parent: card });
+const content = __figb.frame('CardContent', { w: 320, direction: 'VERTICAL', p: 16, gap: 8, parent: card });
+await __figb.txt('Card Title', { size: 18, style: 'Bold', parent: content });
+await __figb.txt('Description text goes here.', { size: 14, fill: __figb.hex('#6B7280'), parent: content });
 ```
 
 ### Icon + text row (nav item, list item)
 
 ```javascript
-const row = __fh.frame('NavItem', { direction: 'HORIZONTAL', gap: 12, py: 8, px: 16, crossAlign: 'CENTER', parent: nav });
-__fh.icon(searchSvg, { name: 'Icon/Search', size: 20, parent: row });
-await __fh.txt('Search', { size: 14, fill: __fh.hex('#374151'), parent: row });
+const row = __figb.frame('NavItem', { direction: 'HORIZONTAL', gap: 12, py: 8, px: 16, crossAlign: 'CENTER', parent: nav });
+__figb.icon(searchSvg, { name: 'Icon/Search', size: 20, parent: row });
+await __figb.txt('Search', { size: 14, fill: __figb.hex('#374151'), parent: row });
 ```
 
 ### Color palette with Paint Styles
 
 ```javascript
 const colors = [['Blue/50','#EFF6FF'], ['Blue/500','#3B82F6'], ['Blue/900','#1E3A8A']];
-const row = __fh.frame('Colors', { direction: 'HORIZONTAL', gap: 8, mainSize: 'AUTO', crossSize: 'AUTO' });
+const row = __figb.frame('Colors', { direction: 'HORIZONTAL', gap: 8, mainSize: 'AUTO', crossSize: 'AUTO' });
 for (const [name, hex] of colors) {
-  __fh.paintStyle(name, __fh.hex(hex)); // Creates reusable Figma style
-  __fh.frame(name, { w: 80, h: 80, radius: 8, fill: __fh.hex(hex), parent: row });
+  __figb.paintStyle(name, __figb.hex(hex)); // Creates reusable Figma style
+  __figb.frame(name, { w: 80, h: 80, radius: 8, fill: __figb.hex(hex), parent: row });
 }
 ```
 
 ### Glassmorphism card (background blur + semi-transparent)
 
 ```javascript
-const glass = __fh.frame('GlassCard', {
+const glass = __figb.frame('GlassCard', {
   w: 320, direction: 'VERTICAL', p: 24, gap: 12, radius: 16,
-  fill: __fh.rgba(255, 255, 255, 0.15),
-  effects: [...__fh.bgBlur(20), ...__fh.innerShadow(0, 1, 0, 0.2)],
-  strokes: [{ type: 'SOLID', color: __fh.rgba(255, 255, 255, 0.3) }], strokeWeight: 1,
+  fill: __figb.rgba(255, 255, 255, 0.15),
+  effects: [...__figb.bgBlur(20), ...__figb.innerShadow(0, 1, 0, 0.2)],
+  strokes: [{ type: 'SOLID', color: __figb.rgba(255, 255, 255, 0.3) }], strokeWeight: 1,
   parent: container
 });
-await __fh.txt('Glass Card', { size: 20, style: 'Semi Bold', fill: __fh.hex('#FFF'), parent: glass });
+await __figb.txt('Glass Card', { size: 20, style: 'Semi Bold', fill: __figb.hex('#FFF'), parent: glass });
 ```
 
 ### Rich text with mixed formatting
 
 ```javascript
-await __fh.richTxt([
+await __figb.richTxt([
   { text: 'Save 40%', style: 'Bold', size: 24, hex: '#10B981' },
   { text: ' on annual plans. ', size: 24 },
   { text: '$99/year', style: 'Bold', size: 24, decoration: 'STRIKETHROUGH', hex: '#9CA3AF' },
@@ -809,67 +804,67 @@ await __fh.richTxt([
 ### Notification badge on avatar (absolute positioning)
 
 ```javascript
-const avatarWrap = __fh.frame('AvatarWrap', { w: 48, h: 48, parent: nav });
-__fh.circle({ size: 48, image: avatarHash, parent: avatarWrap });
-const badge = __fh.frame('Badge', {
+const avatarWrap = __figb.frame('AvatarWrap', { w: 48, h: 48, parent: nav });
+__figb.circle({ size: 48, image: avatarHash, parent: avatarWrap });
+const badge = __figb.frame('Badge', {
   w: 20, h: 20, direction: 'HORIZONTAL', mainAlign: 'CENTER', crossAlign: 'CENTER',
-  fill: __fh.hex('#EF4444'), radius: 9999,
+  fill: __figb.hex('#EF4444'), radius: 9999,
   absolute: true, x: 30, y: -4,
   constraints: { horizontal: 'MAX', vertical: 'MIN' },
   parent: avatarWrap
 });
-await __fh.txt('3', { size: 11, style: 'Bold', fill: __fh.hex('#FFF'), parent: badge });
+await __figb.txt('3', { size: 11, style: 'Bold', fill: __figb.hex('#FFF'), parent: badge });
 ```
 
 ### Dashed upload zone
 
 ```javascript
-const dropzone = __fh.frame('Dropzone', {
+const dropzone = __figb.frame('Dropzone', {
   w: 400, h: 200, direction: 'VERTICAL', mainAlign: 'CENTER', crossAlign: 'CENTER', gap: 12,
-  fill: __fh.hex('#F9FAFB'), radius: 12,
-  strokes: [{ type: 'SOLID', color: __fh.hex('#D1D5DB') }], strokeWeight: 2,
+  fill: __figb.hex('#F9FAFB'), radius: 12,
+  strokes: [{ type: 'SOLID', color: __figb.hex('#D1D5DB') }], strokeWeight: 2,
   dash: [8, 4], strokeAlign: 'INSIDE',
   parent: container
 });
-await __fh.txt('Drop files here', { size: 16, fill: __fh.hex('#6B7280'), parent: dropzone });
+await __figb.txt('Drop files here', { size: 16, fill: __figb.hex('#6B7280'), parent: dropzone });
 ```
 
 ### Chat bubble with asymmetric corners
 
 ```javascript
-const bubble = __fh.frame('ChatBubble', {
+const bubble = __figb.frame('ChatBubble', {
   w: 280, direction: 'VERTICAL', p: 12, gap: 4,
-  fill: __fh.hex('#3B82F6'),
+  fill: __figb.hex('#3B82F6'),
   radiusTL: 16, radiusTR: 16, radiusBL: 4, radiusBR: 16,
   parent: chatContainer
 });
-await __fh.txt('Hey, how are you?', { size: 14, fill: __fh.hex('#FFF'), parent: bubble });
+await __figb.txt('Hey, how are you?', { size: 14, fill: __figb.hex('#FFF'), parent: bubble });
 ```
 
 ### Multi-stop gradient hero
 
 ```javascript
-const hero = __fh.frame('Hero', {
+const hero = __figb.frame('Hero', {
   w: 1440, h: 500, direction: 'VERTICAL', p: 64, mainAlign: 'CENTER',
-  gradient: __fh.gradientMulti([
+  gradient: __figb.gradientMulti([
     { pos: 0, hex: '#1E3A8A' },
     { pos: 0.5, hex: '#7C3AED' },
     { pos: 1, hex: '#EC4899' }
   ]),
 });
-await __fh.txt('Welcome', { size: 48, style: 'Bold', fill: __fh.hex('#FFF'), parent: hero });
+await __figb.txt('Welcome', { size: 48, style: 'Bold', fill: __figb.hex('#FFF'), parent: hero });
 ```
 
 ### Hero section with Unsplash background + gradient overlay
 
 ```javascript
-const hero = __fh.frame('Hero', { w: 1440, h: 500, direction: 'VERTICAL', p: 64, mainAlign: 'CENTER', clip: true });
-const hash = await __fh.loadImage('https://images.unsplash.com/photo-xxx?w=1440&q=80');
+const hero = __figb.frame('Hero', { w: 1440, h: 500, direction: 'VERTICAL', p: 64, mainAlign: 'CENTER', clip: true });
+const hash = await __figb.loadImage('https://images.unsplash.com/photo-xxx?w=1440&q=80');
 hero.fills = [{ type: 'IMAGE', imageHash: hash, scaleMode: 'FILL' }];
 // Dark overlay for text readability
-const overlay = __fh.rect({ name: 'Overlay', w: 1440, h: 500, fill: __fh.rgb(0,0,0), parent: hero });
+const overlay = __figb.rect({ name: 'Overlay', w: 1440, h: 500, fill: __figb.rgb(0,0,0), parent: hero });
 overlay.opacity = 0.4;
-await __fh.txt('Welcome to Our Platform', { size: 48, style: 'Bold', fill: __fh.hex('#FFF'), parent: hero });
+await __figb.txt('Welcome to Our Platform', { size: 48, style: 'Bold', fill: __figb.hex('#FFF'), parent: hero });
 ```
 
 ## Important Notes
