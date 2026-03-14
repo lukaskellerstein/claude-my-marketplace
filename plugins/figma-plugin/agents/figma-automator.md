@@ -193,10 +193,10 @@ curl -s https://unpkg.com/lucide-static/icons/search.svg
 
 ### Step 4: Verify Figma Bridge
 
-The **Figma Bridge** Chrome extension auto-injects the helpers. Verify they're available:
+The **Figma Bridge** Chrome extension auto-injects helpers with direct `figma` access. Verify:
 
 ```javascript
-typeof __figb === 'object' && typeof __figs === 'object'
+typeof __figb === 'object' && __figb.version
 ```
 
 Then register agents and load fonts:

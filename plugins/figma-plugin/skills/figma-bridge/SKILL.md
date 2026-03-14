@@ -273,13 +273,13 @@ After the Design Language page is complete, **all subsequent pages must use thes
 
 ### Helper Functions Library — AUTO-INJECTED
 
-The **Figma Bridge** Chrome extension auto-injects `window.__figb` and `window.__figs` on any Figma design page. Verify with a single `mcp__design-playwright__browser_evaluate` call:
+The **Figma Bridge** Chrome extension auto-injects `window.__figb` and `window.__figs` on any Figma design page. No bootstrap step needed — helpers have direct access to the `figma` API. Verify with:
 
 ```javascript
-typeof __figb; // should return 'object'
+typeof __figb === 'object' && __figb.version; // should return version string
 ```
 
-This provides all helper functions and cuts script length by ~60%.
+All `__figb.*` and `__figs.*` methods are immediately ready. Cuts script length by ~60%.
 
 **Available helpers after injection:**
 
@@ -420,8 +420,8 @@ await __figb.txt('Card Title', { size: 18, style: 'Bold', parent: card });
 For any multi-section design, follow this execution order:
 
 1. **Plan everything first** — for each section specify: layout, IMAGE (search query), ICONS (names), FONTS (family/weight/size)
-2. **Verify helpers are available**: `typeof __figb === 'object'` (auto-injected by Figma Bridge)
-3. **Initialize status panel**: `await __figs.init()` (auto-injected by Figma Bridge)
+2. **Verify Figma Bridge**: `typeof __figb === 'object'` (auto-injected by extension)
+3. **Initialize status panel**: `await __figs.init()`
 4. **Register agents**: `await __figs.agent('main', 'Main Design', 'planning')`
 5. **Batch load ALL fonts upfront** (1 call) — every weight listed in the plan:
    ```javascript
