@@ -63,37 +63,34 @@ Insert into Figma using `figma.createNodeFromSvg(svgString)`.
 
 Use icons **everywhere**: navigation, buttons, list items, cards, status indicators, empty states. Icons make UI feel professional.
 
-## CRITICAL: Real Images — MANDATORY
+## CRITICAL: Images Are Part of the Design — From the Start
 
-**Every design MUST include real images.** No grey boxes. No empty frames. Follow this priority:
+**Images are a FIRST-CLASS design element, not an afterthought.** When you plan a section, you plan its image at the same time. When you build a frame, you load its image in the same script.
 
-1. **Unsplash first** — search for stock photos using WebSearch:
-   ```
-   WebSearch: "site:unsplash.com {subject} photo"
-   ```
-   Download via: `curl -sL "https://images.unsplash.com/photo-{id}?w=1440&q=80" -o image.jpg`
+**WRONG:** Plan layout → build empty frames → "now add images"
+**RIGHT:** Plan layout WITH image specs → build each section with its image loaded inline
 
-2. **Pexels / Pixabay** — fallback if Unsplash lacks the subject
+**Image sourcing priority:**
+1. **Unsplash first** — `WebSearch: "site:unsplash.com {subject} photo"` → use URL with `?w=1440&q=80`
+2. **Pexels / Pixabay** — fallback
+3. **AI generation** — last resort for things that don't exist as stock photos
 
-3. **AI generation** — last resort for custom illustrations, concepts, or things that don't exist as stock photos. Use `mcp__media-mcp__generate_image`
-
-**Where images go:** hero sections, product cards, feature illustrations, avatars, testimonials, gallery grids, backgrounds.
-
-Insert into Figma:
+**Every section script loads its own image — no separate "add images" step:**
 ```javascript
-const hash = await __fh.loadImage('https://images.unsplash.com/photo-xxx?w=1440&q=80');
-frame.fills = [{ type: 'IMAGE', imageHash: hash, scaleMode: 'FILL' }];
+// GOOD: image and frame built together
+const hero = __fh.frame('Hero', { w: 1440, h: 500, clip: true });
+const img = await __fh.loadImage('https://images.unsplash.com/photo-xxx?w=1440&q=80');
+hero.fills = [{ type: 'IMAGE', imageHash: img, scaleMode: 'FILL' }];
+
+// BAD: empty frame, "will add image later"
+const hero = __fh.frame('Hero', { w: 1440, h: 500, fill: __fh.hex('#1F2937') }); // NO!
 ```
+
+**Image sizing:** Hero/background `?w=1440&q=80`, Cards `?w=640&q=80`, Avatars `?w=200&q=80`
 
 ## OPTIONAL: Videos / GIFs — When They Add Value
 
-Use `mcp__media-mcp__generate_video` occasionally for:
-- Hero sections with motion
-- Product demo previews
-- Onboarding step animations
-- Background ambient motion
-
-Don't force videos everywhere — use them where motion enhances the design.
+Use `mcp__media-mcp__generate_video` occasionally for hero motion, product demos, or ambient backgrounds. Don't force everywhere.
 
 ## Automation Workflow
 
@@ -119,9 +116,9 @@ Clarify with the user:
 - Should this follow an existing design system?
 - Does a Design Language page already exist, or should we create one?
 
-### Step 2: Plan the Operations
+### Step 2: Plan the Operations — WITH Images
 
-Break down the task into ordered operations:
+Break down the task. **Every section must specify what image it needs:**
 
 ```markdown
 ## Automation Plan
@@ -131,51 +128,57 @@ Break down the task into ordered operations:
 - [ ] Design Language page exists (or create one first)
 - [ ] Fonts to load: Inter, ...
 
-### Assets to Gather (per page)
-- [ ] Images: search Unsplash first → fallback to AI generation
-  - Hero: "site:unsplash.com [subject]"
-  - Cards: product/feature images
-  - Avatars: portrait photos
-- [ ] Icons: fetch from Lucide (search, settings, user, ...)
-- [ ] Videos/GIFs: only if it adds design value (optional)
+### Page: Homepage
+Section 1 — Hero:
+  - Layout: full-width 1440×500, text overlay, 2 CTA buttons
+  - IMAGE: "futuristic city skyline at night" → search Unsplash
+  - Icons: play-circle (for "Watch Video" button)
+
+Section 2 — Features (3 cards):
+  - IMAGE per card: "cloud computing", "data security lock", "team collaboration"
+  - Icons: cloud, shield, users (from Lucide)
+
+Section 3 — Testimonials (3 cards):
+  - IMAGE per card: "professional headshot portrait" (3 different)
+  - Layout: avatar + quote + name
+
+Section 4 — CTA Banner:
+  - Gradient background (no image)
+  - Icons: arrow-right
 
 ### Pages (spawn parallel Agents if > 1 page)
-- Page 1: [name] → Agent A (plan + fetch assets)
-- Page 2: [name] → Agent B (plan + fetch assets)
-- Page 3: [name] → Agent C (plan + fetch assets)
+- Page 1: [name] → Agent A (search images + plan + return scripts)
+- Page 2: [name] → Agent B (search images + plan + return scripts)
 
-### Execution Order (sequential, after agents return)
-1. Inject helpers.js
+### Execution Order (sequential)
+1. Inject helpers.js + status.js
 2. Batch load fonts
 3. Create Design Language page (if new)
-4. Execute Page 1 scripts (section by section)
-5. Run verify.js → fix issues
-6. Execute Page 2 scripts
-7. Run verify.js → fix issues
-8. ...
+4. Execute each section script (image loaded inside each script)
+5. Run verify.js → check images > 0, fix issues
 ```
 
-### Step 3: Gather Assets — Images & Icons (PARALLEL)
+### Step 3: Search Images & Fetch Icons
 
 **For multi-page designs, spawn parallel Agents** — one per page. Each agent:
-1. Searches Unsplash/Pexels for all images needed for that page
-2. Fetches all icon SVGs from Lucide/Heroicons/Tabler
-3. Generates AI images (only if stock photos not found)
-4. Returns: image URLs, icon SVGs, and page scripts using `__fh` helpers
+1. Searches Unsplash for every image specified in the section plan
+2. Fetches all icon SVGs from Lucide
+3. Returns scripts where **each script already contains the Unsplash URL inline** in its `__fh.loadImage()` call
 
-**For single-page designs**, gather assets directly:
+**For single-page designs**, search images directly before building each section:
+```
+WebSearch: "site:unsplash.com futuristic city skyline night"
+→ Find best match → extract Unsplash photo URL
+→ Use in script: await __fh.loadImage('https://images.unsplash.com/photo-xxx?w=1440&q=80')
+```
 
+Fetch icons:
 ```bash
-# Search for images on Unsplash
-# WebSearch: "site:unsplash.com dashboard analytics hero"
-# Then download the best match
-curl -sL "https://images.unsplash.com/photo-xxx?w=1440&q=80" -o hero.jpg
-
-# Fetch icons in parallel
 curl -s https://unpkg.com/lucide-static/icons/home.svg
 curl -s https://unpkg.com/lucide-static/icons/search.svg
-curl -s https://unpkg.com/lucide-static/icons/settings.svg
 ```
+
+**Key:** Images are searched BEFORE execution starts, but they're loaded INTO Figma as part of each section's script — not in a separate pass.
 
 ### Step 4: Inject Scripts
 

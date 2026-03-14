@@ -13,6 +13,33 @@ window.__fh = {
   // NODE CREATION
   // ═══════════════════════════════════════════════════════════════════
 
+  // Apply common node options (shared across frame, rect, comp, etc.)
+  _applyCommon: (node, opts) => {
+    if (opts.radius) node.cornerRadius = opts.radius;
+    if (opts.radiusTL !== undefined) { node.topLeftRadius = opts.radiusTL; }
+    if (opts.radiusTR !== undefined) { node.topRightRadius = opts.radiusTR; }
+    if (opts.radiusBL !== undefined) { node.bottomLeftRadius = opts.radiusBL; }
+    if (opts.radiusBR !== undefined) { node.bottomRightRadius = opts.radiusBR; }
+    if (opts.opacity !== undefined) node.opacity = opts.opacity;
+    if (opts.rotation !== undefined) node.rotation = opts.rotation;
+    if (opts.blendMode) node.blendMode = opts.blendMode;
+    if (opts.effects) node.effects = opts.effects;
+    if (opts.strokes) node.strokes = opts.strokes;
+    if (opts.strokeWeight) node.strokeWeight = opts.strokeWeight;
+    if (opts.strokeAlign) node.strokeAlign = opts.strokeAlign;
+    if (opts.dash) node.dashPattern = opts.dash;
+    if (opts.strokeCap) node.strokeCap = opts.strokeCap;
+    if (opts.strokeJoin) node.strokeJoin = opts.strokeJoin;
+    if (opts.layoutGrow !== undefined) node.layoutGrow = opts.layoutGrow;
+    if (opts.layoutAlign) node.layoutAlign = opts.layoutAlign;
+    if (opts.absolute) {
+      node.layoutPositioning = 'ABSOLUTE';
+      if (opts.constraints) node.constraints = opts.constraints;
+      if (opts.x !== undefined) node.x = opts.x;
+      if (opts.y !== undefined) node.y = opts.y;
+    }
+  },
+
   // Create a frame (auto-layout container)
   // Usage: __fh.frame('Card', { w: 320, h: 200, direction: 'VERTICAL', p: 16, gap: 12, fill: __fh.hex('#FFF'), radius: 12 })
   frame: (name, opts = {}) => {
@@ -22,8 +49,6 @@ window.__fh = {
     if (opts.fill) f.fills = [{ type: 'SOLID', color: opts.fill }];
     if (opts.gradient) f.fills = [opts.gradient];
     if (opts.image) f.fills = [{ type: 'IMAGE', imageHash: opts.image, scaleMode: opts.scaleMode || 'FILL' }];
-    if (opts.radius) f.cornerRadius = opts.radius;
-    if (opts.opacity !== undefined) f.opacity = opts.opacity;
     if (opts.clip) f.clipsContent = true;
     if (opts.autoLayout || opts.direction) {
       f.layoutMode = opts.direction || 'VERTICAL';
@@ -38,11 +63,7 @@ window.__fh = {
       if (opts.crossAlign) f.counterAxisAlignItems = opts.crossAlign;
       if (opts.wrap) f.layoutWrap = 'WRAP';
     }
-    if (opts.effects) f.effects = opts.effects;
-    if (opts.strokes) f.strokes = opts.strokes;
-    if (opts.strokeWeight) f.strokeWeight = opts.strokeWeight;
-    if (opts.layoutGrow !== undefined) f.layoutGrow = opts.layoutGrow;
-    if (opts.layoutAlign) f.layoutAlign = opts.layoutAlign;
+    __fh._applyCommon(f, opts);
     if (opts.parent) opts.parent.appendChild(f);
     else figma.currentPage.appendChild(f);
     return f;
@@ -54,7 +75,9 @@ window.__fh = {
     c.name = name;
     c.resize(opts.w || 100, opts.h || 100);
     if (opts.fill) c.fills = [{ type: 'SOLID', color: opts.fill }];
-    if (opts.radius) c.cornerRadius = opts.radius;
+    if (opts.gradient) c.fills = [opts.gradient];
+    if (opts.image) c.fills = [{ type: 'IMAGE', imageHash: opts.image, scaleMode: opts.scaleMode || 'FILL' }];
+    if (opts.clip) c.clipsContent = true;
     if (opts.direction) {
       c.layoutMode = opts.direction;
       c.primaryAxisSizingMode = opts.mainSize || 'AUTO';
@@ -66,8 +89,9 @@ window.__fh = {
       c.paddingRight = opts.pr || opts.px || opts.p || 0;
       if (opts.mainAlign) c.primaryAxisAlignItems = opts.mainAlign;
       if (opts.crossAlign) c.counterAxisAlignItems = opts.crossAlign;
+      if (opts.wrap) c.layoutWrap = 'WRAP';
     }
-    if (opts.effects) c.effects = opts.effects;
+    __fh._applyCommon(c, opts);
     if (opts.parent) opts.parent.appendChild(c);
     else figma.currentPage.appendChild(c);
     return c;
@@ -94,6 +118,67 @@ window.__fh = {
     if (opts.w) t.resize(opts.w, t.height);
     if (opts.truncation) t.textTruncation = 'ENDING';
     if (opts.maxLines) t.maxLines = opts.maxLines;
+    if (opts.opacity !== undefined) t.opacity = opts.opacity;
+    if (opts.rotation !== undefined) t.rotation = opts.rotation;
+    if (opts.layoutGrow !== undefined) t.layoutGrow = opts.layoutGrow;
+    if (opts.layoutAlign) t.layoutAlign = opts.layoutAlign;
+    if (opts.autoResize) t.textAutoResize = opts.autoResize;
+    if (opts.absolute) {
+      t.layoutPositioning = 'ABSOLUTE';
+      if (opts.constraints) t.constraints = opts.constraints;
+      if (opts.x !== undefined) t.x = opts.x;
+      if (opts.y !== undefined) t.y = opts.y;
+    }
+    if (opts.parent) opts.parent.appendChild(t);
+    return t;
+  },
+
+  // Rich text — mixed styles in one text node
+  // Usage: await __fh.richTxt([
+  //   { text: 'Bold text', style: 'Bold', size: 18, hex: '#000' },
+  //   { text: ' regular text', size: 18 },
+  //   { text: ' colored', hex: '#3B82F6', style: 'Semi Bold' }
+  // ], { parent: frame })
+  richTxt: async (segments, opts = {}) => {
+    const t = figma.createText();
+    const defaultFamily = opts.font || 'Inter';
+    // Load all needed fonts
+    const fontsToLoad = new Set();
+    fontsToLoad.add(JSON.stringify({ family: defaultFamily, style: 'Regular' }));
+    for (const seg of segments) {
+      fontsToLoad.add(JSON.stringify({ family: seg.font || defaultFamily, style: seg.style || 'Regular' }));
+    }
+    for (const f of fontsToLoad) {
+      await figma.loadFontAsync(JSON.parse(f));
+    }
+    // Set full text content
+    t.characters = segments.map(s => s.text).join('');
+    // Apply per-segment styles
+    let offset = 0;
+    for (const seg of segments) {
+      const start = offset;
+      const end = offset + seg.text.length;
+      if (seg.size) t.setRangeFontSize(start, end, seg.size);
+      if (seg.style || seg.font) {
+        t.setRangeFontName(start, end, { family: seg.font || defaultFamily, style: seg.style || 'Regular' });
+      }
+      if (seg.hex) {
+        t.setRangeFills(start, end, [{ type: 'SOLID', color: __fh.hex(seg.hex) }]);
+      }
+      if (seg.fill) {
+        t.setRangeFills(start, end, [{ type: 'SOLID', color: seg.fill }]);
+      }
+      if (seg.decoration) t.setRangeTextDecoration(start, end, seg.decoration);
+      if (seg.textCase) t.setRangeTextCase(start, end, seg.textCase);
+      if (seg.lineHeight) t.setRangeLineHeight(start, end, { value: seg.lineHeight, unit: 'PIXELS' });
+      if (seg.letterSpacing) t.setRangeLetterSpacing(start, end, { value: seg.letterSpacing, unit: 'PIXELS' });
+      offset = end;
+    }
+    if (opts.name) t.name = opts.name;
+    if (opts.align) t.textAlignHorizontal = opts.align;
+    if (opts.valign) t.textAlignVertical = opts.valign;
+    if (opts.w) t.resize(opts.w, t.height);
+    if (opts.autoResize) t.textAutoResize = opts.autoResize;
     if (opts.layoutGrow !== undefined) t.layoutGrow = opts.layoutGrow;
     if (opts.layoutAlign) t.layoutAlign = opts.layoutAlign;
     if (opts.parent) opts.parent.appendChild(t);
@@ -108,8 +193,7 @@ window.__fh = {
     if (opts.fill) r.fills = [{ type: 'SOLID', color: opts.fill }];
     if (opts.gradient) r.fills = [opts.gradient];
     if (opts.image) r.fills = [{ type: 'IMAGE', imageHash: opts.image, scaleMode: opts.scaleMode || 'FILL' }];
-    if (opts.radius) r.cornerRadius = opts.radius;
-    if (opts.opacity !== undefined) r.opacity = opts.opacity;
+    __fh._applyCommon(r, opts);
     if (opts.parent) opts.parent.appendChild(r);
     return r;
   },
@@ -122,6 +206,7 @@ window.__fh = {
     e.resize(size, opts.h || size);
     if (opts.fill) e.fills = [{ type: 'SOLID', color: opts.fill }];
     if (opts.image) e.fills = [{ type: 'IMAGE', imageHash: opts.image, scaleMode: opts.scaleMode || 'FILL' }];
+    __fh._applyCommon(e, opts);
     if (opts.parent) opts.parent.appendChild(e);
     return e;
   },
@@ -133,8 +218,47 @@ window.__fh = {
     l.resize(opts.w || 100, 0);
     l.strokes = [{ type: 'SOLID', color: opts.color || { r: 0.9, g: 0.9, b: 0.9 } }];
     l.strokeWeight = opts.weight || 1;
+    if (opts.dash) l.dashPattern = opts.dash;
+    if (opts.strokeCap) l.strokeCap = opts.strokeCap;
+    if (opts.strokeJoin) l.strokeJoin = opts.strokeJoin;
+    if (opts.opacity !== undefined) l.opacity = opts.opacity;
+    if (opts.absolute) {
+      l.layoutPositioning = 'ABSOLUTE';
+      if (opts.constraints) l.constraints = opts.constraints;
+      if (opts.x !== undefined) l.x = opts.x;
+      if (opts.y !== undefined) l.y = opts.y;
+    }
     if (opts.parent) opts.parent.appendChild(l);
     return l;
+  },
+
+  // Create polygon
+  // Usage: __fh.polygon({ sides: 6, size: 80, fill: __fh.hex('#F00'), parent: frame })
+  polygon: (opts = {}) => {
+    const p = figma.createPolygon();
+    p.name = opts.name || 'Polygon';
+    const size = opts.size || 100;
+    p.resize(size, size);
+    if (opts.sides) p.pointCount = opts.sides;
+    if (opts.fill) p.fills = [{ type: 'SOLID', color: opts.fill }];
+    __fh._applyCommon(p, opts);
+    if (opts.parent) opts.parent.appendChild(p);
+    return p;
+  },
+
+  // Create star
+  // Usage: __fh.star({ points: 5, size: 48, innerRadius: 0.4, fill: __fh.hex('#FFD700'), parent: frame })
+  star: (opts = {}) => {
+    const s = figma.createStar();
+    s.name = opts.name || 'Star';
+    const size = opts.size || 100;
+    s.resize(size, size);
+    if (opts.points) s.pointCount = opts.points;
+    if (opts.innerRadius !== undefined) s.innerRadius = opts.innerRadius;
+    if (opts.fill) s.fills = [{ type: 'SOLID', color: opts.fill }];
+    __fh._applyCommon(s, opts);
+    if (opts.parent) opts.parent.appendChild(s);
+    return s;
   },
 
   // ═══════════════════════════════════════════════════════════════════
@@ -215,7 +339,7 @@ window.__fh = {
     b: parseInt(h.slice(5, 7), 16) / 255,
   }),
 
-  // Linear gradient
+  // Linear gradient (2-stop)
   // Usage: __fh.gradient('#1E3A8A', '#3B82F6') or __fh.gradient('#000', '#FFF', 'horizontal')
   gradient: (hex1, hex2, direction) => {
     const c1 = __fh.hex(hex1);
@@ -230,6 +354,42 @@ window.__fh = {
       gradientTransform: isHoriz ? [[1, 0, 0], [0, 1, 0]] : [[0, 1, 0], [-1, 0, 1]],
     };
   },
+
+  // Multi-stop linear gradient
+  // Usage: __fh.gradientMulti([{pos:0, hex:'#000'}, {pos:0.5, hex:'#F00'}, {pos:1, hex:'#FFF'}], 'horizontal')
+  gradientMulti: (stops, direction) => {
+    const isHoriz = direction === 'horizontal';
+    return {
+      type: 'GRADIENT_LINEAR',
+      gradientStops: stops.map(s => {
+        const c = __fh.hex(s.hex);
+        return { position: s.pos, color: { ...c, a: s.a !== undefined ? s.a : 1 } };
+      }),
+      gradientTransform: isHoriz ? [[1, 0, 0], [0, 1, 0]] : [[0, 1, 0], [-1, 0, 1]],
+    };
+  },
+
+  // Radial gradient
+  // Usage: __fh.gradientRadial([{pos:0, hex:'#FFF'}, {pos:1, hex:'#000'}])
+  gradientRadial: (stops) => ({
+    type: 'GRADIENT_RADIAL',
+    gradientStops: stops.map(s => {
+      const c = __fh.hex(s.hex);
+      return { position: s.pos, color: { ...c, a: s.a !== undefined ? s.a : 1 } };
+    }),
+    gradientTransform: [[0.5, 0, 0.25], [0, 0.5, 0.25]],
+  }),
+
+  // Angular gradient
+  // Usage: __fh.gradientAngular([{pos:0, hex:'#F00'}, {pos:0.33, hex:'#0F0'}, {pos:0.66, hex:'#00F'}, {pos:1, hex:'#F00'}])
+  gradientAngular: (stops) => ({
+    type: 'GRADIENT_ANGULAR',
+    gradientStops: stops.map(s => {
+      const c = __fh.hex(s.hex);
+      return { position: s.pos, color: { ...c, a: s.a !== undefined ? s.a : 1 } };
+    }),
+    gradientTransform: [[0.5, 0, 0.25], [0, 0.5, 0.25]],
+  }),
 
   // Drop shadow shorthand
   shadow: (x, y, radius, opacity) => [{
@@ -251,6 +411,25 @@ window.__fh = {
     { type: 'DROP_SHADOW', color: { r: 0, g: 0, b: 0, a: 0.1 }, offset: { x: 0, y: 10 }, radius: 15, visible: true, blendMode: 'NORMAL' },
     { type: 'DROP_SHADOW', color: { r: 0, g: 0, b: 0, a: 0.1 }, offset: { x: 0, y: 4 }, radius: 6, visible: true, blendMode: 'NORMAL' },
   ],
+
+  // Inner shadow
+  // Usage: __fh.innerShadow(0, 2, 8, 0.1)
+  innerShadow: (x, y, radius, opacity) => [{
+    type: 'INNER_SHADOW',
+    color: { r: 0, g: 0, b: 0, a: opacity || 0.1 },
+    offset: { x: x || 0, y: y || 2 },
+    radius: radius || 8,
+    visible: true,
+    blendMode: 'NORMAL',
+  }],
+
+  // Layer blur
+  // Usage: frame.effects = __fh.blur(10)
+  blur: (radius) => [{ type: 'LAYER_BLUR', radius, visible: true }],
+
+  // Background blur (glassmorphism)
+  // Usage: frame.effects = __fh.bgBlur(20)
+  bgBlur: (radius) => [{ type: 'BACKGROUND_BLUR', radius, visible: true }],
 
   // ═══════════════════════════════════════════════════════════════════
   // STYLES (Figma Paint, Text, Effect Styles)

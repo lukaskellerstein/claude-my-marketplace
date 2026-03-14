@@ -38,58 +38,79 @@ Execute Figma Plugin API commands directly in the browser using Playwright's `mc
 
 **Make designs alive, modern, and visually rich. Don't be boring.**
 
-### Use Real Images — MANDATORY
+### Images Are Part of the Design — NOT an Afterthought
 
-**Every design MUST include real images.** No grey placeholder boxes. No empty frames. Use real visual content.
+**Images are a FIRST-CLASS design element.** They must be thought about from the very start — during planning, not after. When you design a section, you design its image at the same time.
 
-**Image sourcing priority (follow this order):**
+**WRONG approach (don't do this):**
+1. Plan layout → 2. Build frames → 3. "Oh, I should add images" → grey boxes
 
-1. **Unsplash first** — search for high-quality stock photos using WebSearch/WebFetch. Unsplash images are free and high-quality. Use direct image URLs.
+**RIGHT approach (always do this):**
+1. Plan layout AND decide what image each section needs → 2. Search for images → 3. Build frames WITH images already loaded
+
+**Every section plan must include an image specification:**
+```
+Section: Hero
+  - Layout: full-width, 500px height, centered text overlay
+  - IMAGE: "Mars planet surface, red landscape, dramatic sky" → search Unsplash
+  - Text: "Your Journey to Mars Starts Here"
+  - CTA buttons: "Explore Packages", "Watch Trailer"
+
+Section: Featured Destinations (3 cards)
+  - IMAGE per card: "Mars Olympus Mons mountain", "Mars canyon Valles Marineris", "Mars Jezero crater"
+  - Each card: image (top), title, description, price, CTA button
+
+Section: Pricing (3 tiers)
+  - IMAGE for highlighted tier: "Mars landing spacecraft"
+  - Cards with icon lists, price, CTA
+```
+
+**Image sourcing priority:**
+
+1. **Unsplash first** — search for stock photos. Free, high-quality, instant.
    ```
    WebSearch: "site:unsplash.com {subject} photo"
    ```
-   Then download via:
-   ```bash
-   curl -sL "https://images.unsplash.com/photo-{id}?w=1440&q=80" -o image.jpg
-   ```
+   Use the direct image URL with size params: `?w=1440&q=80` for hero, `?w=640&q=80` for cards.
 
-2. **Pexels / Pixabay fallback** — if Unsplash doesn't have what you need:
-   ```
-   WebSearch: "site:pexels.com {subject} photo"
-   WebSearch: "site:pixabay.com {subject}"
-   ```
+2. **Pexels / Pixabay** — fallback if Unsplash doesn't have the subject.
 
-3. **AI generation last resort** — only when stock photos can't match the need (custom illustrations, specific compositions, fantasy/concept art). Use `mcp__media-mcp__generate_image`.
+3. **AI generation** — only for things that don't exist as stock photos (fantasy, sci-fi, custom illustrations, specific compositions). Use `mcp__media-mcp__generate_image`.
 
-**Where to use images:**
-- Hero sections — always a full-width background image
-- Product/feature cards — each card should have a relevant image
-- Team/about sections — portrait photos
-- Testimonial sections — user avatars
-- Gallery sections — multiple images in a grid
-- Backgrounds — subtle patterns or blurred images behind content
+**Image sizing guide:**
 
-**Insert images into Figma:**
+| Context | URL param | Figma size |
+|---|---|---|
+| Hero/full-width background | `?w=1440&q=80` | 1440 × 400-600px |
+| Feature card image | `?w=640&q=80` | 300-400 × 200-250px |
+| Thumbnail/avatar | `?w=200&q=80` | 48-80px circle or square |
+| Gallery image | `?w=800&q=80` | varies |
+| Background texture | `?w=1920&q=60` | full canvas |
+
+**Insert images into Figma — always use helpers:**
 ```javascript
-// Using __fh helper
+// Hero with image background + dark overlay for text readability
+const hero = __fh.frame('Hero', { w: 1440, h: 500, direction: 'VERTICAL', p: 64, mainAlign: 'CENTER', clip: true });
 const hash = await __fh.loadImage('https://images.unsplash.com/photo-xxx?w=1440&q=80');
-frame.fills = [{ type: 'IMAGE', imageHash: hash, scaleMode: 'FILL' }];
+hero.fills = [{ type: 'IMAGE', imageHash: hash, scaleMode: 'FILL' }];
 
-// Or use the imageFrame helper
-await __fh.imageFrame('Hero', { url: 'https://...', w: 1440, h: 400, parent: container });
+// Card with image on top
+await __fh.imageFrame('CardImage', { url: 'https://images.unsplash.com/photo-yyy?w=640&q=80', w: 360, h: 200, parent: card });
+
+// Avatar circle
+const avatarHash = await __fh.loadImage('https://images.unsplash.com/photo-zzz?w=200&q=80');
+__fh.circle({ size: 48, image: avatarHash, parent: row });
 ```
 
-### Use Videos / GIFs Occasionally
+**CRITICAL:** When building each section, load its image IMMEDIATELY — in the same chunk script that creates the frame. Do NOT create empty frames first and add images later. The image and the frame are one operation.
 
-Add videos/GIFs where they bring **design value** — don't force them everywhere:
+### Videos / GIFs — When They Add Design Value
 
-- **Hero sections** with motion → generate via `mcp__media-mcp__generate_video`
-- **Product demos** — short animated previews
-- **Onboarding flows** — step animations
-- **Loading/transition states** — micro-animations
-- **Background videos** — subtle ambient motion
-
-Use video thumbnails as image fills in Figma with a play button overlay.
+Use occasionally, not everywhere:
+- Hero sections with motion → `mcp__media-mcp__generate_video`
+- Product demo previews
+- Background ambient motion
+- Use video thumbnails as image fills with a play button overlay
 
 ### Music / Audio
 
@@ -197,31 +218,65 @@ This injects `window.__fh` with all helper functions. It cuts script length by ~
 
 | Helper | Description | Example |
 |---|---|---|
+| **Node Creation** | | |
 | `__fh.frame(name, opts)` | Create frame with auto-layout | `__fh.frame('Card', { w: 320, direction: 'VERTICAL', p: 16, gap: 12 })` |
 | `__fh.comp(name, opts)` | Create reusable Component | `__fh.comp('Button', { direction: 'HORIZONTAL', p: 12 })` |
 | `__fh.txt(content, opts)` | Create text (async, loads font) | `await __fh.txt('Hello', { size: 24, style: 'Bold' })` |
+| `__fh.richTxt(segments, opts)` | Rich text with mixed styles (async) | `await __fh.richTxt([{text:'Bold', style:'Bold'}, {text:' normal'}])` |
 | `__fh.rect(opts)` | Create rectangle | `__fh.rect({ w: 200, h: 100, fill: __fh.hex('#F00'), radius: 8 })` |
 | `__fh.circle(opts)` | Create ellipse/circle | `__fh.circle({ size: 48, fill: __fh.hex('#3B82F6') })` |
-| `__fh.line(opts)` | Create line/divider | `__fh.line({ w: 300, color: __fh.hex('#E5E7EB') })` |
+| `__fh.line(opts)` | Create line/divider | `__fh.line({ w: 300, color: __fh.hex('#E5E7EB'), dash: [10, 5] })` |
+| `__fh.polygon(opts)` | Create polygon | `__fh.polygon({ sides: 6, size: 80, fill: __fh.hex('#F00') })` |
+| `__fh.star(opts)` | Create star | `__fh.star({ points: 5, size: 48, fill: __fh.hex('#FFD700') })` |
+| **Icons** | | |
 | `__fh.icon(svg, opts)` | Insert SVG icon | `__fh.icon(svgString, { name: 'Icon/Search', size: 24 })` |
 | `__fh.recolor(node, color)` | Recolor SVG icon | `__fh.recolor(iconNode, __fh.hex('#FFF'))` |
+| **Images** | | |
 | `__fh.loadImage(url)` | Load image → hash | `const hash = await __fh.loadImage('https://...')` |
 | `__fh.imageFrame(name, opts)` | Frame with image fill | `await __fh.imageFrame('Hero', { url: '...', w: 1440, h: 400 })` |
+| **Colors** | | |
 | `__fh.rgb(r, g, b)` | 0-255 → Figma color | `__fh.rgb(59, 130, 246)` |
+| `__fh.rgba(r, g, b, a)` | RGBA with alpha | `__fh.rgba(0, 0, 0, 0.5)` |
 | `__fh.hex(h)` | Hex → Figma color | `__fh.hex('#3B82F6')` |
-| `__fh.gradient(hex1, hex2)` | Linear gradient fill | `__fh.gradient('#1E3A8A', '#3B82F6')` |
+| **Gradients** | | |
+| `__fh.gradient(hex1, hex2)` | 2-stop linear gradient | `__fh.gradient('#1E3A8A', '#3B82F6')` |
+| `__fh.gradientMulti(stops, dir)` | Multi-stop linear gradient | `__fh.gradientMulti([{pos:0,hex:'#000'},{pos:0.5,hex:'#F00'},{pos:1,hex:'#FFF'}])` |
+| `__fh.gradientRadial(stops)` | Radial gradient | `__fh.gradientRadial([{pos:0,hex:'#FFF'},{pos:1,hex:'#000'}])` |
+| `__fh.gradientAngular(stops)` | Angular/conic gradient | `__fh.gradientAngular([{pos:0,hex:'#F00'},{pos:0.5,hex:'#00F'},{pos:1,hex:'#F00'}])` |
+| **Effects** | | |
 | `__fh.shadow(x, y, r, a)` | Drop shadow effect | `__fh.shadow(0, 4, 12, 0.15)` |
 | `__fh.shadowMd()` | Medium elevation | Card shadow |
 | `__fh.shadowLg()` | Large elevation | Modal shadow |
+| `__fh.innerShadow(x, y, r, a)` | Inner shadow effect | `__fh.innerShadow(0, 2, 4, 0.1)` |
+| `__fh.blur(radius)` | Layer blur | `frame.effects = __fh.blur(10)` |
+| `__fh.bgBlur(radius)` | Background blur (glassmorphism) | `frame.effects = __fh.bgBlur(20)` |
+| **Styles** | | |
 | `__fh.paintStyle(name, color)` | Create Paint Style | `__fh.paintStyle('Primary/500', __fh.hex('#3B82F6'))` |
 | `__fh.textStyle(name, opts)` | Create Text Style (async) | `await __fh.textStyle('Heading/H1', { size: 36, style: 'Bold' })` |
 | `__fh.effectStyle(name, fx)` | Create Effect Style | `__fh.effectStyle('Shadow/md', __fh.shadowMd())` |
+| **Navigation** | | |
 | `__fh.find(name)` | Find node by exact name | `__fh.find('Header')` |
 | `__fh.findAll(pattern)` | Find nodes by name pattern | `__fh.findAll('Card')` |
+| `__fh.findType(type)` | Find nodes by type | `__fh.findType('TEXT')` |
 | `__fh.page(name)` | Switch/create page | `__fh.page('Dashboard')` |
 | `__fh.fonts(...styles)` | Batch load fonts (async) | `await __fh.fonts(['Inter','Regular'], ['Inter','Bold'])` |
 | `__fh.zoomTo(nodes)` | Zoom viewport to nodes | `__fh.zoomTo(frame)` |
 | `__fh.select(nodes)` | Select nodes | `__fh.select([card1, card2])` |
+
+**Common opts supported by all node creation helpers:**
+
+| Opt | Description | Example |
+|---|---|---|
+| `radius` | Uniform corner radius | `{ radius: 12 }` |
+| `radiusTL/TR/BL/BR` | Per-corner radius | `{ radiusTL: 16, radiusTR: 16, radiusBL: 0, radiusBR: 0 }` |
+| `rotation` | Rotation in degrees | `{ rotation: 45 }` |
+| `blendMode` | Blend mode | `{ blendMode: 'MULTIPLY' }` |
+| `opacity` | Opacity 0-1 | `{ opacity: 0.5 }` |
+| `absolute` | Absolute positioning in auto-layout | `{ absolute: true, x: 10, y: 10 }` |
+| `constraints` | Layout constraints (with absolute) | `{ absolute: true, constraints: { horizontal: 'MAX', vertical: 'MIN' } }` |
+| `dash` | Stroke dash pattern | `{ strokes: [...], dash: [10, 5] }` |
+| `strokeAlign` | Stroke alignment | `{ strokeAlign: 'INSIDE' }` |
+| `strokeCap` | Stroke cap style | `{ strokeCap: 'ROUND' }` |
 
 ### Verification Script
 
@@ -298,15 +353,27 @@ For any multi-section design, follow this execution order:
 1. **Inject helpers.js** (1 call)
 2. **Inject status.js** (1 call) — status panel appears in Figma
 3. **Register agents**: `await __status.agent('main', 'Main Design', 'planning')`
-4. **Batch load fonts** (1 call): `await __fh.fonts(['Inter','Regular'], ['Inter','Bold'], ['Inter','Semi Bold'])`
-5. **Update status**: `await __status.update('main', 'fetching-images', 'Searching Unsplash...')`
-6. **Fetch images & icons** (parallel where possible)
-7. **Update status**: `await __status.update('main', 'executing', 'Building header...')`
-8. **Create page** (1 call): `__fh.page('Dashboard')`
-9. **Section by section** (1 call each, max 30 lines) — update status per section
-10. **Verify** (run verify.js + snapshot)
-11. **Mark done**: `await __status.done('main')`
-12. **Cleanup** (when all work is finished): `__status.remove()`
+4. **Plan with images** — for each section, decide what image it needs (search query, subject)
+5. **Batch load fonts** (1 call): `await __fh.fonts(['Inter','Regular'], ['Inter','Bold'], ['Inter','Semi Bold'])`
+6. **Create page** (1 call): `__fh.page('Dashboard')`
+7. **Section by section** (1 call each, max 30 lines):
+   - Each section script **searches for and loads its images inline**
+   - Build frame + load image + add content = one chunk
+   - Example chunk for a hero section:
+     ```javascript
+     // Chunk: Hero section (image + text + buttons in one script)
+     const hero = __fh.frame('Hero', { w: 1440, h: 500, direction: 'VERTICAL', p: 64, mainAlign: 'CENTER', clip: true });
+     const heroImg = await __fh.loadImage('https://images.unsplash.com/photo-xxx?w=1440&q=80');
+     hero.fills = [{ type: 'IMAGE', imageHash: heroImg, scaleMode: 'FILL' }];
+     const overlay = __fh.rect({ name: 'Overlay', w: 1440, h: 500, fill: __fh.rgb(0,0,0), opacity: 0.4, absolute: true, parent: hero });
+     await __fh.txt('Your Journey Starts Here', { size: 48, style: 'Bold', fill: __fh.hex('#FFF'), parent: hero });
+     ```
+   - **Never create an empty frame "to fill with an image later"**
+8. **Verify** (run verify.js + snapshot) — check `images: N` count is > 0
+9. **Mark done**: `await __status.done('main')`
+10. **Cleanup** (when all work is finished): `__status.remove()`
+
+**Key rule:** Images and their frames are built together in the same chunk. There is no separate "add images" step.
 
 ### Multi-Page Designs — Parallel Subagent Architecture
 
@@ -342,13 +409,35 @@ For multi-page designs, **parallelize planning AND asset gathering** across suba
 
 Each agent receives:
 - The design system tokens (from Design Language page)
-- That page's section list with descriptions
+- That page's section list — **each section must specify its image needs**
 - Instruction to use `__fh` helpers (reference the helpers.js API table above)
 - Instruction to keep scripts <30 lines each
 - Instruction to search Unsplash first for all images, fetch icons from Lucide
-- **Must return**: array of script strings + list of image URLs + list of icon SVGs
+- **Must return**: array of script strings where **each script already includes its `__fh.loadImage()` calls with real Unsplash URLs** — no placeholder frames
+
+**Example section spec given to a subagent:**
+```
+Page: Dashboard
+Sections:
+  1. Hero: full-width background IMAGE("modern SaaS dashboard on screen, dark theme"), overlay, heading, subheading, 2 CTA buttons
+  2. Stats Row: 4 stat cards, each with an icon (trending-up, users, dollar-sign, activity)
+  3. Features: 3 feature cards, each with IMAGE("cloud computing illustration", "data analytics chart", "security shield technology"), title, description
+  4. Testimonials: 3 cards, each with avatar IMAGE("professional headshot portrait"), quote, name, role
+  5. CTA Banner: gradient background, heading, button
+```
 
 **Key insight:** Each agent spends most of its time on WebSearch/WebFetch for images and icons — this is the real parallelism win. Script generation is fast, but searching for 5-10 images per page takes time. Running 3 agents in parallel = 3x faster asset gathering.
+
+**Each agent's returned scripts must have images baked in — not as a separate step:**
+```javascript
+// GOOD: image loaded in the same script as the frame
+const hero = __fh.frame('Hero', { w: 1440, h: 500, clip: true });
+const img = await __fh.loadImage('https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1440&q=80');
+hero.fills = [{ type: 'IMAGE', imageHash: img, scaleMode: 'FILL' }];
+
+// BAD: frame created without image, "will add later"
+const hero = __fh.frame('Hero', { w: 1440, h: 500, fill: __fh.hex('#1F2937') }); // NO!
+```
 
 ## Connection Workflow — FOLLOW THESE STEPS EVERY TIME
 
@@ -579,6 +668,84 @@ for (const [name, hex] of colors) {
   __fh.paintStyle(name, __fh.hex(hex)); // Creates reusable Figma style
   __fh.frame(name, { w: 80, h: 80, radius: 8, fill: __fh.hex(hex), parent: row });
 }
+```
+
+### Glassmorphism card (background blur + semi-transparent)
+
+```javascript
+const glass = __fh.frame('GlassCard', {
+  w: 320, direction: 'VERTICAL', p: 24, gap: 12, radius: 16,
+  fill: __fh.rgba(255, 255, 255, 0.15),
+  effects: [...__fh.bgBlur(20), ...__fh.innerShadow(0, 1, 0, 0.2)],
+  strokes: [{ type: 'SOLID', color: __fh.rgba(255, 255, 255, 0.3) }], strokeWeight: 1,
+  parent: container
+});
+await __fh.txt('Glass Card', { size: 20, style: 'Semi Bold', fill: __fh.hex('#FFF'), parent: glass });
+```
+
+### Rich text with mixed formatting
+
+```javascript
+await __fh.richTxt([
+  { text: 'Save 40%', style: 'Bold', size: 24, hex: '#10B981' },
+  { text: ' on annual plans. ', size: 24 },
+  { text: '$99/year', style: 'Bold', size: 24, decoration: 'STRIKETHROUGH', hex: '#9CA3AF' },
+  { text: ' $59/year', style: 'Bold', size: 24, hex: '#111827' },
+], { parent: pricingCard });
+```
+
+### Notification badge on avatar (absolute positioning)
+
+```javascript
+const avatarWrap = __fh.frame('AvatarWrap', { w: 48, h: 48, parent: nav });
+__fh.circle({ size: 48, image: avatarHash, parent: avatarWrap });
+const badge = __fh.frame('Badge', {
+  w: 20, h: 20, direction: 'HORIZONTAL', mainAlign: 'CENTER', crossAlign: 'CENTER',
+  fill: __fh.hex('#EF4444'), radius: 9999,
+  absolute: true, x: 30, y: -4,
+  constraints: { horizontal: 'MAX', vertical: 'MIN' },
+  parent: avatarWrap
+});
+await __fh.txt('3', { size: 11, style: 'Bold', fill: __fh.hex('#FFF'), parent: badge });
+```
+
+### Dashed upload zone
+
+```javascript
+const dropzone = __fh.frame('Dropzone', {
+  w: 400, h: 200, direction: 'VERTICAL', mainAlign: 'CENTER', crossAlign: 'CENTER', gap: 12,
+  fill: __fh.hex('#F9FAFB'), radius: 12,
+  strokes: [{ type: 'SOLID', color: __fh.hex('#D1D5DB') }], strokeWeight: 2,
+  dash: [8, 4], strokeAlign: 'INSIDE',
+  parent: container
+});
+await __fh.txt('Drop files here', { size: 16, fill: __fh.hex('#6B7280'), parent: dropzone });
+```
+
+### Chat bubble with asymmetric corners
+
+```javascript
+const bubble = __fh.frame('ChatBubble', {
+  w: 280, direction: 'VERTICAL', p: 12, gap: 4,
+  fill: __fh.hex('#3B82F6'),
+  radiusTL: 16, radiusTR: 16, radiusBL: 4, radiusBR: 16,
+  parent: chatContainer
+});
+await __fh.txt('Hey, how are you?', { size: 14, fill: __fh.hex('#FFF'), parent: bubble });
+```
+
+### Multi-stop gradient hero
+
+```javascript
+const hero = __fh.frame('Hero', {
+  w: 1440, h: 500, direction: 'VERTICAL', p: 64, mainAlign: 'CENTER',
+  gradient: __fh.gradientMulti([
+    { pos: 0, hex: '#1E3A8A' },
+    { pos: 0.5, hex: '#7C3AED' },
+    { pos: 1, hex: '#EC4899' }
+  ]),
+});
+await __fh.txt('Welcome', { size: 48, style: 'Bold', fill: __fh.hex('#FFF'), parent: hero });
 ```
 
 ### Hero section with Unsplash background + gradient overlay
