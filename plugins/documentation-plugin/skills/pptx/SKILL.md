@@ -1,5 +1,5 @@
 ---
-name: pptx-presentations
+name: pptx
 description: "This skill should be activated when the user asks to make a presentation, slide deck, pitch deck, or anything involving .pptx output. Also triggers when the user says 'make me slides', 'create a deck', 'presentation about X', or mentions PowerPoint. Creates polished PowerPoint (.pptx) presentations using PptxGenJS for all slide generation and the media-plugin for sourcing/generating images. Can also edit existing PPTX templates. Activates even for simple 'make a quick 3-slide deck' requests — the skill ensures quality output every time."
 ---
 

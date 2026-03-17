@@ -1,5 +1,5 @@
 ---
-name: xlsx-spreadsheets
+name: xlsx
 description: "This skill should be activated when the user asks to create, edit, read, or analyze Excel spreadsheet files (.xlsx, .xlsm, .csv, .tsv). Triggers for: building financial models, creating data tables, formatting spreadsheets, adding formulas, cleaning tabular data, converting between tabular formats. Also triggers when user mentions 'spreadsheet', 'Excel', 'workbook', or references an .xlsx file. Do NOT trigger when the primary deliverable is a document, presentation, or visualization."
 ---
 

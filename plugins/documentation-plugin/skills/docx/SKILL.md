@@ -1,5 +1,5 @@
 ---
-name: docx-documents
+name: docx
 description: "This skill should be activated when the user asks to create a Word document, report, memo, letter, proposal, whitepaper, or anything involving .docx output. Also triggers when the user says 'write a report', 'create a document', 'make a Word file', 'draft a proposal', 'generate a whitepaper', or mentions .docx. Creates polished Word documents (.docx) using the docx npm package (docx-js) for all document generation and the media-plugin for sourcing/generating images. Can also edit existing DOCX files. Activates even for simple requests like 'write a one-page memo' — the skill ensures professional output every time."
 ---
 
