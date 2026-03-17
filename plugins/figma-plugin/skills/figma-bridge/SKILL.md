@@ -10,9 +10,11 @@ description: >
   design system creation.
 ---
 
-# Figma Bridge — Browser Automation
+# Figma Bridge v3.0.0 — Browser Automation
 
 Create and manipulate Figma designs directly in the browser using the **Figma Bridge** Chrome extension and Playwright's `mcp__design-playwright__browser_evaluate` tool. The extension auto-injects `__figb` (helpers) and `__figs` (status panel) into every Figma page.
+
+**Figma Bridge v3.0.0** stores the Figma API reference at `__figb.f`. All helpers use this internally — you rarely need to access it directly. For raw Plugin API calls, use `__figb.f` instead of `figma`.
 
 ## When to Use
 
@@ -39,7 +41,7 @@ Install: clone `https://github.com/lukaskellerstein/figma-bridge` → `chrome://
 
 - **Always explain in plain English what you are about to do.** Assume the user cannot read code.
 - **Do NOT try alternative solutions** like using the REST API or manually interacting with the Figma UI. Always use the Plugin API via `evaluate_script`.
-- **Do NOT try to draw icons manually** with basic shapes. Always fetch pre-made SVGs from icon libraries (see **icon-library** skill) and insert with `figma.createNodeFromSvg()`.
+- **Do NOT try to draw icons manually** with basic shapes. Always fetch pre-made SVGs from icon libraries (see **icon-library** skill) and insert with `__figb.icon()`.
 
 ## Creative Design Philosophy
 
@@ -109,10 +111,13 @@ const hero = __figb.frame('Hero', { w: 1440, h: 500, direction: 'VERTICAL', p: 6
 const hash = await __figb.loadImage('https://images.unsplash.com/photo-xxx?w=1440&q=80');
 hero.fills = [{ type: 'IMAGE', imageHash: hash, scaleMode: 'FILL' }];
 
-// Card with image on top
+// Or use image opt directly on frame/rect/circle
+const bg = __figb.frame('BG', { w: 1440, h: 500, image: hash, clip: true });
+
+// Card with image on top (auto-fallback to gradient on load error)
 await __figb.imageFrame('CardImage', { url: 'https://images.unsplash.com/photo-yyy?w=640&q=80', w: 360, h: 200, parent: card });
 
-// Avatar circle
+// Avatar circle with image
 const avatarHash = await __figb.loadImage('https://images.unsplash.com/photo-zzz?w=200&q=80');
 __figb.circle({ size: 48, image: avatarHash, parent: row });
 ```
@@ -152,10 +157,10 @@ When designing media players, podcast UIs, or audio experiences, generate sample
 **Fetch icons BEFORE building sections** — use the **icon-library** skill:
 ```bash
 # Fetch all icons needed for the page in one batch
-curl -s https://unpkg.com/lucide-static/icons/home.svg
-curl -s https://unpkg.com/lucide-static/icons/search.svg
-curl -s https://unpkg.com/lucide-static/icons/bell.svg
-curl -s https://unpkg.com/lucide-static/icons/user.svg
+curl -sL https://unpkg.com/lucide-static@latest/icons/home.svg
+curl -sL https://unpkg.com/lucide-static@latest/icons/search.svg
+curl -sL https://unpkg.com/lucide-static@latest/icons/bell.svg
+curl -sL https://unpkg.com/lucide-static@latest/icons/user.svg
 ```
 
 Then insert inline when building each section:
@@ -209,8 +214,7 @@ await __figb.fonts(
 ### Step 0 (before any other design work): Create the Design Language page
 
 ```javascript
-const designLanguagePage = figma.createPage();
-designLanguagePage.name = "🎨 Design Language";
+__figb.page("🎨 Design Language");
 ```
 
 The Design Language page must include these sections:
@@ -219,12 +223,12 @@ The Design Language page must include these sections:
 - Primary, secondary, accent colors (with full scales: 50-950)
 - Neutral/gray scale
 - Semantic colors: success, warning, error, info
-- Create as Figma Paint Styles (`figma.createPaintStyle()`) so they can be reused across all pages
+- Create as Figma Paint Styles (`__figb.paintStyle()`) so they can be reused across all pages
 
 #### 2. Typography Scale
 - Heading styles: H1 through H6 (with font family, size, weight, line-height)
 - Body text: large, base, small, caption
-- Create as Figma Text Styles (`figma.createTextStyle()`) for reuse
+- Create as Figma Text Styles (`await __figb.textStyle()`) for reuse
 
 #### 3. Spacing & Grid
 - Spacing scale visualization (4px grid: 4, 8, 12, 16, 24, 32, 48, 64)
@@ -232,7 +236,7 @@ The Design Language page must include these sections:
 
 #### 4. Effects
 - Shadow scale: sm, base, md, lg, xl
-- Create as Figma Effect Styles (`figma.createEffectStyle()`)
+- Create as Figma Effect Styles (`__figb.effectStyle()`)
 - Border radius scale: sm (4px), base (8px), md (12px), lg (16px), xl (24px), full (9999px)
 
 #### 5. Icon Set
@@ -243,7 +247,7 @@ The Design Language page must include these sections:
 - Buttons (primary, secondary, outline, ghost — with states: default, hover, disabled)
 - Input fields (text, select, checkbox, radio, toggle)
 - Cards, badges, tags, avatars
-- Build as Figma Components (`figma.createComponent()`) so instances can be used across pages
+- Build as Figma Components (`__figb.comp()`) and combine into variant sets (`__figb.compSet()`)
 
 After the Design Language page is complete, **all subsequent pages must use these defined styles, colors, components, and icons**. Never introduce one-off values — always reference the design language.
 
@@ -255,7 +259,7 @@ After the Design Language page is complete, **all subsequent pages must use thes
 
 - Break work into **small chunks of max 5 UI elements** (~15-30 lines each)
 - Execute each chunk via a separate `mcp__design-playwright__browser_evaluate` call
-- Verify after critical sections with `mcp__design-playwright__browser_snapshot`
+- Verify after critical sections with `mcp__design-playwright__browser_take_screenshot`
 - If a chunk fails, only that small piece needs to be retried
 
 ### Script Size Guidelines
@@ -271,21 +275,22 @@ After the Design Language page is complete, **all subsequent pages must use thes
 
 **Rule of thumb:** If a script is over 30 lines, split it.
 
-### Helper Functions Library — AUTO-INJECTED
+### Helper Functions Library — AUTO-INJECTED (v3.0.0)
 
-The **Figma Bridge** Chrome extension auto-injects `window.__figb` and `window.__figs` on any Figma design page. No bootstrap step needed — helpers have direct access to the `figma` API. Verify with:
+The **Figma Bridge** Chrome extension auto-injects `window.__figb` and `window.__figs` on any Figma design page. No bootstrap step needed — `__figb.f` holds a reference to the Figma API. Verify with:
 
 ```javascript
-typeof __figb === 'object' && __figb.version; // should return version string
+typeof __figb === 'object' && __figb.version; // should return "3.0.0"
 ```
 
 All `__figb.*` and `__figs.*` methods are immediately ready. Cuts script length by ~60%.
 
 **Available helpers after injection:**
 
+#### Node Creation
+
 | Helper | Description | Example |
 |---|---|---|
-| **Node Creation** | | |
 | `__figb.frame(name, opts)` | Create frame with auto-layout | `__figb.frame('Card', { w: 320, direction: 'VERTICAL', p: 16, gap: 12 })` |
 | `__figb.comp(name, opts)` | Create reusable Component | `__figb.comp('Button', { direction: 'HORIZONTAL', p: 12 })` |
 | `__figb.txt(content, opts)` | Create text (async, loads font) | `await __figb.txt('Hello', { size: 24, style: 'Bold' })` |
@@ -294,34 +299,99 @@ All `__figb.*` and `__figs.*` methods are immediately ready. Cuts script length 
 | `__figb.circle(opts)` | Create ellipse/circle | `__figb.circle({ size: 48, fill: __figb.hex('#3B82F6') })` |
 | `__figb.line(opts)` | Create line/divider | `__figb.line({ w: 300, color: __figb.hex('#E5E7EB'), dash: [10, 5] })` |
 | `__figb.polygon(opts)` | Create polygon | `__figb.polygon({ sides: 6, size: 80, fill: __figb.hex('#F00') })` |
-| `__figb.star(opts)` | Create star | `__figb.star({ points: 5, size: 48, fill: __figb.hex('#FFD700') })` |
-| **Icons** | | |
+| `__figb.star(opts)` | Create star | `__figb.star({ points: 5, size: 48, innerRadius: 0.4, fill: __figb.hex('#FFD700') })` |
+
+#### Icons
+
+| Helper | Description | Example |
+|---|---|---|
 | `__figb.icon(svg, opts)` | Insert SVG icon | `__figb.icon(svgString, { name: 'Icon/Search', size: 24 })` |
-| `__figb.recolor(node, color)` | Recolor SVG icon | `__figb.recolor(iconNode, __figb.hex('#FFF'))` |
-| **Images** | | |
+| `__figb.recolor(node, color)` | Recolor SVG icon recursively | `__figb.recolor(iconNode, __figb.hex('#FFF'))` |
+
+#### Images
+
+| Helper | Description | Example |
+|---|---|---|
 | `__figb.loadImage(url)` | Load image → hash | `const hash = await __figb.loadImage('https://...')` |
-| `__figb.imageFrame(name, opts)` | Frame with image fill | `await __figb.imageFrame('Hero', { url: '...', w: 1440, h: 400 })` |
-| **Colors** | | |
+| `__figb.imageFrame(name, opts)` | Frame with image fill (auto-fallback to gradient on error) | `await __figb.imageFrame('Hero', { url: '...', w: 1440, h: 400 })` |
+
+#### Colors & Gradients
+
+| Helper | Description | Example |
+|---|---|---|
 | `__figb.rgb(r, g, b)` | 0-255 → Figma color | `__figb.rgb(59, 130, 246)` |
 | `__figb.rgba(r, g, b, a)` | RGBA with alpha | `__figb.rgba(0, 0, 0, 0.5)` |
 | `__figb.hex(h)` | Hex → Figma color | `__figb.hex('#3B82F6')` |
-| **Gradients** | | |
-| `__figb.gradient(hex1, hex2)` | 2-stop linear gradient | `__figb.gradient('#1E3A8A', '#3B82F6')` |
-| `__figb.gradientMulti(stops, dir)` | Multi-stop linear gradient | `__figb.gradientMulti([{pos:0,hex:'#000'},{pos:0.5,hex:'#F00'},{pos:1,hex:'#FFF'}])` |
+| `__figb.gradient(hex1, hex2, dir?)` | 2-stop linear gradient | `__figb.gradient('#1E3A8A', '#3B82F6', 'horizontal')` |
+| `__figb.gradientMulti(stops, dir?)` | Multi-stop linear gradient | `__figb.gradientMulti([{pos:0,hex:'#000'},{pos:0.5,hex:'#F00'},{pos:1,hex:'#FFF'}])` |
 | `__figb.gradientRadial(stops)` | Radial gradient | `__figb.gradientRadial([{pos:0,hex:'#FFF'},{pos:1,hex:'#000'}])` |
 | `__figb.gradientAngular(stops)` | Angular/conic gradient | `__figb.gradientAngular([{pos:0,hex:'#F00'},{pos:0.5,hex:'#00F'},{pos:1,hex:'#F00'}])` |
-| **Effects** | | |
+
+Gradient stops support alpha: `{ pos: 0, hex: '#000', a: 0.5 }`. Direction parameter: omit for vertical (default), `'horizontal'` for left-to-right.
+
+#### Effects
+
+| Helper | Description | Example |
+|---|---|---|
 | `__figb.shadow(x, y, r, a)` | Drop shadow effect | `__figb.shadow(0, 4, 12, 0.15)` |
-| `__figb.shadowMd()` | Medium elevation | Card shadow |
-| `__figb.shadowLg()` | Large elevation | Modal shadow |
+| `__figb.shadowMd()` | Medium elevation (double shadow) | Card shadow |
+| `__figb.shadowLg()` | Large elevation (double shadow) | Modal shadow |
 | `__figb.innerShadow(x, y, r, a)` | Inner shadow effect | `__figb.innerShadow(0, 2, 4, 0.1)` |
 | `__figb.blur(radius)` | Layer blur | `frame.effects = __figb.blur(10)` |
 | `__figb.bgBlur(radius)` | Background blur (glassmorphism) | `frame.effects = __figb.bgBlur(20)` |
-| **Styles** | | |
+
+#### Styles
+
+| Helper | Description | Example |
+|---|---|---|
 | `__figb.paintStyle(name, color)` | Create Paint Style | `__figb.paintStyle('Primary/500', __figb.hex('#3B82F6'))` |
 | `__figb.textStyle(name, opts)` | Create Text Style (async) | `await __figb.textStyle('Heading/H1', { size: 36, style: 'Bold' })` |
 | `__figb.effectStyle(name, fx)` | Create Effect Style | `__figb.effectStyle('Shadow/md', __figb.shadowMd())` |
-| **Navigation** | | |
+
+#### Variables (Design Tokens)
+
+| Helper | Description | Example |
+|---|---|---|
+| `__figb.varCollection(name)` | Create variable collection | `const c = __figb.varCollection('Colors')` |
+| `__figb.variable(name, collId, type)` | Create variable (COLOR/FLOAT/STRING/BOOLEAN) | `const v = __figb.variable('primary', c.id, 'COLOR')` |
+| `__figb.varSet(variable, modeId, value)` | Set variable value for mode | `__figb.varSet(v, c.defaultModeId, { r: 0, g: 0.4, b: 1, a: 1 })` |
+| `__figb.varBind(node, field, variable)` | Bind variable to node property | `__figb.varBind(frame, 'fills', v)` |
+| `__figb.varAlias(variable, modeId, target)` | Create variable alias (reference) | `__figb.varAlias(v, modeId, targetVar)` |
+| `__figb.varAddMode(collection, name)` | Add mode to collection | `__figb.varAddMode(c, 'Dark')` |
+| `__figb.varRenameMode(coll, modeId, name)` | Rename a mode | `__figb.varRenameMode(c, modeId, 'Light')` |
+| `__figb.varCollections()` | Get all local variable collections | `const colls = __figb.varCollections()` |
+| `__figb.vars(type?)` | Get all local variables (optional type filter) | `__figb.vars('COLOR')` |
+| `__figb.varById(id)` | Look up variable by ID | `__figb.varById(id)` |
+
+#### Component Sets & Variants
+
+| Helper | Description | Example |
+|---|---|---|
+| `__figb.compSet(components, parent?)` | Combine components into variant set | `__figb.compSet([btnPrimary, btnSecondary])` |
+| `__figb.instance(component)` | Create instance from component | `const inst = __figb.instance(btnComp)` |
+| `__figb.swapInstance(inst, newComp)` | Swap backing component | `__figb.swapInstance(inst, btnOutline)` |
+| `__figb.setVariantProps(inst, props)` | Set variant properties on instance | `__figb.setVariantProps(inst, { Style: 'Primary', State: 'Hover' })` |
+
+#### Exporting
+
+| Helper | Description | Example |
+|---|---|---|
+| `__figb.exportNode(node, opts?)` | Export as PNG/SVG/JPG/PDF with optional scale | `await __figb.exportNode(frame, { format: 'PNG', scale: 2 })` |
+| `__figb.exportSvg(node)` | Export as SVG string | `const svg = await __figb.exportSvg(iconNode)` |
+
+#### Boolean Operations
+
+| Helper | Description | Example |
+|---|---|---|
+| `__figb.union(nodes, parent?)` | Union shapes | `__figb.union([circle, rect])` |
+| `__figb.subtract(nodes, parent?)` | Subtract shapes | `__figb.subtract([base, cutout])` |
+| `__figb.intersect(nodes, parent?)` | Intersect shapes | `__figb.intersect([a, b])` |
+| `__figb.exclude(nodes, parent?)` | Exclude shapes (XOR) | `__figb.exclude([a, b])` |
+
+#### Navigation & Lookup
+
+| Helper | Description | Example |
+|---|---|---|
 | `__figb.find(name)` | Find node by exact name | `__figb.find('Header')` |
 | `__figb.findAll(pattern)` | Find nodes by name pattern | `__figb.findAll('Card')` |
 | `__figb.findType(type)` | Find nodes by type | `__figb.findType('TEXT')` |
@@ -330,20 +400,67 @@ All `__figb.*` and `__figs.*` methods are immediately ready. Cuts script length 
 | `__figb.zoomTo(nodes)` | Zoom viewport to nodes | `__figb.zoomTo(frame)` |
 | `__figb.select(nodes)` | Select nodes | `__figb.select([card1, card2])` |
 
-**Common opts supported by all node creation helpers:**
+#### Utilities
+
+| Helper | Description | Example |
+|---|---|---|
+| `__figb.notify(msg)` | Show notification in Figma UI | `__figb.notify('Design complete!')` |
+| `__figb.group(nodes, parent?)` | Group nodes together | `__figb.group([icon, label])` |
+| `__figb.flatten(nodes)` | Flatten nodes (SVG cleanup) | `__figb.flatten([iconNode])` |
+| `__figb.verify()` | Verify design stats + issues | Returns `{ totalNodes, frames, text, components, instances, images, vectors, issues }` |
+
+### Common opts supported by all node creation helpers
 
 | Opt | Description | Example |
 |---|---|---|
+| `w`, `h` | Width, height | `{ w: 320, h: 200 }` |
+| `fill` | Solid color fill | `{ fill: __figb.hex('#FFF') }` |
+| `gradient` | Gradient fill | `{ gradient: __figb.gradient('#000', '#FFF') }` |
+| `image` | Image hash fill (from `loadImage`) | `{ image: hash }` |
+| `scaleMode` | Image scale mode (default: 'FILL') | `{ image: hash, scaleMode: 'FIT' }` |
+| `direction` | Auto-layout direction | `{ direction: 'VERTICAL' }` |
+| `p`/`px`/`py`/`pt`/`pb`/`pl`/`pr` | Padding | `{ p: 16 }` or `{ px: 24, py: 12 }` |
+| `gap` | Item spacing | `{ gap: 12 }` |
+| `mainAlign` | Primary axis alignment | `{ mainAlign: 'CENTER' }` |
+| `crossAlign` | Cross axis alignment | `{ crossAlign: 'CENTER' }` |
+| `mainSize`/`crossSize` | Sizing mode ('AUTO' or 'FIXED') | `{ mainSize: 'AUTO' }` |
+| `wrap` | Enable layout wrapping | `{ wrap: true }` |
+| `clip` | Clip content | `{ clip: true }` |
 | `radius` | Uniform corner radius | `{ radius: 12 }` |
 | `radiusTL/TR/BL/BR` | Per-corner radius | `{ radiusTL: 16, radiusTR: 16, radiusBL: 0, radiusBR: 0 }` |
 | `rotation` | Rotation in degrees | `{ rotation: 45 }` |
 | `blendMode` | Blend mode | `{ blendMode: 'MULTIPLY' }` |
 | `opacity` | Opacity 0-1 | `{ opacity: 0.5 }` |
-| `absolute` | Absolute positioning in auto-layout | `{ absolute: true, x: 10, y: 10 }` |
-| `constraints` | Layout constraints (with absolute) | `{ absolute: true, constraints: { horizontal: 'MAX', vertical: 'MIN' } }` |
-| `dash` | Stroke dash pattern | `{ strokes: [...], dash: [10, 5] }` |
-| `strokeAlign` | Stroke alignment | `{ strokeAlign: 'INSIDE' }` |
-| `strokeCap` | Stroke cap style | `{ strokeCap: 'ROUND' }` |
+| `effects` | Effects array | `{ effects: __figb.shadowMd() }` |
+| `strokes`/`strokeWeight`/`strokeAlign` | Stroke properties | `{ strokes: [...], strokeWeight: 2 }` |
+| `dash`/`strokeCap`/`strokeJoin` | Stroke style | `{ dash: [10, 5] }` |
+| `layoutGrow` | Flex grow in auto-layout | `{ layoutGrow: 1 }` |
+| `layoutAlign` | Layout alignment override | `{ layoutAlign: 'STRETCH' }` |
+| `absolute` | Absolute positioning | `{ absolute: true, x: 10, y: 10 }` |
+| `constraints` | Layout constraints (with absolute) | `{ constraints: { horizontal: 'MAX', vertical: 'MIN' } }` |
+| `parent` | Append to parent node | `{ parent: container }` |
+
+### Text-specific opts (`txt` / `richTxt`)
+
+| Opt | Description |
+|---|---|
+| `font` | Font family (default: 'Inter') |
+| `style` | Font style ('Regular', 'Bold', 'Semi Bold', etc.) |
+| `size` | Font size |
+| `fill` | Text color |
+| `name` | Node name |
+| `align` | Horizontal: 'LEFT', 'CENTER', 'RIGHT', 'JUSTIFIED' |
+| `valign` | Vertical: 'TOP', 'CENTER', 'BOTTOM' |
+| `lineHeight` | Line height in pixels |
+| `letterSpacing` | Letter spacing in pixels |
+| `decoration` | 'UNDERLINE' or 'STRIKETHROUGH' |
+| `textCase` | 'UPPER', 'LOWER', 'TITLE' |
+| `w` | Text width (for wrapping) |
+| `truncation` | Set to true for text truncation with ending ellipsis |
+| `maxLines` | Max lines before truncation |
+| `autoResize` | Text auto-resize mode |
+
+`richTxt` segments support: `text`, `style`, `font`, `size`, `hex`, `fill`, `decoration`, `textCase`, `lineHeight`, `letterSpacing`.
 
 ### Verification
 
@@ -391,7 +508,7 @@ After injection, all subsequent scripts become much shorter:
 
 ```javascript
 // WITHOUT helpers (verbose, ~20 lines)
-const card = figma.createFrame();
+const card = __figb.f.createFrame();
 card.name = "Card";
 card.resize(320, 200);
 card.layoutMode = "VERTICAL";
@@ -402,9 +519,9 @@ card.primaryAxisSizingMode = "AUTO";
 card.cornerRadius = 12;
 card.fills = [{ type: "SOLID", color: { r: 1, g: 1, b: 1 } }];
 card.effects = [{ type: "DROP_SHADOW", color: { r:0, g:0, b:0, a:0.1 }, offset: { x:0, y:2 }, radius: 8, visible: true, blendMode: "NORMAL" }];
-figma.currentPage.appendChild(card);
-await figma.loadFontAsync({ family: "Inter", style: "Bold" });
-const title = figma.createText();
+__figb.f.currentPage.appendChild(card);
+await __figb.f.loadFontAsync({ family: "Inter", style: "Bold" });
+const title = __figb.f.createText();
 title.characters = "Card Title";
 title.fontSize = 18;
 title.fontName = { family: "Inter", style: "Bold" };
@@ -443,79 +560,12 @@ await __figb.txt('Card Title', { size: 18, style: 'Bold', parent: card });
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Step-by-step:**
-
-1. **Plan everything first** — for each section specify: layout, IMAGE (search query), ICONS (names), FONTS (family/weight/size)
-2. **Spawn 3 tasks in parallel** (use Agent tool with multiple calls in a single message):
-   - **Agent A (Icons)**: fetch all icon SVGs via curl — return a map of `{ iconName: svgString }`
-   - **Agent B (Images)**: search Unsplash for all images — return a map of `{ sectionName: imageUrl }`
-   - **Main thread (Figma)**: init status panel, load fonts, build Design Language page
-3. **Collect results** from both agents
-4. **Build sections** — each chunk script has icons and image URLs baked in:
-   ```javascript
-   const hero = __figb.frame('Hero', { w: 1440, h: 500, direction: 'VERTICAL', p: 64, mainAlign: 'CENTER', clip: true });
-   const heroImg = await __figb.loadImage('https://images.unsplash.com/photo-xxx?w=1440&q=80');
-   hero.fills = [{ type: 'IMAGE', imageHash: heroImg, scaleMode: 'FILL' }];
-   const overlay = __figb.rect({ name: 'Overlay', w: 1440, h: 500, fill: __figb.rgb(0,0,0), opacity: 0.4, absolute: true, parent: hero });
-   await __figb.txt('Your Journey Starts Here', { size: 48, style: 'Bold', fill: __figb.hex('#FFF'), parent: hero });
-   const btnRow = __figb.frame('Buttons', { direction: 'HORIZONTAL', gap: 16, parent: hero });
-   const btn = __figb.frame('CTA', { direction: 'HORIZONTAL', gap: 8, px: 24, py: 12, radius: 8, fill: __figb.hex('#3B82F6'), crossAlign: 'CENTER', parent: btnRow });
-   __figb.icon(playSvg, { name: 'Icon/Play', size: 18, parent: btn });
-   await __figb.txt('Watch Trailer', { size: 14, style: 'Semi Bold', fill: __figb.hex('#FFF'), parent: btn });
-   ```
-5. **Verify** (`__figb.verify()` + snapshot) — check `images > 0`, `vectors > 0` (icons)
-6. **Mark done**: `await __figs.done('main')`
-7. **Cleanup**: `__figs.remove()`
-
 **Key rules:**
 - **ALWAYS parallelize** — icons agent + images agent + Figma setup run simultaneously
 - Images and frames are built together in the same chunk
 - Icons are inserted inline when building each element
 - Fonts are batch-loaded once upfront, then used freely in all chunks
 - No frame without its image. No button without its icon.
-
-### Multi-Page Designs — Scale the Parallelism
-
-For multi-page designs, spawn **one agent per page** that handles both icons AND images for that page. The main thread builds the Design Language page while all page agents gather assets in parallel.
-
-```
-┌─ MAIN THREAD ──────────────────────────────────────────┐
-│  1. Create master plan (all pages + sections)          │
-│  2. Build Design Language page in Figma                │
-│  3. Spawn parallel Agents — one per page:              │
-│     Each agent does ALL asset work for its page:       │
-│     a. Fetches all icons from Lucide/Heroicons         │
-│     b. Searches Unsplash for all images                │
-│     c. Generates AI images if stock not found          │
-│     d. Returns scripts array with assets baked in      │
-│  4. Collect results from all agents                    │
-│  5. Execute all scripts sequentially in Figma          │
-│  6. Run __figb.verify() after each page                │
-└────────────────────────────────────────────────────────┘
-         │              │              │
-    ┌────┴────┐    ┌────┴────┐    ┌────┴────┐
-    │ Agent A  │   │ Agent B  │   │ Agent C  │
-    │ Page 1   │   │ Page 2   │   │ Page 3   │
-    │ icons +  │   │ icons +  │   │ icons +  │
-    │ images   │   │ images   │   │ images   │
-    └─────────┘    └─────────┘    └─────────┘
-    (parallel)     (parallel)     (parallel)
-```
-
-**Each agent's returned scripts must have everything baked in:**
-```javascript
-// GOOD: image + icon + font all in one script
-const hero = __figb.frame('Hero', { w: 1440, h: 500, clip: true });
-const img = await __figb.loadImage('https://images.unsplash.com/photo-xxx?w=1440&q=80');
-hero.fills = [{ type: 'IMAGE', imageHash: img, scaleMode: 'FILL' }];
-await __figb.txt('Build Faster', { size: 48, style: 'Bold', fill: __figb.hex('#FFF'), parent: hero });
-const btn = __figb.frame('CTA', { direction: 'HORIZONTAL', gap: 8, px: 24, py: 12, fill: __figb.hex('#3B82F6'), radius: 8, parent: hero });
-__figb.icon(arrowRightSvg, { size: 18, parent: btn });
-await __figb.txt('Get Started', { size: 14, style: 'Semi Bold', fill: __figb.hex('#FFF'), parent: btn });
-
-// BAD: empty frame, no image, no icon, wrong font
-const hero = __figb.frame('Hero', { fill: __figb.hex('#1F2937') }); // NO!
-```
 
 ## Connection Workflow — FOLLOW THESE STEPS EVERY TIME
 
@@ -530,24 +580,24 @@ Then prompt the user to **log in** if they are not already logged in.
 
 ### Step 2: Verify `figma` global access
 
-Use `mcp__design-playwright__browser_evaluate` to confirm you have access to the `figma` global object:
+Use `mcp__design-playwright__browser_evaluate` to confirm you have access:
 
 ```javascript
-typeof figma !== 'undefined' ? 'connected' : 'not connected'
+typeof __figb === 'object' ? '__figb v' + __figb.version : 'not injected'
 ```
 
-- If `"connected"` → proceed to Step 3
-- If `"not connected"` or `"figma is not defined"` → see **Troubleshooting** below
+- If returns version → proceed to Step 3
+- If `"not injected"` → see **Troubleshooting** below
 
 ### Step 3: Execute the user's request
 
-Use `mcp__design-playwright__browser_evaluate` to run JavaScript code that interacts with the Figma Plugin API. Perform tasks such as creating shapes, modifying properties, applying styles, or extracting information.
+Use `mcp__design-playwright__browser_evaluate` to run JavaScript code via `__figb.*` helpers. For raw Plugin API access, use `__figb.f` (e.g., `__figb.f.currentPage`, `__figb.f.createFrame()`).
 
 Always explain what you're about to do before executing.
 
 ## Troubleshooting
 
-If `figma` is not defined:
+If `__figb` is not defined:
 
 1. **Check permissions** — make sure the user has **edit access** to the file and permission to run plugins. If they don't, suggest **creating a new branch** on the file (which grants edit access).
 2. **Open and close any plugin** — there is a known bug where the `figma` global is not available until a plugin has been opened at least once in the file. Instruct the user to:
@@ -557,172 +607,13 @@ If `figma` is not defined:
    - Then try again
 3. If it still doesn't work, ask the user to **refresh the page** and repeat steps 1-2.
 
-## Figma Plugin API Reference
-
-### Global Object: `figma`
-
-The `figma` global object is the entry point for all plugin operations.
-
-### Node Creation
-
-| Method | Description |
-|---|---|
-| `figma.createFrame()` | Create a new frame |
-| `figma.createRectangle()` | Create a rectangle |
-| `figma.createEllipse()` | Create an ellipse |
-| `figma.createLine()` | Create a line |
-| `figma.createText()` | Create a text node |
-| `figma.createComponent()` | Create a component |
-| `figma.createComponentSet()` | Create a component set (variants) |
-| `figma.createPage()` | Create a new page |
-| `figma.createBooleanOperation()` | Create boolean operation |
-| `figma.createNodeFromSvg(svgString)` | **Create a node from SVG string** — use this for icons |
-| `figma.createImage(bytes)` | Create an image from bytes |
-| `figma.group(nodes, parent)` | Group nodes together |
-| `figma.flatten(nodes)` | Flatten nodes |
-| `figma.union(nodes, parent)` | Boolean union |
-| `figma.subtract(nodes, parent)` | Boolean subtract |
-| `figma.intersect(nodes, parent)` | Boolean intersect |
-
-### Node Properties (Common)
-
-| Property | Type | Description |
-|---|---|---|
-| `node.name` | string | Node name |
-| `node.x`, `node.y` | number | Position |
-| `node.width`, `node.height` | number | Size (use `node.resize(w, h)` to set) |
-| `node.rotation` | number | Rotation in degrees |
-| `node.opacity` | number | 0 to 1 |
-| `node.visible` | boolean | Visibility |
-| `node.locked` | boolean | Lock state |
-| `node.fills` | Paint[] | Fill paints array |
-| `node.strokes` | Paint[] | Stroke paints array |
-| `node.strokeWeight` | number | Stroke weight |
-| `node.cornerRadius` | number | Corner radius |
-| `node.effects` | Effect[] | Effects (shadows, blur) |
-| `node.constraints` | Constraints | Layout constraints |
-| `node.layoutMode` | string | Auto-layout: `"NONE"`, `"HORIZONTAL"`, `"VERTICAL"` |
-
-### Auto-Layout Properties
-
-| Property | Type | Description |
-|---|---|---|
-| `node.layoutMode` | `"HORIZONTAL" \| "VERTICAL"` | Auto-layout direction |
-| `node.primaryAxisSizingMode` | `"FIXED" \| "AUTO"` | Width/height sizing |
-| `node.counterAxisSizingMode` | `"FIXED" \| "AUTO"` | Cross-axis sizing |
-| `node.primaryAxisAlignItems` | `"MIN" \| "CENTER" \| "MAX" \| "SPACE_BETWEEN"` | Main axis alignment |
-| `node.counterAxisAlignItems` | `"MIN" \| "CENTER" \| "MAX"` | Cross axis alignment |
-| `node.paddingTop/Right/Bottom/Left` | number | Padding |
-| `node.itemSpacing` | number | Gap between items |
-
-### Text Properties
-
-```javascript
-// Must load font before setting characters
-await figma.loadFontAsync({ family: "Inter", style: "Regular" });
-const text = figma.createText();
-text.characters = "Hello World";
-text.fontSize = 16;
-text.fontName = { family: "Inter", style: "Bold" };
-text.fills = [{ type: "SOLID", color: { r: 0, g: 0, b: 0 } }];
-text.textAlignHorizontal = "CENTER"; // "LEFT", "CENTER", "RIGHT", "JUSTIFIED"
-text.textAlignVertical = "CENTER";   // "TOP", "CENTER", "BOTTOM"
-text.lineHeight = { value: 24, unit: "PIXELS" }; // or "PERCENT", "AUTO"
-```
-
-### Color / Paint
-
-Colors in Figma use 0-1 range (not 0-255):
-
-```javascript
-// Solid fill
-node.fills = [{
-  type: "SOLID",
-  color: { r: 0.2, g: 0.4, b: 1.0 },
-  opacity: 1
-}];
-
-// Gradient fill
-node.fills = [{
-  type: "GRADIENT_LINEAR",
-  gradientStops: [
-    { position: 0, color: { r: 1, g: 0, b: 0, a: 1 } },
-    { position: 1, color: { r: 0, g: 0, b: 1, a: 1 } }
-  ],
-  gradientTransform: [[1, 0, 0], [0, 1, 0]]
-}];
-```
-
-### Finding Nodes
-
-```javascript
-// By ID
-const node = figma.getNodeById("123:456");
-
-// By name (searches current page)
-const nodes = figma.currentPage.findAll(n => n.name === "Button");
-const node = figma.currentPage.findOne(n => n.name === "Header");
-
-// By type
-const allText = figma.currentPage.findAll(n => n.type === "TEXT");
-const allFrames = figma.currentPage.findAll(n => n.type === "FRAME");
-
-// Current selection
-const selected = figma.currentPage.selection;
-```
-
-### Viewport
-
-```javascript
-// Zoom to fit nodes
-figma.viewport.scrollAndZoomIntoView(nodes);
-
-// Get/set viewport
-const { x, y, width, height } = figma.viewport.bounds;
-figma.viewport.center = { x: 100, y: 200 };
-figma.viewport.zoom = 0.5;
-```
-
-### Styles
-
-```javascript
-// Create paint style
-const style = figma.createPaintStyle();
-style.name = "Primary/Blue";
-style.paints = [{ type: "SOLID", color: { r: 0, g: 0.4, b: 1 } }];
-
-// Create text style
-const textStyle = figma.createTextStyle();
-textStyle.name = "Heading/H1";
-textStyle.fontSize = 32;
-textStyle.fontName = { family: "Inter", style: "Bold" };
-
-// Apply style
-node.fillStyleId = style.id;
-textNode.textStyleId = textStyle.id;
-```
-
-### Variables (Design Tokens)
-
-```javascript
-// Create variable collection
-const collection = figma.variables.createVariableCollection("Colors");
-
-// Create variable
-const variable = figma.variables.createVariable("primary", collection.id, "COLOR");
-variable.setValueForMode(collection.defaultModeId, { r: 0, g: 0.4, b: 1, a: 1 });
-
-// Bind variable to node
-node.setBoundVariable("fills", 0, variable.id);
-```
-
 ## Common Patterns (using __figb helpers)
 
 ### Card with image, icon, and text
 
 ```javascript
 const card = __figb.frame('Card', { w: 320, direction: 'VERTICAL', radius: 12, fill: __figb.hex('#FFF'), effects: __figb.shadowMd(), clip: true });
-// Image from Unsplash
+// Image from Unsplash (auto-fallback to gradient on error)
 await __figb.imageFrame('CardImage', { url: 'https://images.unsplash.com/photo-xxx?w=640&q=80', w: 320, h: 180, parent: card });
 const content = __figb.frame('CardContent', { w: 320, direction: 'VERTICAL', p: 16, gap: 8, parent: card });
 await __figb.txt('Card Title', { size: 18, style: 'Bold', parent: content });
@@ -737,15 +628,34 @@ __figb.icon(searchSvg, { name: 'Icon/Search', size: 20, parent: row });
 await __figb.txt('Search', { size: 14, fill: __figb.hex('#374151'), parent: row });
 ```
 
-### Color palette with Paint Styles
+### Component variant set (buttons)
 
 ```javascript
-const colors = [['Blue/50','#EFF6FF'], ['Blue/500','#3B82F6'], ['Blue/900','#1E3A8A']];
-const row = __figb.frame('Colors', { direction: 'HORIZONTAL', gap: 8, mainSize: 'AUTO', crossSize: 'AUTO' });
-for (const [name, hex] of colors) {
-  __figb.paintStyle(name, __figb.hex(hex)); // Creates reusable Figma style
-  __figb.frame(name, { w: 80, h: 80, radius: 8, fill: __figb.hex(hex), parent: row });
-}
+// Create individual button components
+const btnPrimary = __figb.comp('Style=Primary, State=Default', { direction: 'HORIZONTAL', px: 24, py: 12, gap: 8, fill: __figb.hex('#3B82F6'), radius: 8, crossAlign: 'CENTER' });
+await __figb.txt('Button', { size: 14, style: 'Semi Bold', fill: __figb.hex('#FFF'), parent: btnPrimary });
+
+const btnSecondary = __figb.comp('Style=Secondary, State=Default', { direction: 'HORIZONTAL', px: 24, py: 12, gap: 8, fill: __figb.hex('#F3F4F6'), radius: 8, crossAlign: 'CENTER' });
+await __figb.txt('Button', { size: 14, style: 'Semi Bold', fill: __figb.hex('#374151'), parent: btnSecondary });
+
+// Combine into variant set
+const btnSet = __figb.compSet([btnPrimary, btnSecondary]);
+btnSet.name = 'Button';
+```
+
+### Design tokens with variables
+
+```javascript
+const c = __figb.varCollection('Colors');
+__figb.varRenameMode(c, c.defaultModeId, 'Light');
+const darkMode = __figb.varAddMode(c, 'Dark');
+
+const primary = __figb.variable('primary', c.id, 'COLOR');
+__figb.varSet(primary, c.defaultModeId, { r: 0.23, g: 0.51, b: 0.96, a: 1 }); // Light
+__figb.varSet(primary, darkMode, { r: 0.37, g: 0.63, b: 1, a: 1 }); // Dark
+
+// Bind to a node
+__figb.varBind(button, 'fills', primary);
 ```
 
 ### Glassmorphism card (background blur + semi-transparent)
@@ -772,6 +682,16 @@ await __figb.richTxt([
 ], { parent: pricingCard });
 ```
 
+### Text with truncation
+
+```javascript
+await __figb.txt('This is a very long description that should be truncated after two lines...', {
+  size: 14, fill: __figb.hex('#6B7280'), w: 280,
+  truncation: true, maxLines: 2,
+  parent: card
+});
+```
+
 ### Notification badge on avatar (absolute positioning)
 
 ```javascript
@@ -787,29 +707,14 @@ const badge = __figb.frame('Badge', {
 await __figb.txt('3', { size: 11, style: 'Bold', fill: __figb.hex('#FFF'), parent: badge });
 ```
 
-### Dashed upload zone
+### Boolean operation — custom shape
 
 ```javascript
-const dropzone = __figb.frame('Dropzone', {
-  w: 400, h: 200, direction: 'VERTICAL', mainAlign: 'CENTER', crossAlign: 'CENTER', gap: 12,
-  fill: __figb.hex('#F9FAFB'), radius: 12,
-  strokes: [{ type: 'SOLID', color: __figb.hex('#D1D5DB') }], strokeWeight: 2,
-  dash: [8, 4], strokeAlign: 'INSIDE',
-  parent: container
-});
-await __figb.txt('Drop files here', { size: 16, fill: __figb.hex('#6B7280'), parent: dropzone });
-```
-
-### Chat bubble with asymmetric corners
-
-```javascript
-const bubble = __figb.frame('ChatBubble', {
-  w: 280, direction: 'VERTICAL', p: 12, gap: 4,
-  fill: __figb.hex('#3B82F6'),
-  radiusTL: 16, radiusTR: 16, radiusBL: 4, radiusBR: 16,
-  parent: chatContainer
-});
-await __figb.txt('Hey, how are you?', { size: 14, fill: __figb.hex('#FFF'), parent: bubble });
+const circle = __figb.circle({ size: 100, fill: __figb.hex('#3B82F6') });
+const cutout = __figb.rect({ w: 60, h: 60, fill: __figb.hex('#FFF') });
+cutout.x = 20; cutout.y = 20;
+const crescent = __figb.subtract([circle, cutout]);
+crescent.name = 'Crescent';
 ```
 
 ### Multi-stop gradient hero
@@ -838,12 +743,26 @@ overlay.opacity = 0.4;
 await __figb.txt('Welcome to Our Platform', { size: 48, style: 'Bold', fill: __figb.hex('#FFF'), parent: hero });
 ```
 
+### Wrapping layout (tag cloud, chip grid)
+
+```javascript
+const tagCloud = __figb.frame('Tags', {
+  w: 400, direction: 'HORIZONTAL', gap: 8, wrap: true,
+  mainSize: 'FIXED', crossSize: 'AUTO',
+  parent: container
+});
+for (const tag of ['Design', 'Frontend', 'React', 'Figma', 'TypeScript', 'CSS']) {
+  const chip = __figb.frame(`Tag-${tag}`, { direction: 'HORIZONTAL', px: 12, py: 6, radius: 9999, fill: __figb.hex('#EFF6FF'), parent: tagCloud });
+  await __figb.txt(tag, { size: 13, fill: __figb.hex('#3B82F6'), parent: chip });
+}
+```
+
 ## Important Notes
 
-- **Always use `await` with async methods** like `loadFontAsync`, `getNodeByIdAsync`
-- **Colors use 0-1 range**, not 0-255. Convert with `value / 255`
+- **Use `__figb.f` for raw Plugin API** — in v3.0.0, `__figb.f` replaces direct `figma` global access
+- **Always use `await` with async methods** like `txt`, `richTxt`, `fonts`, `loadImage`, `imageFrame`, `textStyle`, `exportNode`, `exportSvg`
+- **Colors use 0-1 range** in raw API, but `__figb.rgb()` accepts 0-255 and converts
 - **Resize uses `node.resize(w, h)`**, not setting width/height directly
-- **Append to parent** — newly created nodes must be appended: `parent.appendChild(node)`
 - **Font loading is required** before setting text `characters` or `fontName`
-- **SVG insertion** — always use `figma.createNodeFromSvg()` for icons, never try to draw icons manually with shapes
-- **Selection** — set `figma.currentPage.selection = [node]` to select created elements
+- **SVG insertion** — always use `__figb.icon()` for icons, never try to draw icons manually with shapes
+- **`imageFrame` has fallback** — if image URL fails to load, it automatically falls back to a gradient fill instead of crashing

@@ -1,6 +1,6 @@
 {
   "name": "documentation-plugin",
-  "version": "1.6.0",
+  "version": "2.0.0",
   "description": "Documentation management plugin for maintaining architecture docs, feature documentation, visual diagrams using Mermaid, data visualizations and charts using D3.js, and generating professional PowerPoint presentations. Keeps docs up to date, organizes them by architecture and features, and generates documentation for feature branches.",
   "author": {
     "name": "Lukas Kellerstein"

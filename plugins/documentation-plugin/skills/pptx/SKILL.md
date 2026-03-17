@@ -1,28 +1,32 @@
 ---
 name: pptx-presentations
-description: "This skill should be activated when the user asks to make a presentation, slide deck, pitch deck, or anything involving .pptx output. Also triggers when the user says 'make me slides', 'create a deck', 'presentation about X', or mentions PowerPoint. Creates polished PowerPoint (.pptx) presentations from scratch using a hybrid HTML/CSS + PptxGenJS workflow: visual layers are designed in HTML/CSS and screenshotted with Playwright, then used as PPTX slide backgrounds with editable text on top. Activates even for simple 'make a quick 3-slide deck' requests — the skill ensures quality output every time."
+description: "This skill should be activated when the user asks to make a presentation, slide deck, pitch deck, or anything involving .pptx output. Also triggers when the user says 'make me slides', 'create a deck', 'presentation about X', or mentions PowerPoint. Creates polished PowerPoint (.pptx) presentations from scratch using a hybrid HTML/CSS + PptxGenJS workflow: complete slides are designed in HTML/CSS with real text, then text positions are extracted, text is hidden, backgrounds are screenshotted, and PptxGenJS adds editable text at the extracted coordinates. Activates even for simple 'make a quick 3-slide deck' requests — the skill ensures quality output every time."
 ---
 
 # PPTX Presentation Skill
 
-Create professional PowerPoint presentations using a hybrid workflow: **HTML/CSS for visual design** (gradients, shadows, decorative elements) + **PptxGenJS for editable text and native elements** (charts, tables).
+Create professional PowerPoint presentations using a hybrid workflow: **HTML/CSS for complete slide design** (gradients, shadows, decorative elements, layout with real text) + **PptxGenJS for editable text** (coordinates extracted from the HTML layout).
 
 ## Why Hybrid?
 
 PptxGenJS has severe visual limitations — no gradients, no CSS filters, limited typography, manual x/y positioning only. HTML/CSS can produce Canva-level designs but can't create editable PPTX files. The hybrid approach:
 
-1. Design each slide's **visual layer** in HTML/CSS (gradients, decorative shapes, photo overlays, shadows) — **no text**
-2. Screenshot at 1920×1080 with Playwright
-3. Use screenshots as full-bleed PPTX slide backgrounds
-4. Add **editable text** on top with PptxGenJS layout functions (coordinates already defined)
+1. Design each slide **completely** in HTML/CSS — including all text content, using flexbox/grid for layout
+2. Extract text element positions from the DOM via Playwright
+3. Hide text elements (`visibility: hidden` — preserves container sizing)
+4. Screenshot the text-free visual layer at 1920x1080
+5. Use screenshots as full-bleed PPTX slide backgrounds
+6. Add **editable text** on top with PptxGenJS at the extracted coordinates
+
+This solves the core problem of the old approach: containers (cards, columns) are sized **with** the actual text content, so layouts always fit.
 
 ## Workflow Overview
 
 1. **Structure** — Define narrative arc and slide sequence
 2. **Content** — Fill in text, data, images per slide
-3. **Design visual layers** — Write HTML/CSS for each slide's background
-4. **Preview with Playwright** — Screenshot and iterate on visuals
-5. **Generate PPTX** — Screenshot backgrounds + PptxGenJS text on top
+3. **Design complete slides in HTML/CSS** — Write slides with real text, using `data-pptx-*` attributes
+4. **Preview with Playwright** — See the real slides, iterate on visuals
+5. **Extract, hide, screenshot, generate PPTX** — Automated pipeline
 6. **QA** — LibreOffice conversion + structural check
 
 ## Step 1: Setup
@@ -39,7 +43,7 @@ which soffice || echo "LibreOffice not installed — install with: sudo apt inst
 which pdftoppm || echo "pdftoppm not installed — install with: sudo apt install poppler-utils"
 ```
 
-If LibreOffice or poppler-utils are not installed, tell the user they are needed for visual QA and ask if they'd like to install them. If the user declines or installation is not possible, skip visual QA and rely on structural checks (Step 6b).
+If LibreOffice or poppler-utils are not installed, tell the user they are needed for visual QA and ask if they'd like to install them. If the user declines or installation is not possible, skip visual QA and rely on structural checks (Step 6).
 
 ## Step 2: Structure
 
@@ -60,13 +64,13 @@ For each slide in the structure, define the specific information:
 
 1. **Text content** — title, subtitle, bullet points, quotes, data points
 2. **Layout type** — pick from the layout catalog (see [references/layouts.md](references/layouts.md))
-3. **Image plan** — which slides need generated images and at what aspect ratio
+3. **Image plan** — which slides need images and at what aspect ratio. **Prefer sourcing real photos from Unsplash/Pexels/Pixabay first** (use the `image-sourcing` skill); only generate images via AI when no suitable stock photo can be found
 4. **Color palette** — pick a palette matching the topic (see [references/design.md](references/design.md))
 5. **Font pairing** — pick a header + body font combo (see [references/design.md](references/design.md))
 
 Vary slide layouts. Monotonous decks with the same layout repeated are the most common failure. Use at least 3 different layout types across a deck.
 
-**Generate all planned images BEFORE writing any code.** This avoids mid-script interruptions and ensures images are ready when needed.
+**Gather all planned images BEFORE writing any code.** First, try to source real photos from Unsplash/Pexels/Pixabay using the `image-sourcing` skill. Only fall back to AI image generation when no suitable stock photo exists for the topic. This avoids mid-script interruptions and ensures images are ready when needed.
 
 ### Design Quality Target
 
@@ -76,13 +80,41 @@ Aim for Canva-level presentation quality. Read the Premium Design Techniques sec
 - Elevated rounded cards with soft shadows instead of flat rectangles
 - Decorative geometric shapes for visual interest
 - Never more than 2 consecutive plain-background slides
-- Topic-specific AI-generated images, not generic abstractions
+- Topic-specific images — prefer real photos from Unsplash/Pexels/Pixabay; only AI-generate when no suitable stock photo exists
 
-## Step 4: Design Visual Layers in HTML/CSS
+## Step 4: Design Complete Slides in HTML/CSS (with text)
 
-Write a single HTML file with one `<section class="slide">` per slide, each 1920×1080px. The HTML contains **only the visual/decorative layer** — no editable text.
+Write a single HTML file with one `<section class="slide">` per slide, each 1920x1080px. **Include all text content** in the HTML — the layout engine sizes containers around real text.
 
 See [references/html-templates.md](references/html-templates.md) for templates per layout type.
+
+### The `data-pptx-*` Attribute System
+
+Every text element that should become editable in the PPTX gets `data-pptx-*` attributes:
+
+```html
+<h2 data-pptx-text="slide3-title"
+    data-font-size="28"
+    data-font-face="Georgia"
+    data-color="1E2761"
+    data-bold="true"
+    data-align="left">
+  Why AI Training Now?
+</h2>
+```
+
+Required attributes:
+- `data-pptx-text` — unique ID for this text element (used for extraction)
+
+Optional styling attributes (used in PptxGenJS):
+- `data-font-size` — font size in points
+- `data-font-face` — font family name
+- `data-color` — hex color WITHOUT `#` prefix (e.g., `"FFFFFF"`)
+- `data-bold` — `"true"` or `"false"`
+- `data-italic` — `"true"` or `"false"`
+- `data-align` — `"left"`, `"center"`, or `"right"`
+- `data-valign` — `"top"`, `"middle"`, or `"bottom"`
+- `data-shrink` — `"true"` to enable auto-shrink (safety net for overflow)
 
 ### HTML Template Structure
 
@@ -100,37 +132,37 @@ See [references/html-templates.md](references/html-templates.md) for templates p
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #000; }
+    body { background: #000; font-family: sans-serif; }
 
     .slide {
       width: 1920px;
       height: 1080px;
       position: relative;
       overflow: hidden;
-      margin-bottom: 20px; /* gap between slides for preview */
+      margin-bottom: 20px;
     }
   </style>
 </head>
 <body>
   <section class="slide" id="slide-1">
-    <!-- Visual layer only: gradients, shapes, photo overlays -->
+    <!-- Full slide content: visuals + text with data-pptx-* attributes -->
   </section>
 
   <section class="slide" id="slide-2">
     <!-- ... -->
   </section>
-
-  <!-- One section per slide -->
 </body>
 </html>
 ```
 
 ### Key Rules
 
-- **No text in the HTML** — text goes in PptxGenJS (editable in PowerPoint)
-- Use **CSS custom properties** for the color palette so the whole deck's look can be tuned by changing a few variables
-- Each `<section class="slide">` is exactly 1920×1080px
-- Use absolute positioning within each slide section for decorative elements
+- **Text IS included in the HTML** — this is what makes containers size correctly
+- Every text element gets `data-pptx-text` + styling attributes
+- Use **CSS flexbox/grid** to auto-size containers around text — avoid hardcoded pixel heights for content areas
+- Use **CSS custom properties** for the color palette
+- Each `<section class="slide">` is exactly 1920x1080px
+- Style text in CSS to visually match the PptxGenJS output (same font, size, color)
 - Load images via `<img>` tags or `background-image` CSS
 
 ### When to Use HTML Visual Layer vs PptxGenJS-Only
@@ -149,7 +181,7 @@ See [references/html-templates.md](references/html-templates.md) for templates p
 
 ## Step 5: Preview with Playwright
 
-Use the Playwright MCP to preview the HTML file. This is the fast iteration loop — no LibreOffice or PPTX generation needed.
+Use the Playwright MCP to preview the HTML file. This is the fast iteration loop — you see the **complete slides** with real text.
 
 ### Playwright Commands for Slide Preview
 
@@ -160,112 +192,186 @@ Use the Playwright MCP to preview the HTML file. This is the fast iteration loop
 ```
 
 **Important settings:**
-- `deviceScaleFactor: 1` — the HTML is already at 1920×1080, no scaling needed
+- `deviceScaleFactor: 1` — the HTML is already at 1920x1080, no scaling needed
 - `width: 1920, height: 1080` — viewport matches slide dimensions
 
-To preview individual slides, scroll to each `<section>` or use fragment navigation (`#slide-1`).
-
 Visually inspect each slide. Look for:
+- Text fits within its containers (cards, columns)
+- Card heights adapt to content — no overflow or excessive whitespace
 - Gradient colors and direction look good
 - Decorative shapes are positioned correctly
 - Photo overlays have correct opacity
-- Card shadows are visible
 - Overall visual hierarchy is clear
 
-Iterate on HTML/CSS until the visual layer looks professional. This loop is fast — just edit HTML, reload, screenshot.
+Iterate on HTML/CSS until slides look professional. This loop is fast — edit HTML, reload, screenshot.
 
-## Step 6: Generate PPTX
+## Step 6: Extract, Hide, Screenshot, Generate PPTX
 
-### 6a: Screenshot Each Slide's Visual Layer
+This is the automated pipeline that turns the HTML presentation into an editable PPTX.
 
-For each slide that uses an HTML visual layer, screenshot it as a PNG:
+### 6a: Extract Text Positions from the DOM
+
+Use Playwright's `browser_evaluate` to extract bounding rectangles for every `[data-pptx-text]` element:
 
 ```javascript
-const fs = require("fs");
+// Run via mcp__docs-playwright__browser_evaluate
+const slides = document.querySelectorAll('.slide');
+const allSlideData = [];
 
-// After Playwright screenshots each slide section to individual PNGs:
-// slide-1-bg.png, slide-2-bg.png, etc.
-// Read them as base64 for use in PptxGenJS:
-function loadSlideBackground(path) {
-  const buf = fs.readFileSync(path);
-  return "image/png;base64," + buf.toString("base64");
-}
+slides.forEach((slide, slideIndex) => {
+  const slideRect = slide.getBoundingClientRect();
+  const textElements = slide.querySelectorAll('[data-pptx-text]');
+
+  const texts = Array.from(textElements).map(el => {
+    const rect = el.getBoundingClientRect();
+    return {
+      id: el.dataset.pptxText,
+      text: el.innerText,
+      // Convert px to inches (1920px = 10 inches = 192px/inch)
+      x: Math.round(((rect.left - slideRect.left) / 192) * 100) / 100,
+      y: Math.round(((rect.top - slideRect.top) / 192) * 100) / 100,
+      w: Math.round((rect.width / 192) * 100) / 100,
+      h: Math.round(((rect.height / 192) * 1.1) * 100) / 100, // +10% height buffer
+      // PptxGenJS styling from data attributes
+      fontSize: parseInt(el.dataset.fontSize) || 14,
+      fontFace: el.dataset.fontFace || "Calibri",
+      color: el.dataset.color || "333333",
+      bold: el.dataset.bold === "true",
+      italic: el.dataset.italic === "true",
+      align: el.dataset.align || "left",
+      valign: el.dataset.valign || "top",
+      shrinkText: el.dataset.shrink === "true"
+    };
+  });
+
+  allSlideData.push({ slideIndex, texts });
+});
+
+JSON.stringify(allSlideData);
 ```
 
-To screenshot individual slide sections from the HTML file, use Playwright to:
-1. Navigate to the HTML file
-2. For each slide, evaluate JS to scroll to / isolate that section
-3. Screenshot at 1920×1080
+**Key details:**
+- The `* 1.1` on height adds a 10% buffer to prevent text overflow in PowerPoint (browser and PowerPoint render text slightly differently)
+- Coordinates are rounded to 2 decimal places for cleaner PptxGenJS values
 
-Alternatively, write separate HTML files per slide, each with a single `<section>`.
+### 6b: Hide Text Elements
 
-### 6b: Generate the PPTX
+After extraction, hide all text so the screenshot captures only the visual layer:
+
+```javascript
+// Run via mcp__docs-playwright__browser_evaluate
+document.querySelectorAll('[data-pptx-text]').forEach(el => {
+  el.style.visibility = 'hidden';
+});
+'done';
+```
+
+**Important:** Use `visibility: hidden`, NOT `display: none`. `visibility: hidden` keeps the element's space in the layout, so containers (cards, columns) retain their correct dimensions.
+
+### 6c: Screenshot Each Slide's Visual Layer
+
+Screenshot each slide section as a PNG at 1920x1080:
+
+```
+1. mcp__docs-playwright__browser_resize → width: 1920, height: 1080, deviceScaleFactor: 1
+2. For each slide:
+   a. mcp__docs-playwright__browser_evaluate → document.querySelector('#slide-N').scrollIntoView()
+   b. mcp__docs-playwright__browser_take_screenshot → save as slide-N-bg.png
+```
+
+### 6d: Generate the PPTX
 
 Read [references/pptxgenjs-api.md](references/pptxgenjs-api.md) for the full PptxGenJS API reference.
 
-Write a Node.js script that generates the .pptx:
+Write a Node.js script that generates the .pptx using the extracted metadata:
 
 ```javascript
 const pptxgen = require("pptxgenjs");
 const fs = require("fs");
 
+// Load extracted metadata (from step 6a)
+const slideData = JSON.parse(fs.readFileSync("slide-metadata.json", "utf-8"));
+
 async function main() {
   const pres = new pptxgen();
-  pres.layout = "LAYOUT_16x9"; // 10" × 5.625"
+  pres.layout = "LAYOUT_16x9"; // 10" x 5.625"
   pres.author = "Claude";
   pres.title = "Presentation Title";
 
-  // --- Slide 1: Title (HTML visual background) ---
-  const slide1 = pres.addSlide();
-  const bg1 = fs.readFileSync("slide-1-bg.png");
-  slide1.background = { data: "image/png;base64," + bg1.toString("base64") };
-  // Add editable text on top — coordinates from layouts.md
-  slide1.addText("Title Here", {
-    x: 0.8, y: 1.5, w: 8.4, h: 1.5,
-    fontSize: 44, fontFace: "Georgia", color: "FFFFFF",
-    bold: true, align: "left"
-  });
+  for (const { slideIndex, texts } of slideData) {
+    const slide = pres.addSlide();
 
-  // --- Slide 2: Content (PptxGenJS-only, simple background) ---
-  const slide2 = pres.addSlide();
-  slide2.background = { color: "FFFFFF" };
-  // ... add text, shapes as usual ...
+    // Load HTML-generated background
+    const bgPath = `slide-${slideIndex + 1}-bg.png`;
+    if (fs.existsSync(bgPath)) {
+      const bg = fs.readFileSync(bgPath);
+      slide.background = { data: "image/png;base64," + bg.toString("base64") };
+    }
 
-  // --- Slide 3: Chart (PptxGenJS-only, native chart) ---
-  const slide3 = pres.addSlide();
-  slide3.background = { color: "FFFFFF" };
-  // ... slide.addChart(...) ...
+    // Add editable text at extracted coordinates
+    for (const t of texts) {
+      const opts = {
+        x: t.x, y: t.y, w: t.w, h: t.h,
+        fontSize: t.fontSize,
+        fontFace: t.fontFace,
+        color: t.color,
+        bold: t.bold,
+        italic: t.italic,
+        align: t.align,
+        valign: t.valign,
+        margin: 0
+      };
 
-  await pres.writeFile({ fileName: "/path/to/output.pptx" });
+      if (t.shrinkText) {
+        opts.shrinkText = true;
+      }
+
+      slide.addText(t.text, opts);
+    }
+  }
+
+  await pres.writeFile({ fileName: "output.pptx" });
   console.log("Done: output.pptx");
 }
 
 main().catch(console.error);
 ```
 
-### Critical Rules (violating these corrupts the file)
+### 6e: Save HTML Presentation (dual output)
+
+Save the complete HTML file (with text visible) to an `html-presentation/` folder alongside the PPTX. This gives users two outputs:
+- **`html-presentation/`** — pixel-perfect preview, viewable in any browser
+- **`output.pptx`** — editable in PowerPoint
+
+```bash
+mkdir -p html-presentation
+cp slides.html html-presentation/index.html
+cp *.jpg *.png html-presentation/ 2>/dev/null || true
+```
+
+### Critical Rules (violating these corrupts the PPTX file)
 
 - NEVER use `#` prefix on hex colors — `"FF0000"` not `"#FF0000"`
 - NEVER encode opacity in hex strings — use the `opacity` property instead
 - NEVER reuse option objects across multiple `addShape`/`addText` calls — PptxGenJS mutates them in place. Use factory functions instead.
-- Use `bullet: true`, never unicode `•` characters
+- Use `bullet: true`, never unicode bullet characters
 - Use `breakLine: true` between text array items
 
 ## Image Sizing Rules
 
-When generating images (via AI image generation or any other source) for use in the presentation, **always match the image aspect ratio to its placement dimensions on the slide**. Mismatched aspect ratios cause distortion.
+When using images (sourced or AI-generated) in the presentation, **always match the image aspect ratio to its placement dimensions on the slide**. Mismatched aspect ratios cause distortion.
 
 ### Common placement sizes and their aspect ratios
 
-| Placement | w × h (inches) | Aspect Ratio | Generate At |
+| Placement | w x h (inches) | Aspect Ratio | Generate At |
 |-----------|----------------|--------------|-------------|
-| Full-bleed background | 10 × 5.625 | 16:9 | 1920×1080 or 16:9 |
-| HTML visual layer backgrounds | 10 × 5.625 | 16:9 | Always 1920×1080 |
-| Half-slide (left/right column) | 4.3 × 3.5 | ~1.23:1 | 1230×1000 or 5:4 |
-| Half-slide (tall) | 5 × 5.625 | ~0.89:1 | 890×1000 or 9:10 |
-| Quarter block (2×2 grid) | 4.3 × 1.8 | ~2.4:1 | 2400×1000 or 12:5 |
-| Hero image (wide strip) | 9 × 3.0 | 3:1 | 2700×900 or 3:1 |
-| Square icon/photo | 2 × 2 | 1:1 | 1:1 |
+| Full-bleed background | 10 x 5.625 | 16:9 | 1920x1080 or 16:9 |
+| HTML visual layer backgrounds | 10 x 5.625 | 16:9 | Always 1920x1080 |
+| Half-slide (left/right column) | 4.3 x 3.5 | ~1.23:1 | 1230x1000 or 5:4 |
+| Half-slide (tall) | 5 x 5.625 | ~0.89:1 | 890x1000 or 9:10 |
+| Quarter block (2x2 grid) | 4.3 x 1.8 | ~2.4:1 | 2400x1000 or 12:5 |
+| Hero image (wide strip) | 9 x 3.0 | 3:1 | 2700x900 or 3:1 |
+| Square icon/photo | 2 x 2 | 1:1 | 1:1 |
 
 ### Rules
 
@@ -273,7 +379,7 @@ When generating images (via AI image generation or any other source) for use in 
 - **Use `sizing: { type: "cover", w: W, h: H }`** on every `addImage` call so images fill their box without distortion
 - If the exact ratio doesn't match a standard option, pick the closest standard aspect ratio (1:1, 4:3, 3:2, 16:9, 9:16, etc.)
 - For AI-generated images, include the target aspect ratio in the generation prompt/parameters
-- **HTML background screenshots are always 1920×1080** — no aspect ratio calculation needed
+- **HTML background screenshots are always 1920x1080** — no aspect ratio calculation needed
 
 ## Step 7: QA
 
@@ -282,7 +388,7 @@ When generating images (via AI image generation or any other source) for use in 
 After generating the .pptx, convert to images and inspect:
 
 ```bash
-# Convert PPTX → PDF → JPG
+# Convert PPTX -> PDF -> JPG
 python ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/soffice_convert.py output.pptx output.pdf
 rm -f slide-*.jpg
 pdftoppm -jpeg -r 150 output.pdf slide
@@ -290,17 +396,17 @@ ls -1 "$PWD"/slide-*.jpg
 ```
 
 Then visually inspect each slide image. Look for:
-- Overlapping text or shapes
-- Text cut off at edges or overflowing boxes
+- Text overflowing its extracted box (if so, increase the height buffer in step 6a)
+- Text cut off at edges
 - Low contrast (light text on light background, dark on dark)
 - Uneven spacing or misaligned elements
 - Elements too close to slide edges (< 0.5" margins)
 - Inconsistent styling between slides
 - HTML background and PptxGenJS text are properly aligned
 
-**Final visual fidelity check:** Compare the Playwright HTML preview screenshots with the LibreOffice-rendered PPTX slides to verify the backgrounds look correct after PPTX embedding.
+**Final visual fidelity check:** Compare the Playwright HTML preview (with text) against the LibreOffice-rendered PPTX slides to verify the text positions match.
 
-If any issues are found: fix the generation script, re-run, re-convert, re-inspect. Repeat until clean.
+If any issues are found: fix the HTML or the generation script, re-run, re-convert, re-inspect. Repeat until clean.
 
 ### 7b: Structural QA (Always Do This)
 
@@ -326,7 +432,7 @@ function validateNoOverlap(elements) {
       const overlapX = a.x < b.x + b.w && a.x + a.w > b.x;
       const overlapY = a.y < b.y + b.h && a.y + a.h > b.y;
       if (overlapX && overlapY) {
-        console.warn(`Overlap: "${a.name}" and "${b.name}"`);
+        console.warn(`Overlap: "${a.id}" and "${b.id}"`);
       }
     }
   }
@@ -334,10 +440,10 @@ function validateNoOverlap(elements) {
 
 function validateMargins(elements, slideW = 10, slideH = 5.625, margin = 0.5) {
   for (const el of elements) {
-    if (el.x < margin) console.warn(`"${el.name}" too close to left edge`);
-    if (el.y < margin) console.warn(`"${el.name}" too close to top edge`);
-    if (el.x + el.w > slideW - margin) console.warn(`"${el.name}" too close to right edge`);
-    if (el.y + el.h > slideH - margin) console.warn(`"${el.name}" too close to bottom edge`);
+    if (el.x < margin) console.warn(`"${el.id}" too close to left edge`);
+    if (el.y < margin) console.warn(`"${el.id}" too close to top edge`);
+    if (el.x + el.w > slideW - margin) console.warn(`"${el.id}" too close to right edge`);
+    if (el.y + el.h > slideH - margin) console.warn(`"${el.id}" too close to bottom edge`);
   }
 }
 ```
@@ -358,7 +464,7 @@ python ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/soffice_convert.py input.pptx o
 |------|-------------|
 | [references/pptxgenjs-api.md](references/pptxgenjs-api.md) | Always — full API reference for PptxGenJS |
 | [references/design.md](references/design.md) | Always — color palettes, fonts, typography, spacing, CSS techniques |
-| [references/layouts.md](references/layouts.md) | Always — slide layout catalog with code examples |
-| [references/html-templates.md](references/html-templates.md) | Always — HTML/CSS templates for visual layers |
+| [references/layouts.md](references/layouts.md) | Always — slide layout catalog with HTML templates and PptxGenJS-only fallbacks |
+| [references/html-templates.md](references/html-templates.md) | Always — HTML/CSS templates with `data-pptx-*` text attributes, shared CSS foundation |
 
 Read all four reference files before generating any presentation.

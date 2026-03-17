@@ -116,7 +116,7 @@ The hybrid HTML/CSS + PptxGenJS workflow makes most of these techniques straight
 
 ### Full-Bleed Photo Backgrounds with Dark Overlay
 
-The single most impactful technique. Use a relevant AI-generated or stock photo as a full-bleed background, then overlay a semi-transparent dark layer so text remains readable.
+The single most impactful technique. Use a relevant stock photo (sourced from Unsplash/Pexels/Pixabay) as a full-bleed background, then overlay a semi-transparent dark layer so text remains readable.
 
 **In the HTML visual layer:**
 ```css
@@ -243,8 +243,9 @@ Key CSS properties for slide design in the HTML visual layer:
 | `opacity` / `rgba()` | Transparent overlays and decorative shapes |
 | `background-size: cover` | Full-bleed photo backgrounds |
 | `transform: rotate()` | Diagonal accent elements |
-| `CSS Grid` / `Flexbox` | Precise layout of decorative elements |
+| `CSS Grid` / `Flexbox` | Layout of cards, columns, and content areas — auto-sizes around text |
 | CSS custom properties (`--var`) | Palette theming across all slides |
+| `data-pptx-*` attributes | Mark text elements for extraction into editable PptxGenJS text |
 
 ### Visual Rhythm Across the Deck
 
@@ -269,11 +270,11 @@ A Canva-quality deck follows a deliberate visual rhythm:
 3. **Weak size contrast** — if your title and body look similar in size, increase the title.
 4. **Defaulting to blue** — choose colors that reflect the specific topic.
 5. **Inconsistent spacing** — pick a standard gap and stick with it.
-6. **Text-only slides** — every slide should have a visual element (shape, icon, chart, or image). **Use AI-generated images when no other visual is available.**
+6. **Text-only slides** — every slide should have a visual element (shape, icon, chart, or image). **Source real photos from Unsplash/Pexels/Pixabay first; only AI-generate images when no suitable stock photo is available.**
 7. **Too many bullet points** — if a slide has more than 5 bullets, split it into two slides or use a different layout.
 8. **Low-contrast text or icons** — test that text is legible against its background. Light gray on cream is unreadable.
 9. **Accent lines under titles** — these are a hallmark of AI-generated slides. Use white space or background color changes instead.
 10. **All slides with white backgrounds** — use the dark/light sandwich structure for visual rhythm.
 11. **Flat, shadowless cards** — use CSS `box-shadow` in the HTML visual layer for depth.
-12. **No photography** — professional decks use images. Generate topic-relevant images via AI for at least title, section divider, and closing slides.
-13. **Generic stock imagery** — when generating images, make them specific to the topic. "Abstract blue wave" is lazy. "Aerial view of solar farm at sunset" is specific and impactful.
+12. **No photography** — professional decks use images. Source topic-relevant photos from Unsplash/Pexels/Pixabay for at least title, section divider, and closing slides. Only AI-generate when no suitable stock photo exists.
+13. **Generic imagery** — whether sourced or generated, make images specific to the topic. "Abstract blue wave" is lazy. "Aerial view of solar farm at sunset" is specific and impactful.
