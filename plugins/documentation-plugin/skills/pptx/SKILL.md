@@ -46,29 +46,37 @@ Example:
 
 This step is about the **skeleton** — no content details yet.
 
-### Step 2: Content + Image Plan
+### Step 2: Select a Design Template
+
+Before choosing colors and fonts individually, **select a design template** from [references/templates.md](references/templates.md) that matches the presentation's purpose. The template provides a complete, pre-tested design system: palette, fonts, motif, rhythm, and background strategy.
+
+Available templates: Pitch Deck, Corporate Quarterly, Tech/Product, Educational/Workshop, Creative/Portfolio, Minimalist Executive, Bold Marketing.
+
+### Step 3: Content + Image Plan
 
 For each slide in the structure, define:
 
 1. **Text content** — title, subtitle, bullet points, quotes, data points
 2. **Layout type** — pick from the layout catalog (see [references/layouts.md](references/layouts.md))
 3. **Image plan** — which slides need images and at what aspect ratio (see [Image Sizing Rules](#image-sizing-rules))
-4. **Color palette** — pick a palette matching the topic (see [references/design.md](references/design.md))
-5. **Font pairing** — pick a header + body font combo (see [references/design.md](references/design.md))
+4. **Colors + Fonts** — use the design template's recommendations, or customize from [references/design.md](references/design.md)
 
 Vary slide layouts. Monotonous decks with the same layout repeated are the most common failure. Use at least 3 different layout types across a deck.
 
 ### Design Quality Target
 
-Read the Premium Design Techniques section in [references/design.md](references/design.md). Key requirements:
+Read [references/design.md](references/design.md) for the full design system. Key requirements:
+- **Follow your chosen design template** from [references/templates.md](references/templates.md) — don't pick colors/fonts/layouts independently
 - At least 2-3 slides with full-bleed photo backgrounds + dark overlay
-- Bold solid color or gradient image backgrounds on non-photo slides
-- Elevated rounded cards with soft shadows (`ROUNDED_RECTANGLE` + `shadow`)
-- Decorative shapes (OVALs, RECTANGLEs) for visual interest
+- **Pick ONE visual motif** and apply it consistently (color-block headers, side accent strip, generous whitespace, etc.)
+- **Never combine multiple motifs** — no decorative circles AND accent bars AND colored headers on the same deck
+- Elevated rounded cards with varied shadow intensity (stronger for primary, subtle for secondary)
 - Never more than 2 consecutive plain-background slides
+- **Dramatic size contrast** — titles at 36-48pt, stat numbers at 64-96pt, not timid 28pt and 48pt
 - Topic-specific images — prefer real photos from Unsplash; only AI-generate when no suitable stock photo exists
+- **Use `charSpacing: 4-8` on uppercase headers** for a premium, editorial feel
 
-### Step 3: Gather Images
+### Step 4: Gather Images
 
 **Gather all planned images BEFORE writing any code.** This avoids mid-script interruptions.
 
@@ -80,7 +88,7 @@ For each image in the plan:
 
 Always match the image aspect ratio to its placement dimensions. See [Image Sizing Rules](#image-sizing-rules).
 
-### Step 4: Generate PPTX
+### Step 5: Generate PPTX
 
 Read [references/pptxgenjs-api.md](references/pptxgenjs-api.md) for the full PptxGenJS API reference and [references/layouts.md](references/layouts.md) for slide layout implementations.
 
@@ -132,7 +140,7 @@ main().catch(console.error);
 - Use `bullet: true`, never unicode bullet characters
 - Use `breakLine: true` between text array items
 
-### Step 5: QA
+### Step 6: QA
 
 After generating the .pptx, verify it with a rigorous QA process.
 
@@ -159,7 +167,7 @@ Then **launch a subagent** to inspect the generated slide images. The subagent s
 Validate the PPTX against OOXML XSD schemas to catch XML corruption:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/validate.py output.pptx -v
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/office/validate.py output.pptx -v
 ```
 
 If validation fails, use `--auto-repair` to fix common issues automatically, or inspect the errors and fix the generation script.
@@ -189,7 +197,7 @@ python -m markitdown output.pptx | grep -iE "(lorem|ipsum|placeholder|todo|tbd|i
 
 If any matches are found, fix the content and regenerate.
 
-### Step 6: Fix & Re-verify
+### Step 7: Fix & Re-verify
 
 If QA reveals issues:
 1. Fix the generation script
@@ -239,17 +247,21 @@ When using images (sourced or AI-generated) in the presentation, **always match 
 
 ## Design Ideas
 
+See [references/templates.md](references/templates.md) for **7 topic-aware design templates** — complete presets for palette, fonts, motif, and rhythm.
+
 See [references/design.md](references/design.md) for:
-- Color palettes (14 curated palettes for different themes)
-- Font pairings (10 header + body combinations)
-- Typography scale and rules
-- Spacing guidelines
-- Premium design techniques (photo backgrounds, elevated cards, decorative shapes, visual rhythm)
+- Color palettes (22 curated palettes including modern dark themes)
+- Dark theme design system with contrast rules
+- Font pairings organized by personality (25+ options)
+- Typography as design element (hero numbers, charSpacing, impact words)
+- Visual motif system (pick ONE per deck)
+- Depth and layering techniques
+- Deck rhythm principles
 - Common design mistakes to avoid
 
 ## QA
 
-See [Step 5](#step-5-qa) above for the full QA process. Key points:
+See [Step 6](#step-6-qa) above for the full QA process. Key points:
 
 - **Always generate thumbnails** via `thumbnail.py` and visually inspect
 - **Use a subagent** for visual inspection — it can read the slide images and check for issues
@@ -259,13 +271,20 @@ See [Step 5](#step-5-qa) above for the full QA process. Key points:
 
 ## Scripts
 
+### Shared Office Scripts
+
 | Script | Purpose | Usage |
 |--------|---------|-------|
-| `soffice_convert.py` | Convert PPTX → PDF via LibreOffice | `python3 ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/soffice_convert.py input.pptx output.pdf` |
+| `soffice.py` | LibreOffice integration (convert, env) | `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/office/soffice.py input.pptx output.pdf` |
+| `validate.py` | XSD schema + structural validation | `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/office/validate.py input.pptx [-v] [--auto-repair]` |
+| `unpack.py` | Extract PPTX ZIP, pretty-print XML | `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/office/unpack.py input.pptx [output_dir]` |
+| `pack.py` | Repack directory into PPTX ZIP | `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/office/pack.py unpacked_dir [output.pptx]` |
+
+### PPTX-Specific Scripts
+
+| Script | Purpose | Usage |
+|--------|---------|-------|
 | `thumbnail.py` | PPTX → labeled slide grid image | `python3 ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/thumbnail.py input.pptx [output_prefix] [--cols N]` |
-| `validate.py` | XSD schema + structural validation | `python3 ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/validate.py input.pptx [-v] [--auto-repair]` |
-| `unpack.py` | Extract PPTX ZIP, pretty-print XML | `python3 ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/unpack.py input.pptx [output_dir]` |
-| `pack.py` | Repack directory into PPTX ZIP | `python3 ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/pack.py unpacked_dir [output.pptx]` |
 | `add_slide.py` | Duplicate a slide in unpacked PPTX | `python3 ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/add_slide.py unpacked_dir slide_number` |
 | `clean.py` | Remove unreferenced slides/media | `python3 ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/clean.py unpacked_dir` |
 
@@ -273,9 +292,10 @@ See [Step 5](#step-5-qa) above for the full QA process. Key points:
 
 | File | When to Read |
 |------|-------------|
-| [references/pptxgenjs-api.md](references/pptxgenjs-api.md) | Always — full API reference for PptxGenJS |
-| [references/design.md](references/design.md) | Always — color palettes, fonts, typography, spacing, design techniques |
-| [references/layouts.md](references/layouts.md) | Always — slide layout catalog with PptxGenJS implementations and media-plugin integration |
+| [references/templates.md](references/templates.md) | Always — 7 topic-aware design templates (palette, fonts, motif, rhythm) |
+| [references/design.md](references/design.md) | Always — color palettes, dark themes, fonts, typography, motifs, depth techniques |
+| [references/layouts.md](references/layouts.md) | Always — 14 slide layouts with PptxGenJS implementations |
+| [references/pptxgenjs-api.md](references/pptxgenjs-api.md) | Always — full PptxGenJS API reference |
 | [editing.md](editing.md) | When editing existing PPTX templates |
 
-Read the three reference files before generating any presentation.
+Read templates.md first (to pick a design system), then design.md and layouts.md before generating any presentation.
