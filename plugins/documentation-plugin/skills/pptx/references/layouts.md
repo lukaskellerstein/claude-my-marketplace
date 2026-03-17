@@ -1,10 +1,8 @@
 # Slide Layout Catalog
 
-Each layout below includes a description, when to use it, and guidance on implementation. Mix at least 3 different layouts in every deck.
+Each layout below includes a description, when to use it, and a complete PptxGenJS implementation. Mix at least 3 different layouts in every deck.
 
 All examples assume `LAYOUT_16x9` (10" x 5.625").
-
-**Hybrid workflow:** All layouts are designed as complete HTML slides with text (using `data-pptx-*` attributes). Text positions are extracted automatically, backgrounds are screenshotted, and PptxGenJS places editable text at the extracted coordinates. See [html-templates.md](html-templates.md) for HTML/CSS templates. Some layouts (charts, tables, simple comparisons) work better as PptxGenJS-only.
 
 ---
 
@@ -14,13 +12,7 @@ Full-bleed photo background with dark overlay and large white text. This is the 
 
 **When to use:** Opening slide, section dividers, closing slide.
 
-**HTML template:** See [html-templates.md](html-templates.md) § Title Slide.
-
-**Image sizing:** Background photo at **16:9** (1920x1080). Make it specific to the presentation topic.
-
-### PptxGenJS-only fallback
-
-Use when you need a quick title without the HTML pipeline:
+**Image:** Source a **16:9** (1920x1080) background photo via the `image-sourcing` skill. Make it specific to the presentation topic.
 
 ```javascript
 function addTitleSlide(pres, { title, subtitle, bgImageData, primary, accent }) {
@@ -73,11 +65,7 @@ Photo fills one half edge-to-edge, content on the other half.
 
 **When to use:** Explaining a concept alongside an illustration, before/after comparisons, feature descriptions.
 
-**HTML template:** See [html-templates.md](html-templates.md) § Split-Image Slide. Uses CSS Grid for the split.
-
-**Image sizing:** Generate the image at **9:16 or 1:1** (not 16:9!) — it fills a tall, narrow space.
-
-### PptxGenJS-only fallback
+**Image:** Source a **9:10 or 1:1** photo via the `image-sourcing` skill — it fills a tall, narrow space.
 
 ```javascript
 function addSplitImageSlide(pres, { title, bodyText, imageData, imageSide, primary, accent }) {
@@ -118,13 +106,9 @@ function addSplitImageSlide(pres, { title, bodyText, imageData, imageSide, prima
 
 ## 3. Stat Callout Cards
 
-2-4 large numbers in elevated rounded cards. Cards auto-size to content in the HTML template.
+2-4 large numbers in elevated rounded cards with shadows.
 
 **When to use:** KPIs, results, metrics, achievements, data highlights.
-
-**HTML template:** See [html-templates.md](html-templates.md) § Stat Callout Cards. Uses flexbox for equal card sizing.
-
-### PptxGenJS-only fallback
 
 ```javascript
 function addStatCardsSlide(pres, { title, stats, primary, secondary, accent }) {
@@ -185,13 +169,9 @@ function addStatCardsSlide(pres, { title, stats, primary, secondary, accent }) {
 
 ## 4. Content Grid (2x2)
 
-Four content blocks in a 2x2 grid with elevated card styling.
+Four content blocks in a 2x2 grid with card styling.
 
 **When to use:** Comparing 4 options, pillars of a strategy, categories, quadrants.
-
-**HTML template:** See [html-templates.md](html-templates.md) § Content Grid. Uses CSS Grid for auto-sizing.
-
-### PptxGenJS-only fallback
 
 ```javascript
 function addContentGridSlide(pres, { title, blocks, primary, secondary }) {
@@ -243,10 +223,6 @@ function addContentGridSlide(pres, { title, blocks, primary, secondary }) {
 
 **When to use:** Feature lists, service offerings, key points, process steps.
 
-**HTML template:** See [html-templates.md](html-templates.md) § Icon + Text Rows. Uses flexbox for row auto-sizing.
-
-### PptxGenJS-only fallback
-
 ```javascript
 async function addIconRowsSlide(pres, { title, items, primary, accent }) {
   const slide = pres.addSlide();
@@ -281,7 +257,7 @@ async function addIconRowsSlide(pres, { title, items, primary, accent }) {
 
 ---
 
-## 6. Timeline / Process Flow — PptxGenJS-only
+## 6. Timeline / Process Flow
 
 Horizontal numbered steps connected by a line. Shows progression or workflow.
 
@@ -336,7 +312,7 @@ function addTimelineSlide(pres, { title, steps, primary, accent }) {
 
 ---
 
-## 7. Comparison (Side by Side) — PptxGenJS-only
+## 7. Comparison (Side by Side)
 
 Two columns comparing options — before/after, pros/cons, old/new.
 
@@ -405,11 +381,7 @@ Large quote with attribution over a full-bleed photo.
 
 **When to use:** Customer quotes, expert opinions, mission statements.
 
-**HTML template:** See [html-templates.md](html-templates.md) § Quote / Testimonial.
-
-**Image sizing:** Background photo at **16:9** (1920x1080). Atmospheric, moody imagery.
-
-### PptxGenJS-only fallback
+**Image:** Source a **16:9** (1920x1080) atmospheric, moody photo via the `image-sourcing` skill.
 
 ```javascript
 function addQuoteSlide(pres, { quote, author, role, bgImageData, primary, accent }) {
@@ -454,7 +426,7 @@ function addQuoteSlide(pres, { quote, author, role, bgImageData, primary, accent
 
 ---
 
-## 9. Chart Slide — PptxGenJS-only
+## 9. Chart Slide
 
 A chart (bar, line, pie) with a title. **Always use native PptxGenJS charts** — they remain editable in PowerPoint.
 
@@ -493,15 +465,13 @@ function addChartSlide(pres, { title, annotation, chartType, chartData, chartOpt
 
 ---
 
-## 10. Closing Slide (Gradient + CTA)
+## 10. Closing Slide (Photo/Solid + CTA)
 
-Full-bleed gradient or photo with centered call-to-action. Mirrors the title slide.
+Full-bleed photo or solid color with centered call-to-action. Mirrors the title slide.
 
 **When to use:** Last slide, next steps, contact information, thank you.
 
-**HTML template:** See [html-templates.md](html-templates.md) § Closing Slide.
-
-### PptxGenJS-only fallback
+**Image:** Reuse the title photo or source a new **16:9** photo via the `image-sourcing` skill.
 
 ```javascript
 function addClosingSlide(pres, { headline, subtext, contactInfo, bgImageData, primary, accent }) {
@@ -557,21 +527,109 @@ function addClosingSlide(pres, { headline, subtext, contactInfo, bgImageData, pr
 
 ---
 
+## 11. Content + Dark Overlay Cards
+
+Photo background with dark overlay and elevated rounded cards containing content. Great for "why" or "value proposition" slides.
+
+**When to use:** Value propositions, key reasons, feature highlights over a visual background.
+
+**Image:** Source a **16:9** (1920x1080) photo relevant to the topic via the `image-sourcing` skill.
+
+```javascript
+function addOverlayCardsSlide(pres, { title, subtitle, cards, bgImageData, primary, accent }) {
+  const slide = pres.addSlide();
+
+  if (bgImageData) {
+    slide.background = { data: bgImageData };
+  } else {
+    slide.background = { color: primary };
+  }
+
+  // Dark overlay
+  slide.addShape(pres.shapes.RECTANGLE, {
+    x: 0, y: 0, w: 10, h: 5.625,
+    fill: { color: "000000", transparency: 45 }
+  });
+
+  // Title
+  slide.addText(title, {
+    x: 0.5, y: 0.3, w: 9, h: 0.7,
+    fontSize: 32, fontFace: "Georgia", color: "FFFFFF",
+    bold: true, margin: 0
+  });
+
+  // Subtitle
+  if (subtitle) {
+    slide.addText(subtitle, {
+      x: 0.5, y: 1.0, w: 7, h: 0.5,
+      fontSize: 15, fontFace: "Calibri", color: "EEEEEE",
+      margin: 0
+    });
+  }
+
+  // Cards
+  const count = cards.length;
+  const cardW = (9 - (count - 1) * 0.3) / count;
+  const startX = 0.5;
+  const cardY = 1.8;
+  const cardH = 3.3;
+
+  for (let i = 0; i < count; i++) {
+    const x = startX + i * (cardW + 0.3);
+
+    // Semi-transparent card background
+    const makeCardStyle = () => ({
+      fill: { color: "FFFFFF", transparency: 80 },
+      rectRadius: 0.15,
+      shadow: { type: "outer", color: "000000", blur: 6, offset: 2, angle: 135, opacity: 0.2 }
+    });
+    slide.addShape(pres.shapes.ROUNDED_RECTANGLE, {
+      x, y: cardY, w: cardW, h: cardH,
+      ...makeCardStyle()
+    });
+
+    // Icon circle
+    slide.addShape(pres.shapes.OVAL, {
+      x: x + 0.3, y: cardY + 0.3, w: 0.5, h: 0.5,
+      fill: { color: accent, transparency: 20 }
+    });
+
+    // Card title
+    slide.addText(cards[i].title, {
+      x: x + 0.3, y: cardY + 1.0, w: cardW - 0.6, h: 0.5,
+      fontSize: 16, fontFace: "Georgia", color: "FFFFFF",
+      bold: true, margin: 0
+    });
+
+    // Card body
+    slide.addText(cards[i].body, {
+      x: x + 0.3, y: cardY + 1.5, w: cardW - 0.6, h: 1.6,
+      fontSize: 12, fontFace: "Calibri", color: "DDDDDD",
+      valign: "top", margin: 0
+    });
+  }
+
+  return slide;
+}
+```
+
+---
+
 ## Layout Selection Guide
 
-| Content Type | Recommended Layout | HTML Template? |
-|-------------|-------------------|---|
-| Opening / section divider | Title Slide (Photo Background) | Yes — gradient/photo + decorative shapes |
-| Feature list / key points | Icon + Text Rows | Yes — for auto-sized rows with icons |
-| KPIs / metrics / results | Stat Callout Cards | Yes — CSS shadow cards with flexbox sizing |
-| Explaining a concept | Split-Image Slide | Yes — photo + auto-sized content area |
-| Comparing options | Comparison (Side by Side) | No — PptxGenJS-only |
-| Strategy pillars / categories | Content Grid (2x2) | Yes — CSS Grid auto-sized cards |
-| Process / workflow / roadmap | Timeline / Process Flow | No — PptxGenJS-only |
-| Customer quote / testimonial | Quote / Testimonial (Photo Background) | Yes — photo + overlay + glass effects |
-| Value propositions over photo | Content + Glass Cards | Yes — photo bg + glass-morphism cards |
-| Data / charts / trends | Chart Slide | No — native PptxGenJS charts |
-| Closing / CTA / contact | Closing Slide (Gradient) | Yes — gradient + decorative shapes |
+| Content Type | Recommended Layout |
+|-------------|-------------------|
+| Opening / section divider | Title Slide (Photo Background) |
+| Feature list / key points | Icon + Text Rows |
+| KPIs / metrics / results | Stat Callout Cards |
+| Explaining a concept | Split-Image Slide |
+| Comparing options | Comparison (Side by Side) |
+| Strategy pillars / categories | Content Grid (2x2) |
+| Process / workflow / roadmap | Timeline / Process Flow |
+| Customer quote / testimonial | Quote / Testimonial (Photo Background) |
+| Value propositions over photo | Content + Dark Overlay Cards |
+| Data / charts / trends | Chart Slide |
+| Closing / CTA / contact | Closing Slide |
 
 ### Image Plan
 
@@ -582,22 +640,22 @@ Before generating slides, plan which slides need images and at what aspect ratio
 | Title | Full-bleed background | 16:9 | Topic-specific, atmospheric |
 | Split-Image | Half-slide photo | 9:10 or 1:1 | Relevant to slide content |
 | Quote | Full-bleed background | 16:9 | Moody, atmospheric |
-| Content + Glass Cards | Full-bleed background | 16:9 | Relevant to topic |
+| Content + Overlay Cards | Full-bleed background | 16:9 | Relevant to topic |
 | Closing | Full-bleed background | 16:9 | Can reuse title photo |
 
-**Gather all needed images BEFORE starting the HTML.** Prefer sourcing from Unsplash/Pexels/Pixabay; only AI-generate when no suitable stock photo exists.
+**Gather all needed images BEFORE starting the generation script.** Use the `image-sourcing` skill to search Unsplash first; fall back to the `image-generation` skill only when no suitable stock photo exists.
 
 ### Recommended Deck Rhythm (10 slides)
 
-1. **Title Slide (HTML)** — gradient/photo + decorative shapes, white text
-2. **Split-Image (HTML)** — photo left, agenda/overview right
-3. **Icon + Text Rows (HTML)** — light background with subtle decoration
-4. **Stat Callout Cards (HTML)** — CSS shadow cards with metrics
-5. **Content Grid (HTML)** — auto-sized cards on light background
-6. **Chart Slide (PptxGenJS-only)** — native chart on clean background
-7. **Split-Image (HTML)** — photo right, deep dive left (alternate side)
-8. **Timeline (PptxGenJS-only)** — roadmap on light background
-9. **Quote (HTML)** — testimonial over atmospheric photo
-10. **Closing Slide (HTML)** — gradient + CTA, bookends with title
+1. **Title Slide** — photo background + dark overlay + decorative shapes, white text
+2. **Split-Image** — photo left, agenda/overview right
+3. **Icon + Text Rows** — light background with decorative shapes
+4. **Stat Callout Cards** — rounded cards with shadows for metrics
+5. **Content Grid** — 2x2 blocks on light background
+6. **Chart Slide** — native chart on clean background
+7. **Split-Image** — photo right, deep dive left (alternate side)
+8. **Timeline** — roadmap on light background
+9. **Quote** — testimonial over atmospheric photo
+10. **Closing Slide** — photo/solid background + CTA, bookends with title
 
 **Key rule: At least 3 slides should have photo backgrounds. Never more than 2 consecutive plain-background slides.**

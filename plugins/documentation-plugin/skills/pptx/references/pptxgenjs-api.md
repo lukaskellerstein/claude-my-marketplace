@@ -142,7 +142,7 @@ slide.addShape(pres.shapes.RECTANGLE, {
 
 Available shapes: `RECTANGLE`, `OVAL`, `LINE`, `ROUNDED_RECTANGLE`
 
-**Gradient fills are not supported.** Use a gradient image as background instead.
+**Gradient fills are not supported.** Use a gradient image as background instead — see [Gradient Backgrounds via Images](#gradient-backgrounds-via-images) below.
 
 ---
 
@@ -342,4 +342,61 @@ slide.addShape(pres.shapes.RECTANGLE, { shadow, x: 5, y: 1, w: 3, h: 2 }); // CO
 const makeShadow = () => ({ type: "outer", blur: 6, offset: 2, color: "000000", opacity: 0.15 });
 slide.addShape(pres.shapes.RECTANGLE, { shadow: makeShadow(), x: 1, y: 1, w: 3, h: 2 });
 slide.addShape(pres.shapes.RECTANGLE, { shadow: makeShadow(), x: 5, y: 1, w: 3, h: 2 });
+```
+
+---
+
+## Gradient Backgrounds via Images
+
+PptxGenJS doesn't support native gradient fills on shapes. To achieve gradient backgrounds:
+
+**Option 1: Generate a gradient image** — use the `image-generation` skill to create a gradient background at 1920x1080, then set it as the slide background:
+
+```javascript
+const gradientData = fs.readFileSync("gradient-bg.jpg");
+slide.background = { data: "image/jpeg;base64," + gradientData.toString("base64") };
+```
+
+**Option 2: Source a gradient/abstract image** — use the `image-sourcing` skill to find a suitable abstract or gradient image from Unsplash.
+
+**Option 3: Simulate with layered shapes** — use overlapping semi-transparent OVALs on a solid background:
+
+```javascript
+slide.background = { color: "1E2761" };
+// Lighter glow bottom-right
+slide.addShape(pres.shapes.OVAL, {
+  x: 5, y: 2, w: 8, h: 6,
+  fill: { color: "4A90D9", transparency: 70 }
+});
+// Accent glow top-left
+slide.addShape(pres.shapes.OVAL, {
+  x: -2, y: -2, w: 6, h: 6,
+  fill: { color: "F96167", transparency: 85 }
+});
+```
+
+This creates a subtle color variation effect. It's less smooth than a true gradient but works well with high transparency values (70-90%).
+
+---
+
+## Image Sizing Best Practices
+
+Always match image aspect ratios to their placement dimensions to avoid distortion.
+
+| Placement | w x h (inches) | Aspect Ratio | Source/Generate At |
+|-----------|----------------|--------------|-------------------|
+| Full-bleed background | 10 x 5.625 | 16:9 | 1920x1080 or 16:9 |
+| Half-slide (tall) | 5 x 5.625 | ~0.89:1 | 890x1000 or 9:10 |
+| Half-slide (wide) | 4.3 x 3.5 | ~1.23:1 | 1230x1000 or 5:4 |
+| Quarter block | 4.3 x 1.8 | ~2.4:1 | 2400x1000 or 12:5 |
+| Square icon/photo | 2 x 2 | 1:1 | 1:1 |
+
+**Always use `sizing: { type: "cover", w: W, h: H }`** on `addImage` calls so images fill their box without distortion:
+
+```javascript
+slide.addImage({
+  data: imageData,
+  x: 0, y: 0, w: 5, h: 5.625,
+  sizing: { type: "cover", w: 5, h: 5.625 }
+});
 ```
