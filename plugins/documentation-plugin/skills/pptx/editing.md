@@ -26,7 +26,7 @@ Guide for modifying existing branded .pptx files — updating content, adding/re
 Generate thumbnails to see what the template looks like:
 
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/thumbnail.py template.pptx thumbnails/
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/thumbnail.py template.pptx thumbnails/
 ```
 
 Read the generated `thumbnails/grid.jpg` to see all slides at a glance, then inspect individual `thumbnails/slide-NN.jpg` files for detail.
@@ -44,7 +44,7 @@ This shows all text content per slide, helping you understand the structure befo
 ## Step 2: Unpack
 
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/unpack.py template.pptx template_unpacked/
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/unpack.py template.pptx template_unpacked/
 ```
 
 This extracts the PPTX ZIP and pretty-prints all XML for readability.
@@ -169,7 +169,7 @@ If the new image has different dimensions, update the extent in the slide XML:
 ### Adding a Slide (Duplicating an Existing One)
 
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/add_slide.py template_unpacked/ 2
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/add_slide.py template_unpacked/ 2
 ```
 
 This duplicates slide 2 and outputs the `<p:sldId>` element to insert into `ppt/presentation.xml`.
@@ -193,7 +193,7 @@ The order in `<p:sldIdLst>` determines the slide order in the presentation.
 2. Run the clean script to remove orphaned files:
 
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/clean.py template_unpacked/
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/clean.py template_unpacked/
 ```
 
 ### Reordering Slides
@@ -205,7 +205,7 @@ Just reorder the `<p:sldId>` elements within `<p:sldIdLst>`. No file changes nee
 After adding or removing slides, clean up orphaned files:
 
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/clean.py template_unpacked/
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/clean.py template_unpacked/
 ```
 
 This removes:
@@ -217,7 +217,7 @@ This removes:
 ## Step 6: Pack
 
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/pack.py template_unpacked/ output.pptx
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/pack.py template_unpacked/ output.pptx
 ```
 
 This condenses the pretty-printed XML and creates a proper PPTX ZIP file.
@@ -228,11 +228,16 @@ Follow the same QA process as creating from scratch:
 
 ```bash
 # Visual QA
-python ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/thumbnail.py output.pptx qa_output/
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/thumbnail.py output.pptx thumbnails
+
+# Schema validation (critical for template editing — catches XML corruption)
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/validate.py output.pptx --original template.pptx -v
 
 # Content QA
-python -m markitdown output.pptx
+python3 -m markitdown output.pptx
 ```
+
+The `--original` flag tells the validator to only report NEW errors (not pre-existing ones in the template). This is especially useful when editing branded templates that may have non-standard extensions.
 
 Inspect the thumbnails and text output. Verify:
 - All content was updated correctly

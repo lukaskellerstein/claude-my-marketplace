@@ -141,10 +141,10 @@ After generating the .pptx, verify it with a rigorous QA process.
 Generate thumbnails and visually inspect via a subagent:
 
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/thumbnail.py output.pptx qa_output/
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/thumbnail.py output.pptx thumbnails
 ```
 
-Then **launch a subagent** to inspect the generated slide images. The subagent should read each `qa_output/slide-NN.jpg` and check for:
+Then **launch a subagent** to inspect the generated slide images. The subagent should read each `thumbnails-N.jpg` grid and check for:
 
 - Text overflowing its box or cut off at edges
 - Low contrast (light text on light background, dark on dark)
@@ -154,9 +154,17 @@ Then **launch a subagent** to inspect the generated slide images. The subagent s
 - Images distorted or poorly positioned
 - Missing content or placeholder text
 
-Also read the grid overview at `qa_output/grid.jpg` to check overall visual rhythm and consistency across the deck.
+#### 5b: Schema Validation
 
-#### 5b: Structural QA
+Validate the PPTX against OOXML XSD schemas to catch XML corruption:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/validate.py output.pptx -v
+```
+
+If validation fails, use `--auto-repair` to fix common issues automatically, or inspect the errors and fix the generation script.
+
+#### 5c: Structural QA
 
 Check for placeholder text and structural issues:
 
@@ -171,7 +179,7 @@ Review the output for:
 - Typos
 - Data accuracy
 
-#### 5c: Placeholder Grep
+#### 5d: Placeholder Grep
 
 Search for common placeholder patterns that should never appear in final output:
 
@@ -204,7 +212,7 @@ python -m markitdown output.pptx
 To generate visual thumbnails:
 
 ```bash
-python ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/thumbnail.py input.pptx thumbnails/
+python3 ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/thumbnail.py input.pptx thumbnails/
 ```
 
 ## Image Sizing Rules
@@ -253,12 +261,13 @@ See [Step 5](#step-5-qa) above for the full QA process. Key points:
 
 | Script | Purpose | Usage |
 |--------|---------|-------|
-| `soffice_convert.py` | Convert PPTX → PDF via LibreOffice | `python ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/soffice_convert.py input.pptx output.pdf` |
-| `thumbnail.py` | PPTX → slide JPGs + grid overview | `python ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/thumbnail.py input.pptx [output_dir]` |
-| `unpack.py` | Extract PPTX ZIP, pretty-print XML | `python ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/unpack.py input.pptx [output_dir]` |
-| `pack.py` | Repack directory into PPTX ZIP | `python ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/pack.py unpacked_dir [output.pptx]` |
-| `add_slide.py` | Duplicate a slide in unpacked PPTX | `python ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/add_slide.py unpacked_dir slide_number` |
-| `clean.py` | Remove unreferenced slides/media | `python ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/clean.py unpacked_dir` |
+| `soffice_convert.py` | Convert PPTX → PDF via LibreOffice | `python3 ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/soffice_convert.py input.pptx output.pdf` |
+| `thumbnail.py` | PPTX → labeled slide grid image | `python3 ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/thumbnail.py input.pptx [output_prefix] [--cols N]` |
+| `validate.py` | XSD schema + structural validation | `python3 ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/validate.py input.pptx [-v] [--auto-repair]` |
+| `unpack.py` | Extract PPTX ZIP, pretty-print XML | `python3 ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/unpack.py input.pptx [output_dir]` |
+| `pack.py` | Repack directory into PPTX ZIP | `python3 ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/pack.py unpacked_dir [output.pptx]` |
+| `add_slide.py` | Duplicate a slide in unpacked PPTX | `python3 ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/add_slide.py unpacked_dir slide_number` |
+| `clean.py` | Remove unreferenced slides/media | `python3 ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/clean.py unpacked_dir` |
 
 ## Reference Files
 
