@@ -44,7 +44,7 @@ This shows all text content per slide, helping you understand the structure befo
 ## Step 2: Unpack
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/unpack.py template.pptx template_unpacked/
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/office/unpack.py template.pptx template_unpacked/
 ```
 
 This extracts the PPTX ZIP and pretty-prints all XML for readability.
@@ -217,7 +217,7 @@ This removes:
 ## Step 6: Pack
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/pack.py template_unpacked/ output.pptx
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/office/pack.py template_unpacked/ output.pptx
 ```
 
 This condenses the pretty-printed XML and creates a proper PPTX ZIP file.
@@ -231,7 +231,7 @@ Follow the same QA process as creating from scratch:
 python3 ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/thumbnail.py output.pptx thumbnails
 
 # Schema validation (critical for template editing — catches XML corruption)
-python3 ${CLAUDE_PLUGIN_ROOT}/skills/pptx/scripts/validate.py output.pptx --original template.pptx -v
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/office/validate.py output.pptx --original template.pptx -v
 
 # Content QA
 python3 -m markitdown output.pptx

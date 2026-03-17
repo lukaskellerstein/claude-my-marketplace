@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """
-Convert PPTX to PDF using LibreOffice.
+LibreOffice integration for Office document conversion.
 
 Handles sandboxed environments where AF_UNIX sockets may be blocked
 by compiling and LD_PRELOADing a small shim that converts socket()
 calls to socketpair() calls.
 
 Usage:
-    python soffice_convert.py input.pptx output.pdf
-    python soffice_convert.py input.pptx  # outputs input.pdf in same dir
+    python soffice.py input.pptx output.pdf
+    python soffice.py input.docx output.pdf
+    python soffice.py input.pptx  # outputs input.pdf in same dir
 """
 
 import glob
@@ -52,7 +53,6 @@ def find_soffice() -> str:
 
     for pattern in search_paths:
         if "*" in pattern:
-            # Glob pattern — find newest version
             matches = sorted(glob.glob(pattern), reverse=True)
             if matches:
                 return matches[0]
@@ -207,14 +207,38 @@ def get_soffice_env() -> dict:
     return env
 
 
-def convert_pptx_to_pdf(input_path: str, output_path: str = None) -> str:
+def run_soffice(args: list, timeout: int = 120) -> subprocess.CompletedProcess:
     """
-    Convert a PPTX file to PDF using LibreOffice.
+    Run LibreOffice with the given arguments.
 
     Args:
-        input_path: Path to the .pptx file
+        args: Arguments to pass to soffice (e.g., ["--headless", "--convert-to", "pdf", ...])
+        timeout: Timeout in seconds (default 120)
+
+    Returns:
+        CompletedProcess result.
+    """
+    soffice = find_soffice()
+    env = get_soffice_env()
+    return subprocess.run(
+        [soffice] + args,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+    )
+
+
+def convert_to_pdf(input_path: str, output_path: str = None) -> str:
+    """
+    Convert an Office document to PDF using LibreOffice.
+
+    Supports PPTX, DOCX, XLSX, and other formats LibreOffice can open.
+
+    Args:
+        input_path: Path to the input file
         output_path: Optional path for the output .pdf file.
-                     If not given, replaces .pptx extension with .pdf.
+                     If not given, replaces the extension with .pdf.
 
     Returns:
         Path to the generated PDF file.
@@ -228,37 +252,24 @@ def convert_pptx_to_pdf(input_path: str, output_path: str = None) -> str:
     else:
         output_path = input_path.with_suffix(".pdf")
 
-    # LibreOffice outputs to the same directory as input, so we work in a temp dir
-    # if the desired output location differs
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_input = Path(tmpdir) / input_path.name
         shutil.copy2(input_path, tmp_input)
 
-        env = get_soffice_env()
-        soffice = find_soffice()
-        result = subprocess.run(
-            [
-                soffice,
-                "--headless",
-                "--convert-to", "pdf",
-                "--outdir", tmpdir,
-                str(tmp_input),
-            ],
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=120,
-        )
+        result = run_soffice([
+            "--headless",
+            "--convert-to", "pdf",
+            "--outdir", tmpdir,
+            str(tmp_input),
+        ])
 
         if result.returncode != 0:
             raise RuntimeError(
                 f"LibreOffice conversion failed:\n{result.stderr}\n{result.stdout}"
             )
 
-        # Find the generated PDF
         tmp_pdf = tmp_input.with_suffix(".pdf")
         if not tmp_pdf.exists():
-            # Sometimes the name is slightly different
             pdfs = list(Path(tmpdir).glob("*.pdf"))
             if not pdfs:
                 raise RuntimeError(
@@ -274,9 +285,9 @@ def convert_pptx_to_pdf(input_path: str, output_path: str = None) -> str:
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python soffice_convert.py input.pptx [output.pdf]")
+        print("Usage: python soffice.py input_file [output.pdf]")
         sys.exit(1)
 
     inp = sys.argv[1]
     out = sys.argv[2] if len(sys.argv) > 2 else None
-    convert_pptx_to_pdf(inp, out)
+    convert_to_pdf(inp, out)

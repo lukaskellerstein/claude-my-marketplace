@@ -27,9 +27,9 @@ import zipfile
 from pathlib import Path
 from xml.dom.minidom import parseString
 
-# Import the soffice env helper from the same directory
-sys.path.insert(0, str(Path(__file__).parent))
-from soffice_convert import find_soffice, get_soffice_env
+# Import the shared soffice helper
+sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / "scripts" / "office"))
+from soffice import find_soffice, get_soffice_env
 
 # Constants
 THUMBNAIL_WIDTH = 300

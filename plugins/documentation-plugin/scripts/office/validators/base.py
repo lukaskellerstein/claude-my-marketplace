@@ -1,26 +1,12 @@
 #!/usr/bin/env python3
 """
-Validate PPTX files against OOXML XSD schemas and structural rules.
+Base OOXML schema validator with shared validation logic.
 
-Catches XML corruption, broken references, duplicate IDs, and schema violations
-that would make the file appear corrupt in PowerPoint.
-
-Usage:
-    python validate.py input.pptx [--original original.pptx] [--auto-repair] [-v]
-    python validate.py unpacked_dir/ [--original original.pptx] [-v]
-
-Examples:
-    python validate.py output.pptx
-    python validate.py unpacked_dir/ --original template.pptx -v
-    python validate.py output.pptx --auto-repair
-
-Dependencies:
-    pip install lxml defusedxml --break-system-packages
+Provides XML well-formedness checks, namespace validation, unique ID checks,
+file reference validation, content type checks, relationship ID checks,
+and XSD schema validation — all shared across DOCX, PPTX, and XLSX formats.
 """
 
-import argparse
-import re
-import sys
 import tempfile
 import zipfile
 from pathlib import Path
@@ -29,16 +15,16 @@ try:
     import lxml.etree
     import defusedxml.minidom
 except ImportError:
-    print("Error: lxml and defusedxml are required.")
-    print("Install with: pip install lxml defusedxml --break-system-packages")
-    sys.exit(1)
+    raise ImportError(
+        "lxml and defusedxml are required.\n"
+        "Install with: pip install lxml defusedxml --break-system-packages"
+    )
 
 
 # OOXML namespace constants
 NS_PKG_RELS = "http://schemas.openxmlformats.org/package/2006/relationships"
 NS_OFFICE_RELS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 NS_CONTENT_TYPES = "http://schemas.openxmlformats.org/package/2006/content-types"
-NS_PML = "http://schemas.openxmlformats.org/presentationml/2006/main"
 NS_MC = "http://schemas.openxmlformats.org/markup-compatibility/2006"
 
 # Standard OOXML namespaces (non-extension)
@@ -53,71 +39,63 @@ OOXML_NAMESPACES = {
     "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing",
     "http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing",
     "http://schemas.openxmlformats.org/wordprocessingml/2006/main",
-    NS_PML,
+    "http://schemas.openxmlformats.org/presentationml/2006/main",
     "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
     "http://schemas.openxmlformats.org/officeDocument/2006/sharedTypes",
     "http://www.w3.org/XML/1998/namespace",
 }
 
-# Schema file mappings
-SCHEMA_MAPPINGS = {
-    "ppt": "ISO-IEC29500-4_2016/pml.xsd",
-    "[Content_Types].xml": "ecma/fouth-edition/opc-contentTypes.xsd",
-    "app.xml": "ISO-IEC29500-4_2016/shared-documentPropertiesExtended.xsd",
-    "core.xml": "ecma/fouth-edition/opc-coreProperties.xsd",
-    ".rels": "ecma/fouth-edition/opc-relationships.xsd",
-    "chart": "ISO-IEC29500-4_2016/dml-chart.xsd",
-    "theme": "ISO-IEC29500-4_2016/dml-main.xsd",
-    "drawing": "ISO-IEC29500-4_2016/dml-main.xsd",
-}
 
-# IDs that must be unique
-UNIQUE_ID_REQUIREMENTS = {
-    "sldid": ("id", "file"),
-    "sldmasterid": ("id", "global"),
-    "sldlayoutid": ("id", "global"),
-    "sp": ("id", "file"),
-    "pic": ("id", "file"),
-    "cxnsp": ("id", "file"),
-    "grpsp": ("id", "file"),
-}
+class BaseSchemaValidator:
+    """Base class for OOXML document validation."""
 
+    # Subclasses should override these
+    SCHEMA_MAPPINGS = {
+        "[Content_Types].xml": "ecma/fouth-edition/opc-contentTypes.xsd",
+        "app.xml": "ISO-IEC29500-4_2016/shared-documentPropertiesExtended.xsd",
+        "core.xml": "ecma/fouth-edition/opc-coreProperties.xsd",
+        ".rels": "ecma/fouth-edition/opc-relationships.xsd",
+        "chart": "ISO-IEC29500-4_2016/dml-chart.xsd",
+        "theme": "ISO-IEC29500-4_2016/dml-main.xsd",
+        "drawing": "ISO-IEC29500-4_2016/dml-main.xsd",
+    }
 
-class PPTXValidator:
-    """Validates an unpacked PPTX directory."""
+    UNIQUE_ID_REQUIREMENTS = {}
 
     def __init__(self, unpacked_dir, original_file=None, verbose=False):
         self.unpacked_dir = Path(unpacked_dir).resolve()
         self.original_file = Path(original_file) if original_file else None
         self.verbose = verbose
-        self.schemas_dir = Path(__file__).parent / "schemas"
+        self.schemas_dir = Path(__file__).parent.parent / "schemas"
         self.xml_files = (
             list(self.unpacked_dir.rglob("*.xml"))
             + list(self.unpacked_dir.rglob("*.rels"))
         )
         self.errors = []
 
-    def validate(self) -> bool:
-        """Run all validations. Returns True if all pass."""
-        checks = [
+    def get_checks(self) -> list:
+        """Return list of (name, check_fn) tuples. Subclasses can extend."""
+        return [
             ("XML well-formedness", self.check_xml_wellformed),
             ("Namespace declarations", self.check_namespaces),
             ("Unique IDs", self.check_unique_ids),
             ("File references", self.check_file_references),
             ("Content types", self.check_content_types),
-            ("Slide layout references", self.check_slide_layout_refs),
             ("Relationship IDs", self.check_relationship_ids),
-            ("Duplicate slide layouts", self.check_no_duplicate_slide_layouts),
             ("XSD schema validation", self.check_xsd),
         ]
 
+    def validate(self) -> bool:
+        """Run all validations. Returns True if all pass."""
+        checks = self.get_checks()
         all_passed = True
+
         for name, check_fn in checks:
             errors = check_fn()
             if errors:
                 all_passed = False
                 print(f"FAILED - {name}: {len(errors)} error(s)")
-                for err in errors[:10]:  # Limit output
+                for err in errors[:10]:
                     print(f"  {err}")
                 if len(errors) > 10:
                     print(f"  ... and {len(errors) - 10} more")
@@ -202,8 +180,8 @@ class PPTXValidator:
                 for elem in root.iter():
                     tag = elem.tag.split("}")[-1].lower() if "}" in elem.tag else elem.tag.lower()
 
-                    if tag in UNIQUE_ID_REQUIREMENTS:
-                        attr_name, scope = UNIQUE_ID_REQUIREMENTS[tag]
+                    if tag in self.UNIQUE_ID_REQUIREMENTS:
+                        attr_name, scope = self.UNIQUE_ID_REQUIREMENTS[tag]
                         id_value = None
                         for attr, value in elem.attrib.items():
                             attr_local = attr.split("}")[-1].lower() if "}" in attr else attr.lower()
@@ -285,7 +263,6 @@ class PPTXValidator:
             except Exception as e:
                 errors.append(f"{rels_file.relative_to(self.unpacked_dir)}: Error: {e}")
 
-        # Check for unreferenced files
         for unref in sorted(all_files - all_referenced):
             errors.append(f"Unreferenced file: {unref.relative_to(self.unpacked_dir)}")
 
@@ -312,20 +289,6 @@ class PPTXValidator:
                 if ext:
                     declared_exts.add(ext.lower())
 
-            # Check that slide/layout/master XML files are declared
-            declarable_roots = {"sld", "sldLayout", "sldMaster", "presentation", "theme"}
-            for xml_file in self.xml_files:
-                path_str = str(xml_file.relative_to(self.unpacked_dir)).replace("\\", "/")
-                if any(skip in path_str for skip in [".rels", "[Content_Types]", "docProps/", "_rels/"]):
-                    continue
-                try:
-                    file_root = lxml.etree.parse(str(xml_file)).getroot()
-                    root_name = file_root.tag.split("}")[-1] if "}" in file_root.tag else file_root.tag
-                    if root_name in declarable_roots and path_str not in declared_parts:
-                        errors.append(f"{path_str}: Not declared in [Content_Types].xml")
-                except Exception:
-                    continue
-
             # Check media files have declared extensions
             media_types = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "gif": "image/gif"}
             for fp in self.unpacked_dir.rglob("*"):
@@ -339,36 +302,6 @@ class PPTXValidator:
 
         except Exception as e:
             errors.append(f"Error parsing [Content_Types].xml: {e}")
-
-        return errors
-
-    def check_slide_layout_refs(self) -> list:
-        errors = []
-        for master in self.unpacked_dir.glob("ppt/slideMasters/*.xml"):
-            try:
-                root = lxml.etree.parse(str(master)).getroot()
-                rels_file = master.parent / "_rels" / f"{master.name}.rels"
-
-                if not rels_file.exists():
-                    errors.append(f"{master.relative_to(self.unpacked_dir)}: Missing .rels file")
-                    continue
-
-                rels_root = lxml.etree.parse(str(rels_file)).getroot()
-                valid_rids = {
-                    rel.get("Id")
-                    for rel in rels_root.findall(f".//{{{NS_PKG_RELS}}}Relationship")
-                    if "slideLayout" in rel.get("Type", "")
-                }
-
-                for sld_layout_id in root.findall(f".//{{{NS_PML}}}sldLayoutId"):
-                    r_id = sld_layout_id.get(f"{{{NS_OFFICE_RELS}}}id")
-                    if r_id and r_id not in valid_rids:
-                        errors.append(
-                            f"{master.relative_to(self.unpacked_dir)}: "
-                            f"sldLayoutId references non-existent r:id='{r_id}'"
-                        )
-            except Exception as e:
-                errors.append(f"{master.relative_to(self.unpacked_dir)}: Error: {e}")
 
         return errors
 
@@ -415,28 +348,10 @@ class PPTXValidator:
 
         return errors
 
-    def check_no_duplicate_slide_layouts(self) -> list:
-        errors = []
-        for rels_file in self.unpacked_dir.glob("ppt/slides/_rels/*.xml.rels"):
-            try:
-                root = lxml.etree.parse(str(rels_file)).getroot()
-                layout_count = sum(
-                    1 for rel in root.findall(f".//{{{NS_PKG_RELS}}}Relationship")
-                    if "slideLayout" in rel.get("Type", "")
-                )
-                if layout_count > 1:
-                    errors.append(
-                        f"{rels_file.relative_to(self.unpacked_dir)}: "
-                        f"has {layout_count} slideLayout references (should be 1)"
-                    )
-            except Exception as e:
-                errors.append(f"{rels_file.relative_to(self.unpacked_dir)}: Error: {e}")
-        return errors
-
     def check_xsd(self) -> list:
         """Validate XML files against XSD schemas."""
         if not self.schemas_dir.exists():
-            return ["Schemas directory not found — skipping XSD validation"]
+            return ["Schemas directory not found -- skipping XSD validation"]
 
         errors = []
         valid_count = 0
@@ -466,17 +381,15 @@ class PPTXValidator:
         return errors
 
     def _get_schema_path(self, xml_file: Path):
-        """Find the XSD schema for a given XML file."""
-        if xml_file.name in SCHEMA_MAPPINGS:
-            return self.schemas_dir / SCHEMA_MAPPINGS[xml_file.name]
+        """Find the XSD schema for a given XML file. Subclasses should extend."""
+        if xml_file.name in self.SCHEMA_MAPPINGS:
+            return self.schemas_dir / self.SCHEMA_MAPPINGS[xml_file.name]
         if xml_file.suffix == ".rels":
-            return self.schemas_dir / SCHEMA_MAPPINGS[".rels"]
+            return self.schemas_dir / self.SCHEMA_MAPPINGS[".rels"]
         if "charts/" in str(xml_file) and xml_file.name.startswith("chart"):
-            return self.schemas_dir / SCHEMA_MAPPINGS["chart"]
+            return self.schemas_dir / self.SCHEMA_MAPPINGS["chart"]
         if "theme/" in str(xml_file) and xml_file.name.startswith("theme"):
-            return self.schemas_dir / SCHEMA_MAPPINGS["theme"]
-        if xml_file.parent.name == "ppt":
-            return self.schemas_dir / SCHEMA_MAPPINGS["ppt"]
+            return self.schemas_dir / self.SCHEMA_MAPPINGS["theme"]
         return None
 
     def _validate_file_xsd(self, xml_file: Path, schema_path: Path):
@@ -493,7 +406,6 @@ class PPTXValidator:
             if f"{{{NS_MC}}}Ignorable" in root.attrib:
                 del root.attrib[f"{{{NS_MC}}}Ignorable"]
 
-            # Clean non-standard namespace elements/attributes
             xml_string = lxml.etree.tostring(xml_doc, encoding="unicode")
             xml_copy = lxml.etree.fromstring(xml_string)
             self._clean_extensions(xml_copy)
@@ -504,7 +416,6 @@ class PPTXValidator:
 
             current_errors = {err.message for err in schema.error_log}
 
-            # If we have an original file, filter out pre-existing errors
             if self.original_file:
                 original_errors = self._get_original_errors(xml_file, schema_path)
                 new_errors = current_errors - original_errors
@@ -535,7 +446,6 @@ class PPTXValidator:
         for elem in to_remove:
             root.remove(elem)
 
-        # Remove non-OOXML attributes
         attrs_to_remove = []
         for attr in root.attrib:
             if "{" in attr:
@@ -566,58 +476,3 @@ class PPTXValidator:
 
             _, errors = self._validate_file_xsd(orig_file, schema_path)
             return errors if errors else set()
-
-
-def main():
-    parser = argparse.ArgumentParser(description="Validate PPTX files against OOXML schemas")
-    parser.add_argument(
-        "path",
-        help="Path to .pptx file or unpacked directory",
-    )
-    parser.add_argument(
-        "--original",
-        default=None,
-        help="Original .pptx file for comparison (filters pre-existing errors)",
-    )
-    parser.add_argument(
-        "--auto-repair",
-        action="store_true",
-        help="Auto-repair common issues",
-    )
-    parser.add_argument(
-        "-v", "--verbose",
-        action="store_true",
-        help="Verbose output",
-    )
-
-    args = parser.parse_args()
-    path = Path(args.path)
-
-    if not path.exists():
-        print(f"Error: {path} does not exist", file=sys.stderr)
-        sys.exit(1)
-
-    # If it's a packed file, unpack to temp dir
-    if path.is_file() and path.suffix.lower() == ".pptx":
-        tmpdir = tempfile.mkdtemp()
-        with zipfile.ZipFile(path, "r") as zf:
-            zf.extractall(tmpdir)
-        unpacked_dir = Path(tmpdir)
-    elif path.is_dir():
-        unpacked_dir = path
-    else:
-        print(f"Error: {path} is not a .pptx file or directory", file=sys.stderr)
-        sys.exit(1)
-
-    original = Path(args.original) if args.original else None
-    validator = PPTXValidator(unpacked_dir, original, verbose=args.verbose)
-
-    if args.auto_repair:
-        validator.repair()
-
-    success = validator.validate()
-    sys.exit(0 if success else 1)
-
-
-if __name__ == "__main__":
-    main()

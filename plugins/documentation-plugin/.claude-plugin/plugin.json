@@ -1,7 +1,7 @@
 {
   "name": "documentation-plugin",
-  "version": "3.0.0",
-  "description": "Documentation management plugin for maintaining architecture docs, feature documentation, visual diagrams using Mermaid, data visualizations and charts using D3.js, and generating professional PowerPoint presentations. Keeps docs up to date, organizes them by architecture and features, and generates documentation for feature branches.",
+  "version": "3.1.0",
+  "description": "Documentation management plugin for maintaining architecture docs, feature documentation, visual diagrams using Mermaid, data visualizations and charts using D3.js, generating professional PowerPoint presentations, creating polished Word documents, and building Excel spreadsheets. Keeps docs up to date, organizes them by architecture and features, and generates documentation for feature branches.",
   "author": {
     "name": "Lukas Kellerstein"
   },
@@ -21,11 +21,21 @@
     "d3",
     "visualization",
     "maps",
-    "readme"
+    "readme",
+    "docx",
+    "word",
+    "document",
+    "report",
+    "xlsx",
+    "excel",
+    "spreadsheet",
+    "formulas"
   ],
   "skills": [
     "./skills/update-docs",
     "./skills/pptx",
+    "./skills/docx",
+    "./skills/xlsx",
     "./skills/graph-generation",
     "./skills/update-readme"
   ],
