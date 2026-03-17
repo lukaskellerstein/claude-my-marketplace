@@ -29,7 +29,7 @@ from xml.dom.minidom import parseString
 
 # Import the soffice env helper from the same directory
 sys.path.insert(0, str(Path(__file__).parent))
-from soffice_convert import get_soffice_env
+from soffice_convert import find_soffice, get_soffice_env
 
 # Constants
 THUMBNAIL_WIDTH = 300
@@ -181,9 +181,10 @@ def convert_to_images(pptx_path: Path, temp_dir: Path) -> list:
     """Convert PPTX -> PDF -> JPG images using soffice and pdftoppm."""
     pdf_path = temp_dir / f"{pptx_path.stem}.pdf"
 
+    soffice = find_soffice()
     result = subprocess.run(
         [
-            "soffice",
+            soffice,
             "--headless",
             "--convert-to", "pdf",
             "--outdir", str(temp_dir),

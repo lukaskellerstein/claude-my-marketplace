@@ -11,6 +11,7 @@ Usage:
     python soffice_convert.py input.pptx  # outputs input.pdf in same dir
 """
 
+import glob
 import os
 import shutil
 import socket
@@ -18,6 +19,51 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+
+def find_soffice() -> str:
+    """
+    Find the soffice binary on the system.
+
+    Searches PATH first, then common installation directories.
+    Returns the full path to soffice, or raises FileNotFoundError.
+    """
+    # 1. Check PATH
+    soffice_on_path = shutil.which("soffice")
+    if soffice_on_path:
+        return soffice_on_path
+
+    # 2. Search common installation directories
+    search_paths = [
+        # Standard Linux package manager locations
+        "/usr/bin/soffice",
+        "/usr/local/bin/soffice",
+        # Snap installation
+        "/snap/bin/soffice",
+        "/snap/bin/libreoffice.soffice",
+        # Flatpak
+        "/var/lib/flatpak/exports/bin/org.libreoffice.LibreOffice",
+        # macOS
+        "/Applications/LibreOffice.app/Contents/MacOS/soffice",
+        # Manual/custom installations in /opt (version-agnostic glob)
+        "/opt/libreoffice*/program/soffice",
+        "/opt/LibreOffice*/program/soffice",
+    ]
+
+    for pattern in search_paths:
+        if "*" in pattern:
+            # Glob pattern — find newest version
+            matches = sorted(glob.glob(pattern), reverse=True)
+            if matches:
+                return matches[0]
+        elif os.path.isfile(pattern) and os.access(pattern, os.X_OK):
+            return pattern
+
+    raise FileNotFoundError(
+        "LibreOffice (soffice) not found on this system.\n"
+        "Searched PATH and common locations: /usr/bin, /snap/bin, /opt/libreoffice*\n"
+        "Install with: sudo apt install libreoffice"
+    )
 
 
 def _needs_shim() -> bool:
@@ -189,9 +235,10 @@ def convert_pptx_to_pdf(input_path: str, output_path: str = None) -> str:
         shutil.copy2(input_path, tmp_input)
 
         env = get_soffice_env()
+        soffice = find_soffice()
         result = subprocess.run(
             [
-                "soffice",
+                soffice,
                 "--headless",
                 "--convert-to", "pdf",
                 "--outdir", tmpdir,
