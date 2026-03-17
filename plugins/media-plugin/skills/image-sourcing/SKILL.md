@@ -22,132 +22,117 @@ Use `WebSearch` and `WebFetch` (or `curl` via Bash) to find and download existin
 - User needs a **specific composition** that wouldn't be found in stock photos
 - User wants to **modify or restyle** an existing image with AI
 
+## CRITICAL RULES
+
+1. **NEVER guess or construct image URLs.** You cannot know the URL of an image without finding it first. Do not fabricate URLs like `https://images.unsplash.com/photo-{id}` — these will not work.
+2. **NEVER try to WebFetch Unsplash/Pexels/Pixabay photo pages** to extract download URLs. These sites are JavaScript-heavy and WebFetch cannot extract usable image URLs from them.
+3. **Always search first, then present options to the user.** The workflow is: search → present results → let user choose → download.
+4. **If you cannot find a suitable image, say so honestly.** Do not silently fall back to AI generation. Tell the user what you searched for and that no good match was found, then suggest alternatives (different search terms, or AI generation).
+
 ## Sourcing Workflow
 
-### Step 1: Search for Images
+### Step 1: Search for Images Using the Unsplash API
 
-Use `WebSearch` to find relevant images. Target stock photo services for quality and licensing clarity.
+Use `WebFetch` to query the **Unsplash Source/Search API** which returns JSON with actual image URLs.
 
-**Recommended search queries:**
+**Use the Unsplash search endpoint (no API key needed for basic search):**
 
 ```
-site:unsplash.com {subject} photo
-site:pexels.com {subject} photo
-site:pixabay.com {subject}
-{subject} royalty free photo
-{subject} creative commons image
+WebFetch: https://unsplash.com/napi/search/photos?query={keywords}&per_page=9
 ```
+
+This returns JSON with an array of `results`, each containing:
+- `urls.regular` — direct image URL (1080px wide, good for most uses)
+- `urls.small` — smaller version (400px)
+- `urls.full` — full resolution
+- `urls.raw` — raw image (append `?w=1920&q=80` for custom size)
+- `description` or `alt_description` — what the image shows
+- `user.name` — photographer name
+- `user.links.html` — photographer profile URL
+- `links.html` — link to the photo page on Unsplash
 
 **Example:**
 ```
-WebSearch: "site:unsplash.com mountain sunset landscape photo"
+WebFetch: https://unsplash.com/napi/search/photos?query=mountain+sunset+landscape&per_page=9
 ```
 
-### Step 2: Get the Direct Image URL
+You can also search **Pexels** and **Pixabay** via web search as a fallback:
+```
+WebSearch: "site:pexels.com {subject} photo"
+WebSearch: "site:pixabay.com {subject}"
+```
 
-Stock photo services provide direct download URLs:
+### Step 2: Review and Present Options to the User
 
-- **Unsplash**: `https://unsplash.com/photos/{photo-id}` — use the download link from the page
-- **Pexels**: `https://www.pexels.com/photo/{slug}-{id}/` — extract the image URL
-- **Pixabay**: `https://pixabay.com/photos/{slug}-{id}/` — extract the image URL
+From the API response, review the results:
+- Look at the `description` and `alt_description` fields to understand what each image shows
+- Select the 3-5 most relevant results
+- Present them to the user with:
+  - A brief description of each image
+  - The photographer's name
+  - The Unsplash page link (`links.html`) so the user can preview
+  - A note on which one you'd recommend and why
 
-Use `WebFetch` to load the photo page and extract the direct image URL if needed.
+**IMPORTANT:** Let the user choose which image(s) they want. Do not download without presenting options first, unless the user explicitly asked for "any" image or the first result.
 
-### Step 3: Download the Image
+### Step 3: Download the Selected Image
 
-Download the image using `curl` via Bash to the output directory:
+Once the user has chosen (or if they asked for "any"), download using the `urls.regular` or `urls.raw` URL from the API response:
 
 ```bash
 # Determine output directory
 OUTPUT_DIR="${MEDIA_OUTPUT_DIR:-.}"
 
-# Download from Unsplash (use the direct download URL)
-curl -L -o "$OUTPUT_DIR/image-name.jpg" "https://images.unsplash.com/photo-{id}?w=1920&q=80"
-
-# Download from Pexels
-curl -L -o "$OUTPUT_DIR/image-name.jpg" "https://images.pexels.com/photos/{id}/pexels-photo-{id}.jpeg?w=1920"
-
-# Download from Pixabay
-curl -L -o "$OUTPUT_DIR/image-name.jpg" "{direct-image-url}"
-
-# Generic download
-curl -L -o "$OUTPUT_DIR/image-name.jpg" "{image-url}"
+# Download using the ACTUAL URL from the API response (not a guessed URL)
+curl -L -o "$OUTPUT_DIR/descriptive-name.jpg" "ACTUAL_URL_FROM_API_RESPONSE"
 ```
+
+**Size options using `urls.raw`:**
+- Thumbnail: append `?w=640&q=80`
+- Medium: append `?w=1280&q=80`
+- Large: append `?w=1920&q=80`
+- 4K: append `?w=3840&q=80`
+
+Or just use `urls.regular` for a sensible default size.
 
 ### Step 4: Report the Result
 
 After downloading, report:
 - The file path of the downloaded image
-- The source URL and attribution info
-- The license type (Unsplash License, Pexels License, Pixabay License, CC0, etc.)
-- Suggest next steps if relevant
+- The source URL (Unsplash page link) and photographer name
+- The license type (Unsplash License — free for commercial and non-commercial use)
+- Suggested attribution text
+
+## Fallback: When the Unsplash API Doesn't Work
+
+If the Unsplash `napi` endpoint is blocked or returns errors:
+
+1. **Use WebSearch** with queries like `{subject} photo site:unsplash.com` or `{subject} royalty free stock photo`
+2. **Look at the search result snippets** — they often contain useful context about the images
+3. **Present the search result links** to the user so they can browse and choose
+4. **Do NOT try to WebFetch individual photo pages** on Unsplash/Pexels/Pixabay — these are JS-rendered and won't give you download URLs
+5. If the user picks an image from search results, ask them to provide the direct image URL, or suggest using AI image generation instead
 
 ## Stock Photo Services
 
-### Unsplash (Recommended)
-- **URL**: https://unsplash.com
+### Unsplash (Recommended — has usable API)
 - **License**: Unsplash License — free for commercial and non-commercial use, no attribution required (but appreciated)
 - **Quality**: High-resolution professional photography
-- **Search**: `site:unsplash.com {keywords}`
-- **Direct download pattern**: `https://images.unsplash.com/photo-{id}?w={width}&q=80`
-- **Sizes**: Append `?w=640` (small), `?w=1280` (medium), `?w=1920` (large), `?w=3840` (4K)
+- **API endpoint**: `https://unsplash.com/napi/search/photos?query={keywords}&per_page=9`
 
 ### Pexels
-- **URL**: https://www.pexels.com
 - **License**: Pexels License — free for commercial and non-commercial use, no attribution required
 - **Quality**: Professional photography and some video
-- **Search**: `site:pexels.com {keywords}`
+- **Search**: `site:pexels.com {keywords}` via WebSearch
 
 ### Pixabay
-- **URL**: https://pixabay.com
 - **License**: Pixabay Content License — free for commercial and non-commercial use
 - **Quality**: Mix of professional and community photos, illustrations, vectors
-- **Search**: `site:pixabay.com {keywords}`
+- **Search**: `site:pixabay.com {keywords}` via WebSearch
 
 ### Other Sources
 - **Wikimedia Commons**: `site:commons.wikimedia.org {keywords}` — CC-licensed media
 - **Flickr Creative Commons**: `site:flickr.com {keywords} creative commons`
-
-## Common Patterns
-
-### Hero image for a website
-```
-Search: "site:unsplash.com modern office workspace minimal"
-Download at w=1920 for standard hero, w=3840 for retina
-```
-
-### Blog post thumbnail
-```
-Search: "site:unsplash.com {blog topic} photo"
-Download at w=1280 for blog thumbnail
-```
-
-### Background texture
-```
-Search: "site:unsplash.com abstract texture background dark"
-Download and suggest CSS background-image usage
-```
-
-### Team/people placeholder
-```
-Search: "site:unsplash.com professional headshot portrait"
-Download for mockups or placeholders
-```
-
-### Product context photo
-```
-Search: "site:pexels.com {product category} lifestyle photo"
-Download for marketing materials
-```
-
-## Size Guidelines
-
-| Use Case | Recommended Width | Query Parameter |
-|---|---|---|
-| Thumbnail / icon | 640px | `?w=640&q=80` |
-| Blog post / card | 1280px | `?w=1280&q=80` |
-| Hero / banner | 1920px | `?w=1920&q=80` |
-| Full-screen / 4K | 3840px | `?w=3840&q=80` |
 
 ## Attribution Best Practices
 
@@ -165,9 +150,9 @@ When `MEDIA_OUTPUT_DIR` is set, save downloaded images there to keep them alongs
 
 ## Tips
 
-- Prefer **Unsplash** for highest quality professional photography
-- Use **Pexels** as an alternative with similar quality and licensing
-- Use **Pixabay** when you need illustrations or vectors in addition to photos
-- Always download at an appropriate size — don't fetch 4K for a thumbnail
+- Prefer **Unsplash** for highest quality — and use its API for reliable image URLs
+- Use **Pexels** or **Pixabay** as alternatives via web search
+- **Never guess or fabricate image URLs** — always get them from API responses or confirmed sources
 - When the user's need is ambiguous, ask whether they want an existing photo or an AI-generated image
+- If no suitable stock photo exists for the user's need, say so and suggest AI generation
 - Downloaded images can be used as `reference_images` for the AI image generation tool to create variations
