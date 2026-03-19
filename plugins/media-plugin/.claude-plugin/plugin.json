@@ -38,6 +38,17 @@
         "MEDIA_OUTPUT_DIR": "${MEDIA_OUTPUT_DIR}"
       },
       "description": "AI-powered media generation (image, video, music, speech) via Google Gemini"
+    },
+    "ElevenLabs": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "elevenlabs-mcp"
+      ],
+      "env": {
+        "ELEVENLABS_API_KEY": "${ELEVENLABS_API_KEY}"
+      },
+      "description": "Text-to-speech, voice cloning, and audio tools via ElevenLabs"
     }
   }
 }
