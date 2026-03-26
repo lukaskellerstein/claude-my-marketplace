@@ -7,11 +7,13 @@ description: Identify unused code (functions, imports, exports, variables, types
 
 Analyze the codebase to find unused code — functions, imports, exports, variables, types, and classes — and present a cleanup report. Never auto-delete; always show the user what to remove and let them decide.
 
+This skill parallelizes analysis by spawning multiple `dead-code-analyzer` agents concurrently — one per top-level source directory (or analysis category). This dramatically speeds up analysis on large codebases.
+
 ---
 
 ## Workflow
 
-### Step 1: Detect project language and structure
+### Step 1: Detect project language, structure, and scope
 
 Identify the primary language(s) and project layout:
 
@@ -26,43 +28,49 @@ Look for key indicators:
 - `Cargo.toml` → Rust
 - `pom.xml` / `build.gradle` → Java/Kotlin
 
-Also identify entry points (main files, index files, exported modules) — these anchor the reachability analysis.
+Identify:
+- **Entry points** — main files, index files, exported modules (anchors for reachability analysis)
+- **Top-level source directories** — e.g. `src/`, `lib/`, `pkg/`, `cmd/`, `app/`, `internal/`
+- **Skip directories** — `node_modules`, `vendor`, `dist`, `build`, `.gen`, `__pycache__`, `.next`, `coverage`, `.git`
 
-### Step 2: Analyze for unused code
+### Step 2: Spawn parallel `dead-code-analyzer` agents
 
-Use language-appropriate strategies:
+Split the analysis into independent work units and run them **concurrently** using the `dead-code-analyzer` agent (via the Agent tool). Each agent receives a focused scope.
 
-**JavaScript / TypeScript:**
-- Search for exported symbols that are never imported elsewhere
-- Find functions/classes defined but never called or referenced
-- Detect unused imports in each file
-- Check for unused variables and parameters (look for `_` prefix convention)
-- Look for files that are never imported by any other file
+**Parallelization strategies** (pick the best fit for the project):
 
-**Python:**
-- Find functions/classes defined but never referenced outside their module
-- Detect unused imports (`import foo` or `from foo import bar` where `foo`/`bar` is never used)
-- Check for unreachable code after `return`/`raise`/`break`/`continue`
-- Look for modules never imported by other modules
+**Strategy A — By directory** (best for monorepos or projects with independent top-level dirs):
+Launch one `dead-code-analyzer` agent per top-level source directory. Example for a project with `src/services/`, `src/utils/`, `src/components/`:
+- Agent 1: "Analyze `src/services/` for dead code. The project is TypeScript with entry points at `src/index.ts`. Report unused exports, functions, imports, and unreachable code."
+- Agent 2: "Analyze `src/utils/` for dead code. The project is TypeScript with entry points at `src/index.ts`. Report unused exports, functions, imports, and unreachable code."
+- Agent 3: "Analyze `src/components/` for dead code. The project is TypeScript with entry points at `src/index.ts`. Report unused exports, functions, imports, and unreachable code."
 
-**Go:**
-- The compiler catches unused imports and variables, so focus on unexported functions/types never called within the package
-- Look for exported symbols never referenced outside the package
+**Strategy B — By analysis type** (best for smaller projects or single-directory layouts):
+Launch one `dead-code-analyzer` agent per category of analysis:
+- Agent 1: "Find all unused exports and functions — symbols defined but never referenced anywhere in the codebase."
+- Agent 2: "Find all unused imports — symbols imported but never used in the importing file."
+- Agent 3: "Find unreachable code, commented-out code blocks, and TODO/FIXME markers referencing removal."
 
-**General (any language):**
-- Search for TODO/FIXME comments referencing removal
-- Find commented-out code blocks (candidates for deletion)
-- Detect feature flags or config that reference removed functionality
+**Strategy C — Hybrid** (best for large multi-language projects):
+Combine both: one agent per language/directory pair, plus a cross-cutting agent for general hygiene (commented-out code, TODOs).
 
-### Step 3: Classify findings by confidence
+**Important**: Always include in each agent's prompt:
+- The detected language(s) and entry points
+- Which directories to skip
+- Whether the project is a library (affects confidence for exports)
+- Instruction to produce output in the standard report format (see Step 3)
 
-For each finding, assign a confidence level:
+Launch all agents in a **single message** with multiple Agent tool calls so they run concurrently.
 
-- **High** — Symbol is defined but has zero references anywhere in the codebase (grep confirms)
-- **Medium** — Symbol appears referenced only in tests, or only in the same file, or is behind a dynamic lookup that might not be real usage
-- **Low** — Symbol might be used via reflection, dynamic imports, string-based lookups, or external consumers (libraries/APIs)
+### Step 3: Aggregate and deduplicate results
 
-### Step 4: Present the report
+Collect results from all agents and:
+1. **Merge** findings into a single report grouped by file
+2. **Deduplicate** — if multiple agents flagged the same symbol, keep the highest-confidence entry
+3. **Cross-validate** — an agent analyzing `src/utils/` may flag an export as unused, but the agent analyzing `src/services/` may have found a reference. Resolve conflicts by doing a quick grep to confirm
+4. **Re-classify** any findings where cross-directory context changes the confidence level
+
+### Step 4: Present the unified report
 
 Group findings by file. Format:
 
@@ -78,11 +86,15 @@ Group findings by file. Format:
 - **HIGH** Entire file — never imported by any module
 - **LOW** `export class LegacyClient` — may be used by external consumers
 
+### Commented-Out Code
+- `src/routes/old-handler.ts` lines 45-78 — large commented-out block
+
 ### Summary
-- High confidence: 12 items across 5 files
-- Medium confidence: 4 items across 2 files
-- Low confidence: 2 items across 1 file
-- Estimated lines removable (high confidence): ~180
+| Confidence | Items | Files | Est. Lines Removable |
+|---|---|---|---|
+| High | 12 | 5 | ~180 |
+| Medium | 4 | 2 | ~45 |
+| Low | 2 | 1 | ~30 |
 ```
 
 ### Step 5: Propose cleanup
@@ -111,10 +123,16 @@ Only make deletions the user explicitly approves. When removing code:
 
 ## Examples
 
-**User: "find dead code in this project"**
-1. Detects TypeScript project with `src/` layout
-2. Scans all exports, finds 8 functions never imported
-3. Finds 15 unused imports across 10 files
-4. Finds 1 file never imported anywhere
-5. Presents grouped report with confidence levels
+**User: "find dead code in this project" (medium TypeScript project with src/services, src/utils, src/components)**
+1. Detects TypeScript project with `src/` layout and `src/index.ts` entry point
+2. Spawns 3 `dead-code-analyzer` agents in parallel — one per `src/` subdirectory
+3. Agents return findings concurrently; results are merged and deduplicated
+4. Cross-validates: agent 1 flagged `parseDate()` in utils as unused, but agent 2 found it imported in services → removes false positive
+5. Presents unified report: 8 unused functions, 15 unused imports, 1 orphan file
 6. Asks user: "Want me to remove the 23 high-confidence items?"
+
+**User: "find dead code" (small Python project, single directory)**
+1. Detects Python project with flat layout
+2. Spawns 3 `dead-code-analyzer` agents by analysis type: unused definitions, unused imports, unreachable code
+3. Merges results, deduplicates
+4. Presents report and asks user how to proceed
