@@ -32,7 +32,7 @@
     "formulas"
   ],
   "skills": [
-    "./skills/init-docs",
+    "./skills/update-docs",
     "./skills/update-feature-docs",
     "./skills/update-readme",
     "./skills/pptx",
