@@ -32,12 +32,13 @@
     "formulas"
   ],
   "skills": [
-    "./skills/update-docs",
+    "./skills/init-docs",
+    "./skills/update-feature-docs",
+    "./skills/update-readme",
     "./skills/pptx",
     "./skills/docx",
     "./skills/xlsx",
-    "./skills/graph-generation",
-    "./skills/update-readme"
+    "./skills/graph-generation"
   ],
   "mcpServers": {
     "mermaid": {
