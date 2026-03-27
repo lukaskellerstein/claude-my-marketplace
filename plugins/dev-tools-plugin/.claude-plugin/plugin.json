@@ -21,9 +21,5 @@
     "./skills/dead-code",
     "./skills/update-dependencies",
     "./skills/sync-spec-kit"
-  ],
-  "agents": [
-    "./agents/dead-code-analyzer",
-    "./agents/sync-spec-kit-agent"
   ]
 }
