@@ -15,7 +15,7 @@ General developer tooling — git workflows, code hygiene, dependency management
 
 Documentation and Office document generation — architecture docs, Mermaid diagrams, D3.js charts, and professional PPTX/DOCX/XLSX files.
 
-- **Skills:** update-docs, update-readme, graph-generation, pptx, docx, xlsx
+- **Skills:** update-docs, update-feature-docs, update-readme, graph-generation, pptx, docx, xlsx
 - **MCP:** Mermaid Chart, Playwright
 
 ### [infra-plugin](plugins/infra-plugin)
