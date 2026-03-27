@@ -23,6 +23,7 @@
     "./skills/sync-spec-kit"
   ],
   "agents": [
-    "./agents/dead-code-analyzer"
+    "./agents/dead-code-analyzer",
+    "./agents/sync-spec-kit-agent"
   ]
 }
