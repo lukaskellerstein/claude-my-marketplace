@@ -41,10 +41,38 @@ AI-powered media generation — images, videos/GIFs, music, and text-to-speech v
 
 ## Installation
 
-Add a plugin to your project by adding its path to your Claude Code settings:
+### 1. Add the marketplace
+
+Add this repository as a plugin marketplace using the `/plugin` slash command inside Claude Code:
+
+```
+/plugin marketplace add lukaskellerstein/claude-my-marketplace
+```
+
+Or via the CLI:
 
 ```bash
-claude plugins add /path/to/claude-my-marketplace/plugins/<plugin-name>
+claude plugin marketplace add lukaskellerstein/claude-my-marketplace
+```
+
+### 2. Install a plugin
+
+Once the marketplace is added, install individual plugins:
+
+```
+/plugin install dev-tools-plugin@claude-my-marketplace
+/plugin install documentation-plugin@claude-my-marketplace
+/plugin install infra-plugin@claude-my-marketplace
+/plugin install figma-plugin@claude-my-marketplace
+/plugin install media-plugin@claude-my-marketplace
+```
+
+### 3. Update
+
+To pull the latest versions:
+
+```
+/plugin marketplace update
 ```
 
 ## Author
