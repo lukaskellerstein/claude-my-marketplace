@@ -69,9 +69,25 @@ await __figb.imageFrame('Hero', { url: 'https://...', w: 1440, h: 500, parent: c
 const hero = __figb.frame('Hero', { w: 1440, h: 500, fill: __figb.hex('#1F2937') }); // NO!
 ```
 
+### Frame Positioning — NEVER Stack at Origin
+**Top-level frames MUST use `autoPosition: true`** so they don't overlap existing content. Without this, every frame lands at (0,0) and pages pile on top of each other.
+
+```javascript
+// GOOD: auto-positioned to the right of existing content
+__figb.frame('Hero Section', { w: 1440, h: 600, autoPosition: true });
+
+// GOOD: auto-positioned below existing content
+__figb.frame('About Section', { w: 1440, h: 800, autoPosition: { direction: 'vertical' } });
+
+// GOOD: manual positioning with freeSpot
+const pos = __figb.freeSpot(1440, 900);
+const f = __figb.frame('Page 2', { w: 1440, h: 900 });
+f.x = pos.x; f.y = pos.y;
+```
+
 ### Build Order
-1. Create page (if needed): `__figb.page('PageName')`
-2. Create outer frame (viewport): `__figb.frame('Main', { w: 1440, ... })`
+1. Switch to your assigned page: `__figb.page('PageName')` (pages are pre-created by the orchestrator — do NOT create new pages)
+2. Create outer frame (viewport): `__figb.frame('Main', { w: 1440, ..., autoPosition: true })`
 3. Build sections top-to-bottom, each in its own chunk
 4. Each section loads its own images and icons inline
 
@@ -83,14 +99,93 @@ await __figs.update('agentId', 'executing', 'Building hero section...');
 
 ## Design Language Page
 
-When asked to build the Design Language page, include:
+**Use `__figb.designLanguagePage(config)` — one call produces the entire page deterministically.** Do NOT write layout code manually for colors, typography, effects, or spacing sections.
 
-1. **Color Palette** — primary/secondary/accent (50-950 scales), neutrals, semantic colors. Create as Paint Styles.
-2. **Typography Scale** — H1-H6, body, small, caption. Create as Text Styles.
-3. **Spacing** — 4px grid visualization (4, 8, 12, 16, 24, 32, 48, 64)
-4. **Effects** — shadow scale (sm/md/lg/xl) as Effect Styles, border radius scale
-5. **Icon Set** — display provided icons in a labeled grid
-6. **Core Components** — buttons (primary/secondary/outline/ghost), inputs, cards, badges. Use `__figb.comp()` + `__figb.compSet()` for variant sets.
+```javascript
+__figb.page('Design Language');
+const result = await __figb.designLanguagePage({
+  projectName: '...', subtitle: '...',
+  themeBg: '#0A0A0A', accentColor: '#3B82F6',
+  textColor: '#FFFFFF', textMuted: '#666666', surfaceColor: '#1A1A1A',
+  colors: [ /* from design plan */ ],
+  font: 'Inter',
+  typeScale: [ /* from design plan */ ],
+  shadows: [ /* from design plan */ ],
+  radii: [4, 8, 12, 16, 24],
+  spacing: [4, 8, 12, 16, 24, 32, 48, 64],
+});
+```
+
+After the deterministic sections, manually add:
+1. **Icon Set** — wrapping grid with icons + labels (icons provided by orchestrator)
+2. **Core Components** — buttons, inputs, cards using `__figb.comp()` + `__figb.compSet()`
+
+See the **figma-bridge** skill for the full CONFIG reference and individual section methods.
+
+### Card Styling — Match the Theme
+Cards and container elements must use the design's actual background colors, NOT white. For dark themes:
+- Card background: use the theme's surface/card color (e.g., `#1E1E1E`, `#2A2A2A`)
+- Card text: light colors matching the theme
+- Card borders: subtle borders (`1px`, low-opacity white or theme accent)
+- **NEVER use white (`#FFFFFF`) card backgrounds in a dark-themed design**
+
+## Error Recovery Protocol
+
+When a `browser_evaluate` call fails:
+
+1. **STOP** — do not retry blindly (creates duplicates)
+2. **READ** the error message carefully — it's your first clue
+3. **CHECK** state — run `__figb.verify()` to see what actually got created
+4. **SCREENSHOT** — take screenshot if structural check is inconclusive
+5. **CLEANUP** — remove orphaned/partial nodes from the failed chunk
+6. **FIX** — correct the issue in the script
+7. **RETRY** — re-execute only the fixed chunk
+
+**Section-scoped failure containment:** If a chunk fails mid-section, skip the rest of that section, update status with `__figs.error(agentId, 'Section X failed: reason')`, continue to the next section, and report all failures to the orchestrator for a potential fix-up agent.
+
+## Validation Strategy
+
+| After... | Use | Why |
+|---|---|---|
+| Each section chunk | `__figb.verify()` | Catch structural issues (overlaps, empty text) quickly |
+| Full page completion | `browser_take_screenshot` | Visual check for layout, spacing, color consistency |
+| Design Language page | Both | Foundation must be structurally sound AND visually correct |
+| Final verification | Both + `__figs.info()` | Complete quality check before cleanup |
+
+## Idempotency — Check Before Create
+
+Before creating nodes, check if they already exist (prevents duplicates on retry/re-run):
+
+```javascript
+// Before creating a page
+const existing = __figb.f.root.children.find(p => p.name === 'Design Language');
+if (existing) { await __figb.f.setCurrentPageAsync(existing); }
+else { __figb.page('Design Language'); }
+
+// Before creating a style
+const styles = __figb.f.getLocalPaintStyles();
+if (!styles.find(s => s.name === 'Primary/500')) {
+  __figb.paintStyle('Primary/500', __figb.hex('#3B82F6'));
+}
+
+// Before creating a frame — check parent's children
+const parent = __figb.find('Main');
+if (!parent.children.find(c => c.name === 'Hero Section')) {
+  // ... build hero section
+}
+```
+
+## Design System Reuse
+
+Before building from scratch, check what already exists in the file:
+
+| Situation | Action |
+|---|---|
+| Published library component exists | Import with `__figb.f.importComponentSetByKeyAsync(key)` |
+| Local component exists in file | Create instance with `__figb.instance(comp)` |
+| Paint/Text/Effect style exists | Apply existing style instead of hardcoding values |
+| Variable exists | Use `__figb.varBind()` instead of hardcoded colors |
+| No existing match | Build from scratch with helpers |
 
 ## Verification
 

@@ -211,43 +211,95 @@ await __figb.fonts(
 
 **When creating a new design from scratch**, always start by creating a dedicated **"Design Language"** page in the Figma file. This page defines the visual foundation that all other pages must follow.
 
-### Step 0 (before any other design work): Create the Design Language page
+### Use `__figb.designLanguagePage()` — One Call, Deterministic Layout
+
+The Design Language page is built by a **single deterministic method** that produces a polished, compact layout every time. The agent's job is to construct the config JSON from the design plan — not write layout code.
 
 ```javascript
-__figb.page("🎨 Design Language");
+__figb.page("Design Language");
+
+const result = await __figb.designLanguagePage({
+  projectName: 'Omg.ai',
+  subtitle: 'Dark Military / Tech — Visual foundation for all Omg.ai products',
+  themeBg: '#0A0A0A',
+  accentColor: '#3B82F6',
+  textColor: '#FFFFFF',
+  textMuted: '#666666',
+  surfaceColor: '#1A1A1A',
+  colors: [
+    { name: 'Primary/500', hex: '#3B82F6' },
+    { name: 'Primary/700', hex: '#1D4ED8' },
+    { name: 'Neutral/900', hex: '#0A0A0A' },
+    { name: 'Neutral/800', hex: '#1A1A1A' },
+    { name: 'Neutral/100', hex: '#F3F4F6' },
+    { name: 'Success/500', hex: '#10B981' },
+    { name: 'Warning/500', hex: '#F59E0B' },
+    { name: 'Error/500', hex: '#EF4444' },
+  ],
+  font: 'Inter',
+  typeScale: [
+    { name: 'H1', size: 48, weight: 'Bold', lineHeight: 58 },
+    { name: 'H2', size: 36, weight: 'Bold', lineHeight: 44 },
+    { name: 'H3', size: 28, weight: 'Semi Bold', lineHeight: 34 },
+    { name: 'H4', size: 20, weight: 'Semi Bold', lineHeight: 28 },
+    { name: 'Body', size: 16, weight: 'Regular', lineHeight: 24 },
+    { name: 'Small', size: 14, weight: 'Regular', lineHeight: 20 },
+    { name: 'Caption', size: 12, weight: 'Regular', lineHeight: 16 },
+  ],
+  spacing: [4, 8, 12, 16, 24, 32, 48, 64],
+  shadows: [
+    { name: 'sm', x: 0, y: 1, blur: 3, opacity: 0.12 },
+    { name: 'md', x: 0, y: 4, blur: 12, opacity: 0.15 },
+    { name: 'lg', x: 0, y: 8, blur: 24, opacity: 0.2 },
+    { name: 'xl', x: 0, y: 16, blur: 48, opacity: 0.25 },
+  ],
+  radii: [4, 8, 12, 16, 24],
+});
+// result: { node, paintStyles, textStyles, effectStyles }
 ```
 
-The Design Language page must include these sections:
+**What it produces:**
+1. **Header banner** — project name + subtitle with gradient background
+2. **Color Palette** — 80×80px swatch grid with hex labels INSIDE each swatch, contrasting text, creates Paint Styles
+3. **Typography Scale** — one row per level (sample text + spec annotation), creates Text Styles
+4. **Effects** — shadow sample cards side-by-side + border radius samples in a row, creates Effect Styles
+5. **Spacing** — horizontal bar visualization with labels
 
-#### 1. Color Palette
-- Primary, secondary, accent colors (with full scales: 50-950)
-- Neutral/gray scale
-- Semantic colors: success, warning, error, info
-- Create as Figma Paint Styles (`__figb.paintStyle()`) so they can be reused across all pages
+**CONFIG reference:**
 
-#### 2. Typography Scale
-- Heading styles: H1 through H6 (with font family, size, weight, line-height)
-- Body text: large, base, small, caption
-- Create as Figma Text Styles (`await __figb.textStyle()`) for reuse
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `projectName` | string | no | Project name for header (default: "Design Language") |
+| `subtitle` | string | no | Subtitle text below project name |
+| `themeBg` | hex | no | Page/section background (default: "#0A0A0A") |
+| `accentColor` | hex | no | Accent color for labels (default: "#3B82F6") |
+| `textColor` | hex | no | Primary text color (default: "#FFFFFF") |
+| `textMuted` | hex | no | Secondary text color (default: "#666666") |
+| `surfaceColor` | hex | no | Card/surface color for samples (default: "#1A1A1A") |
+| `colors` | array | yes | `[{name, hex}]` — colors to display + create as Paint Styles |
+| `font` | string | no | Font family (default: "Inter") |
+| `typeScale` | array | yes | `[{name, size, weight, lineHeight}]` — type levels + Text Styles |
+| `spacing` | array | no | Pixel values (default: [4,8,12,16,24,32,48,64]) |
+| `shadows` | array | no | `[{name, x, y, blur, opacity}]` — shadow scale + Effect Styles |
+| `radii` | array | no | Pixel values for border radius samples |
 
-#### 3. Spacing & Grid
-- Spacing scale visualization (4px grid: 4, 8, 12, 16, 24, 32, 48, 64)
-- Layout grid definition (columns, gutters, margins)
+**Individual section methods** (also available for rebuilding specific parts):
+- `await __figb.colorPalette(config)` → `{ node, paintStyles }`
+- `await __figb.typographyScale(config)` → `{ node, textStyles }`
+- `await __figb.effectsSection(config)` → `{ node, effectStyles }`
+- `await __figb.spacingSection(config)` → `{ node }`
 
-#### 4. Effects
-- Shadow scale: sm, base, md, lg, xl
-- Create as Figma Effect Styles (`__figb.effectStyle()`)
-- Border radius scale: sm (4px), base (8px), md (12px), lg (16px), xl (24px), full (9999px)
+All methods are **idempotent** — they check for existing Paint/Text/Effect Styles before creating duplicates.
 
-#### 5. Icon Set
-- Fetch and display the core icons needed for the project using the **media-plugin/icon-library** skill
-- Organize in a grid showing icon name + visual
+### Additional sections (built manually after designLanguagePage)
 
-#### 6. Core UI Components
-- Buttons (primary, secondary, outline, ghost — with states: default, hover, disabled)
-- Input fields (text, select, checkbox, radio, toggle)
-- Cards, badges, tags, avatars
-- Build as Figma Components (`__figb.comp()`) and combine into variant sets (`__figb.compSet()`)
+After the deterministic sections, the agent can add:
+
+#### Icon Set — Tight Grid
+Display icons in a wrapping grid with labels below each icon. Built manually since icons vary per project.
+
+#### Core UI Components
+Build buttons, inputs, cards, badges as Figma Components using `__figb.comp()` + `__figb.compSet()`. **Cards and components must match the theme** — dark cards for dark themes, never white.
 
 After the Design Language page is complete, **all subsequent pages must use these defined styles, colors, components, and icons**. Never introduce one-off values — always reference the design language.
 
@@ -372,6 +424,18 @@ Gradient stops support alpha: `{ pos: 0, hex: '#000', a: 0.5 }`. Direction param
 | `__figb.swapInstance(inst, newComp)` | Swap backing component | `__figb.swapInstance(inst, btnOutline)` |
 | `__figb.setVariantProps(inst, props)` | Set variant properties on instance | `__figb.setVariantProps(inst, { Style: 'Primary', State: 'Hover' })` |
 
+#### High-Level Design Language Builders
+
+| Helper | Description | Example |
+|---|---|---|
+| `__figb.designLanguagePage(config)` | Build complete Design Language page (async) | `await __figb.designLanguagePage({ colors, typeScale, ... })` |
+| `__figb.colorPalette(config)` | Color swatch grid + Paint Styles (async) | `await __figb.colorPalette({ colors, themeBg, parent })` |
+| `__figb.typographyScale(config)` | Type scale samples + Text Styles (async) | `await __figb.typographyScale({ font, typeScale, parent })` |
+| `__figb.effectsSection(config)` | Shadow cards + radius samples + Effect Styles (async) | `await __figb.effectsSection({ shadows, radii, parent })` |
+| `__figb.spacingSection(config)` | Spacing bar visualization (async) | `await __figb.spacingSection({ spacing, parent })` |
+
+All return `{ node, ...styles }`. All are **idempotent** — they check for existing styles before creating duplicates. See the "Design Language Page" section below for the full CONFIG reference.
+
 #### Exporting
 
 | Helper | Description | Example |
@@ -387,6 +451,29 @@ Gradient stops support alpha: `{ pos: 0, hex: '#000', a: 0.5 }`. Direction param
 | `__figb.subtract(nodes, parent?)` | Subtract shapes | `__figb.subtract([base, cutout])` |
 | `__figb.intersect(nodes, parent?)` | Intersect shapes | `__figb.intersect([a, b])` |
 | `__figb.exclude(nodes, parent?)` | Exclude shapes (XOR) | `__figb.exclude([a, b])` |
+
+#### Positioning — Avoid Overlapping Frames
+
+| Helper | Description | Example |
+|---|---|---|
+| `__figb.freeSpot(w, h, opts)` | Find empty position on current page | `const pos = __figb.freeSpot(1440, 900)` |
+
+`freeSpot` options: `gap` (spacing, default 100), `direction` ('horizontal' default, or 'vertical').
+
+**`autoPosition` option on `frame()` and `comp()`** — automatically positions new top-level nodes in free space instead of at (0,0):
+
+```javascript
+// Auto-position to the right (default)
+__figb.frame('Page 2', { w: 1440, h: 900, autoPosition: true });
+
+// Auto-position below
+__figb.frame('Page 3', { w: 1440, h: 900, autoPosition: { direction: 'vertical' } });
+
+// Custom gap
+__figb.frame('Page 4', { w: 1440, h: 900, autoPosition: { gap: 200 } });
+```
+
+**ALWAYS use `autoPosition: true` for top-level frames** to prevent pages/sections from stacking at the origin.
 
 #### Navigation & Lookup
 
@@ -439,6 +526,7 @@ Gradient stops support alpha: `{ pos: 0, hex: '#000', a: 0.5 }`. Direction param
 | `absolute` | Absolute positioning | `{ absolute: true, x: 10, y: 10 }` |
 | `constraints` | Layout constraints (with absolute) | `{ constraints: { horizontal: 'MAX', vertical: 'MIN' } }` |
 | `parent` | Append to parent node | `{ parent: container }` |
+| `autoPosition` | Auto-position in free space (top-level only) | `{ autoPosition: true }` or `{ autoPosition: { direction: 'vertical', gap: 200 } }` |
 
 ### Text-specific opts (`txt` / `richTxt`)
 
@@ -607,6 +695,26 @@ If `__figb` is not defined:
    - Then try again
 3. If it still doesn't work, ask the user to **refresh the page** and repeat steps 1-2.
 
+## Theme-Aware Card & Container Styling
+
+**Cards, containers, and UI elements must match the design's theme.** Never default to white backgrounds.
+
+- **Dark themes:** card bg = surface color (e.g., `#1A1A2E`, `#1E1E1E`, `#2A2A2A`), text = light (`#FFFFFF`, `#E0E0E0`), borders = subtle (`rgba(255,255,255,0.1)`)
+- **Light themes:** card bg = white or near-white, text = dark, borders = light gray
+
+```javascript
+// GOOD: dark-themed card
+const card = __figb.frame('Card', { w: 320, direction: 'VERTICAL', radius: 12,
+  fill: __figb.hex('#1A1A2E'), // dark surface — NOT white
+  strokes: [{ type: 'SOLID', color: __figb.rgba(255, 255, 255, 0.1) }], strokeWeight: 1,
+  effects: __figb.shadow(0, 4, 12, 0.3),
+  clip: true
+});
+
+// BAD: white card in a dark design — looks broken
+const card = __figb.frame('Card', { fill: __figb.hex('#FFFFFF'), ... }); // NO!
+```
+
 ## Common Patterns (using __figb helpers)
 
 ### Card with image, icon, and text
@@ -757,6 +865,33 @@ for (const tag of ['Design', 'Frontend', 'React', 'Figma', 'TypeScript', 'CSS'])
 }
 ```
 
+## Pre-flight Checklist — Before Each browser_evaluate
+
+Run through this mentally before every chunk:
+
+1. **Correct page?** — `__figb.page('name')` called if needed?
+2. **Parent valid?** — Parent node exists and is reachable via `__figb.find()`?
+3. **Names unique?** — Node names unique within their scope?
+4. **Size limit?** — Within 5 elements / ~30 lines?
+5. **Real URLs?** — All image URLs are actual URLs, not placeholders?
+6. **Return IDs?** — Script returns created node IDs for subsequent reference?
+7. **Status updated?** — `__figs.update()` called to reflect current work?
+
+## Naming Conventions
+
+Consistent naming enables `find()` lookups, idempotency checks, and resume workflows.
+
+| Element | Convention | Example |
+|---|---|---|
+| Pages | Title Case | `Home`, `Design Language`, `About` |
+| Top-level frames | Descriptive Title Case | `Hero Section`, `Features Grid`, `Footer` |
+| Sections within frames | Section/Name | `Section/Header`, `Section/Colors` |
+| Components | Slash-separated | `Button/Primary`, `Card/Feature`, `Nav/Desktop` |
+| Variables | slash/lowercase | `color/primary/500`, `spacing/md`, `radius/lg` |
+| Paint Styles | Slash/Title Case | `Primary/500`, `Neutral/100`, `Success/500` |
+| Text Styles | Slash/Title Case | `Heading/H1`, `Body/Regular`, `Caption/Small` |
+| Effect Styles | Slash/Title Case | `Shadow/Medium`, `Shadow/Large` |
+
 ## Important Notes
 
 - **Use `__figb.f` for raw Plugin API** — in v3.0.0, `__figb.f` replaces direct `figma` global access
@@ -766,3 +901,14 @@ for (const tag of ['Design', 'Frontend', 'React', 'Figma', 'TypeScript', 'CSS'])
 - **Font loading is required** before setting text `characters` or `fontName`
 - **SVG insertion** — always use `__figb.icon()` for icons, never try to draw icons manually with shapes
 - **`imageFrame` has fallback** — if image URL fails to load, it automatically falls back to a gradient fill instead of crashing
+
+## Raw API Gotchas — When Using `__figb.f` Directly
+
+These gotchas apply when you bypass helpers and use `__figb.f` (the raw Figma Plugin API):
+
+1. **`resize()` resets layoutSizing** — After `node.resize(w, h)`, `layoutSizingHorizontal` and `layoutSizingVertical` reset to `'FIXED'`. Set sizing mode AFTER resize.
+2. **`lineHeight` and `letterSpacing` are objects** — Must be `{ value: N, unit: 'PIXELS' }`, not plain numbers.
+3. **`detachInstance()` invalidates ancestor IDs** — After detaching, parent/ancestor node references may be stale. Re-query via `__figb.find()` after detaching.
+4. **`layoutSizingHorizontal = 'FILL'` requires parent auto-layout** — The parent must have `layoutMode` set BEFORE you can set a child to `'FILL'`. Also, `'FILL'` must be set AFTER `appendChild`.
+5. **`setExplicitVariableModeForCollection` is called on the frame** — Not on the variable. `frame.setExplicitVariableModeForCollection(collectionId, modeId)`.
+6. **Node positions don't reset after reparenting** — After `parent.appendChild(node)`, the node keeps its old x/y. Set position explicitly after reparenting.

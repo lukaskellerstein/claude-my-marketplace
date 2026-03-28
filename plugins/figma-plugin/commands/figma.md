@@ -1,7 +1,7 @@
 ---
 description: Design a website, app, or UI in Figma — orchestrates parallel agents for structure and media
 argument-hint: "<description> <figma-url>"
-allowed-tools: ["Read", "Write", "Bash", "Agent", "mcp__design-playwright__browser_navigate", "mcp__design-playwright__browser_take_screenshot"]
+allowed-tools: ["Read", "Write", "Bash", "Agent", "mcp__design-playwright__browser_navigate", "mcp__design-playwright__browser_take_screenshot", "mcp__design-playwright__browser_evaluate"]
 ---
 
 # /figma — Figma Design Orchestrator
@@ -29,9 +29,8 @@ You NEVER:
 
 The ONLY Figma interactions you do directly are:
 - `browser_navigate` — to open the Figma file
-- `browser_take_screenshot` — for final visual verification
-
-Even connection verification, `__figb.verify()`, and `__figs.remove()` are done by design-structure agents — you never call `browser_evaluate`.
+- `browser_take_screenshot` — for visual verification
+- `browser_evaluate` — **ONLY** for: connection verification, page pre-creation, and discovery (NOT for building UI elements)
 
 ## Parse Arguments
 
@@ -43,14 +42,33 @@ If either is missing, ask the user.
 
 ## Orchestration Workflow
 
-### Phase 1: Connect to Figma + Verify
+### Phase 1: Connect + Discover
 
 1. Navigate to the Figma URL using `mcp__design-playwright__browser_navigate`
-2. That's it — connection verification will be done by the first design-structure agent that runs
+2. Verify connection: `browser_evaluate` → `typeof __figb === 'object' ? '__figb v' + __figb.version : 'not injected'`
+3. **Discover existing design system** — run `browser_evaluate` to inspect the file:
+   ```javascript
+   const pages = __figb.f.root.children.map(p => p.name);
+   const paintStyles = __figb.f.getLocalPaintStyles().map(s => s.name);
+   const textStyles = __figb.f.getLocalTextStyles().map(s => s.name);
+   const effectStyles = __figb.f.getLocalEffectStyles().map(s => s.name);
+   const components = __figb.f.currentPage.findAll(n => n.type === 'COMPONENT').map(c => c.name);
+   return { pages, paintStyles, textStyles, effectStyles, components };
+   ```
+4. Use discovered styles/components in the plan — reuse what exists instead of rebuilding
+
+### Phase 1.5: Resume Check (if re-running)
+
+Before creating a new plan, check if this design was started before:
+- If pages from a previous run exist (e.g., "Design Language", "Home"), check how complete they are
+- Skip completed pages, resume from the first incomplete one
+- For partial pages, identify which sections exist and plan to continue from next missing section
 
 ### Phase 2: Plan the Design
 
 Create a comprehensive design plan. **Every section must specify IMAGE, ICONS, COLORS and FONTS.**
+
+**DO NOT** skip image/icon planning — empty placeholders and missing icons look terrible and defeat the purpose of a visual design.
 
 ```markdown
 ## Design Plan: [Project Name]
@@ -88,6 +106,20 @@ Section 2 — [Name]:
 - Videos/GIFs: [if applicable]
 ```
 
+### Phase 2.5: User Checkpoint + Pre-create Pages
+
+**Checkpoint:** Present the design plan to the user. Show sections, colors, fonts, image strategy. Wait for user approval or modifications before proceeding. (Skip if user passed `--fast`.)
+
+**Pre-create all Figma pages** in one `browser_evaluate` call:
+```javascript
+const pages = ['Design Language', 'Home', 'About', 'Contact']; // from plan
+for (const name of pages) { __figb.page(name); }
+__figb.page(pages[0]); // navigate back to first
+return pages;
+```
+
+This prevents race conditions when multiple agents try to create pages simultaneously. Agents will **switch to** their assigned page, not create it.
+
 ### Phase 3: Spawn ALL Media-Creator Agents (asset gathering)
 
 Spawn media-creator agents in a SINGLE message so they all run in parallel. Use `run_in_background: true` so you can proceed to Phase 4 while they work.
@@ -105,9 +137,13 @@ Each agent gets a detailed prompt with:
 - Expected return format (JSON maps)
 - No Figma work — agents only gather assets
 
+**DO NOT** mix media gathering with Figma building in the same agent — this causes tool conflicts and slowdowns.
+
 ### Phase 4: Spawn Design-Structure Agent (Design Language page)
 
 While media-creator agents gather assets in background, spawn a design-structure agent to build the **Design Language page** in Figma. This page only needs colors, typography, effects, and spacing — no images or icons required.
+
+**DO NOT** use hardcoded colors that differ from the plan — always pass the exact hex codes from Phase 2.
 
 ```
 design-structure Agent: Build the Design Language page
@@ -122,6 +158,11 @@ Give this agent:
 - The Theme & Style section from the plan
 - The Font Stack from the plan
 - The Figma URL (it needs to navigate/verify itself)
+- Instruction to **switch to** the pre-created "Design Language" page (not create it)
+
+### Phase 4.5: User Checkpoint — Design Language Review
+
+After the Design Language agent completes, take a screenshot of the Design Language page. Present it to the user for approval — this is the visual foundation for all content pages. If the user requests changes, spawn a fix-up agent. (Skip if `--fast`.)
 
 ### Phase 5: Collect Media Results + Spawn Page Builders
 
@@ -148,12 +189,16 @@ For multi-page designs (spawn in ONE message, parallel):
 - All image URLs it needs (embedded in the prompt)
 - The color palette and font stack from the plan
 
+**DO NOT** build sections as top-level page children then reparent — build inside the wrapper frame directly. Reparenting causes silent failures and position bugs.
+
 ### Phase 6: Verify + Cleanup
 
 After all design-structure agents complete:
 1. Take screenshots: `mcp__design-playwright__browser_take_screenshot` to visually verify
 2. If issues found, spawn a small design-structure agent to fix them
 3. Spawn a design-structure agent to run `__figb.verify()` on each page and `__figs.remove()` for cleanup
+
+**DO NOT** skip `__figs.remove()` cleanup — the status panel is a visible design artifact that must be removed.
 
 ## Agent Prompt Templates
 
@@ -200,17 +245,40 @@ Build the Design Language page in Figma. The figma-bridge skill is preloaded —
 
 Navigate to [Figma URL] and verify connection.
 
-Theme:
-[paste Theme & Style + Font Stack from plan]
+STEP 1: Switch to Design Language page and call the deterministic builder:
 
-Build these sections:
-1. Color Palette — create Paint Styles for all colors
-2. Typography Scale — create Text Styles for H1-H6, body, small, caption
-3. Spacing — 4px grid visualization
-4. Effects — shadow scale (sm/md/lg/xl) as Effect Styles
-5. Border radius scale
+__figb.page('Design Language');
+const result = await __figb.designLanguagePage({
+  projectName: '[project name]',
+  subtitle: '[style description]',
+  themeBg: '[theme bg hex]',
+  accentColor: '[accent hex]',
+  textColor: '[text hex]',
+  textMuted: '[muted text hex]',
+  surfaceColor: '[card surface hex]',
+  colors: [
+    [paste color array from plan: {name, hex} objects]
+  ],
+  font: '[font family]',
+  typeScale: [
+    [paste type scale from plan: {name, size, weight, lineHeight} objects]
+  ],
+  shadows: [
+    { name: 'sm', x: 0, y: 1, blur: 3, opacity: 0.12 },
+    { name: 'md', x: 0, y: 4, blur: 12, opacity: 0.15 },
+    { name: 'lg', x: 0, y: 8, blur: 24, opacity: 0.2 },
+    { name: 'xl', x: 0, y: 16, blur: 48, opacity: 0.25 },
+  ],
+  radii: [4, 8, 12, 16, 24],
+});
 
-Max 5 elements per evaluate call. Name everything.
+This ONE call builds the entire page deterministically. Do NOT write manual layout code for colors, typography, effects, or spacing.
+
+STEP 2: After the deterministic sections, manually add (if icons are provided):
+- Icon Set — wrapping grid with icons + labels
+- Core UI Components — buttons, inputs, cards
+
+STEP 3: Verify with __figb.verify() + take screenshot.
 ```
 
 ### design-structure Agent (Content Page)
@@ -218,6 +286,12 @@ Max 5 elements per evaluate call. Name everything.
 Build [Page Name] in the Figma file. The figma-bridge skill is preloaded — use __figb.* helpers.
 
 Navigate to [Figma URL] and verify connection.
+
+IMPORTANT RULES:
+- Use `__figb.page('[Page Name]')` to SWITCH to your pre-created Figma page (pages are pre-created by orchestrator — do NOT create new pages)
+- Use `autoPosition: true` on ALL top-level frames to avoid overlapping
+- Card/container backgrounds must match the theme (dark cards for dark themes — NEVER white cards in dark designs)
+- Use subtle borders (1px, low-opacity) instead of relying on white backgrounds for card visibility
 
 Design plan for this page:
 [paste the page sections here]
@@ -240,3 +314,6 @@ Use the Design Language styles (Paint Styles, Text Styles, Effect Styles) where 
 3. **Pass results between agents** — media-creator results must be embedded into design-structure prompts
 4. **Design Language page first** — build it while media agents gather assets, before content pages
 5. **Verify at the end** — `__figb.verify()` + visual snapshot after all agents complete
+6. **Separate Figma pages for each website page** — each website page (Home, About, Contact, etc.) goes into its own Figma page via `__figb.page('PageName')`. The Design Language page is also its own Figma page.
+7. **Use autoPosition for all top-level frames** — every top-level frame must use `autoPosition: true` to avoid stacking frames at origin (0,0). Tell EVERY design-structure agent to use this.
+8. **Theme-consistent cards** — remind design-structure agents: card/container backgrounds must match the design theme. No white cards in dark designs.

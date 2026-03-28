@@ -26,7 +26,7 @@ description: >
   user: "Gather all assets for the homepage: 8 icons, 4 stock photos, 1 AI image, 1 GIF"
   </example>
 model: sonnet
-color: magenta
+color: purple
 skills:
   - media-plugin:icon-library
   - media-plugin:image-sourcing
