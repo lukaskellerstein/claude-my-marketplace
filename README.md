@@ -26,18 +26,28 @@ Infrastructure management for Kubernetes/GKE, Istio, Helm, Terraform, Traefik, a
 
 ### [figma-plugin](plugins/figma-plugin)
 
-Design and Figma integration — automate Figma via Plugin API in the browser, extract design tokens, generate code from designs, audit design systems, and use pre-made icon libraries (Lucide, Heroicons, Tabler) for clean SVG icons.
+Design and Figma integration — automate Figma via Plugin API in the browser, extract design tokens, and generate code from designs.
 
-- **Skills:** figma-bridge, figma-rest-api, design-tokens, design-to-code, design-system, icon-library
+- **Skills:** figma-bridge, figma-rest-api, design-tokens, design-to-code
+- **Agents:** media-creator, design-structure
+- **Commands:** /figma
 - **MCP:** Playwright
 
 ### [media-plugin](plugins/media-plugin)
 
-AI-powered media generation — images, videos/GIFs, music, and text-to-speech via Google Gemini and ElevenLabs. Also supports sourcing stock photos from Unsplash, Pexels, and Pixabay.
+AI-powered media generation — images, videos/GIFs, music, and text-to-speech via Google Gemini and ElevenLabs. Also supports sourcing stock photos from Unsplash, Pexels, Pixabay, and fetching pre-made SVG icons from Lucide, Heroicons, and Tabler.
 
-- **Skills:** image-generation, image-sourcing, video-generation, music-generation, speech-generation
+- **Skills:** image-generation, image-sourcing, video-generation, music-generation, speech-generation, icon-library
 - **Agents:** media-director
 - **MCP:** media-mcp (Gemini), ElevenLabs
+
+### [design-plugin](plugins/design-plugin)
+
+Design direction and creative guidance — the "taste layer" that makes AI-assisted design intentional rather than generic. Styleguides, aesthetic strategy, typography pairings, color mood systems, media prompt crafting, and design review.
+
+- **Skills:** styleguide, frontend-aesthetics, media-prompt-craft, design-review, design-system
+- **Agents:** design-director
+- **Commands:** /design
 
 ## Installation
 
@@ -65,6 +75,7 @@ Once the marketplace is added, install individual plugins:
 /plugin install infra-plugin@claude-my-marketplace
 /plugin install figma-plugin@claude-my-marketplace
 /plugin install media-plugin@claude-my-marketplace
+/plugin install design-plugin@claude-my-marketplace
 ```
 
 ### 3. Update

@@ -26,6 +26,10 @@
     {
       "name": "figma-plugin",
       "source": "./plugins/figma-plugin"
+    },
+    {
+      "name": "design-plugin",
+      "source": "./plugins/design-plugin"
     }
   ]
 }

@@ -199,4 +199,4 @@ function Card({ title, description, imageUrl }) {
 - Extract repeated values as CSS variables or Tailwind theme values
 - Handle responsive design by analyzing constraints and sizing modes
 - When a design has multiple breakpoints, generate media queries or responsive utility classes
-- For icons in the design, use the **icon-library** skill to get proper SVG icons rather than rasterizing them
+- For icons in the design, use the **media-plugin/icon-library** skill to get proper SVG icons rather than rasterizing them

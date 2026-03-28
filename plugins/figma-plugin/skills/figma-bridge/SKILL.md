@@ -41,7 +41,7 @@ Install: clone `https://github.com/lukaskellerstein/figma-bridge` → `chrome://
 
 - **Always explain in plain English what you are about to do.** Assume the user cannot read code.
 - **Do NOT try alternative solutions** like using the REST API or manually interacting with the Figma UI. Always use the Plugin API via `evaluate_script`.
-- **Do NOT try to draw icons manually** with basic shapes. Always fetch pre-made SVGs from icon libraries (see **icon-library** skill) and insert with `__figb.icon()`.
+- **Do NOT try to draw icons manually** with basic shapes. Always fetch pre-made SVGs from icon libraries (see **media-plugin/icon-library** skill) and insert with `__figb.icon()`.
 
 ## Creative Design Philosophy
 
@@ -154,7 +154,7 @@ When designing media players, podcast UIs, or audio experiences, generate sample
 - Social proof → star, heart, thumbs-up, users
 - Pricing features → check (included), x (excluded)
 
-**Fetch icons BEFORE building sections** — use the **icon-library** skill:
+**Fetch icons BEFORE building sections** — use the **media-plugin/icon-library** skill:
 ```bash
 # Fetch all icons needed for the page in one batch
 curl -sL https://unpkg.com/lucide-static@latest/icons/home.svg
@@ -240,7 +240,7 @@ The Design Language page must include these sections:
 - Border radius scale: sm (4px), base (8px), md (12px), lg (16px), xl (24px), full (9999px)
 
 #### 5. Icon Set
-- Fetch and display the core icons needed for the project using the **icon-library** skill
+- Fetch and display the core icons needed for the project using the **media-plugin/icon-library** skill
 - Organize in a grid showing icon name + visual
 
 #### 6. Core UI Components

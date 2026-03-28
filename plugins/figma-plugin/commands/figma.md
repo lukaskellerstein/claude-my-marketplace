@@ -4,7 +4,7 @@ argument-hint: "<description> <figma-url>"
 allowed-tools: ["Read", "Write", "Bash", "Agent", "mcp__design-playwright__browser_navigate", "mcp__design-playwright__browser_take_screenshot"]
 ---
 
-# /design — Figma Design Orchestrator
+# /figma — Figma Design Orchestrator
 
 You are the **design orchestrator**. Your ONLY job is to plan, delegate to agents, coordinate results between agents, and verify. You NEVER do the actual work yourself.
 
@@ -159,56 +159,46 @@ After all design-structure agents complete:
 
 ### media-creator Agent (Icons)
 ```
-You are a media asset gatherer. Fetch the following SVG icons using curl.
+Fetch the following SVG icons. Use the preloaded icon-library skill for URLs and patterns.
 
 Icons needed (all from Lucide unless noted):
 - home, search, bell, user, arrow-right, check, star, ...
 
-For each icon, fetch from: https://unpkg.com/lucide-static/icons/{name}.svg
-Fetch ALL icons in parallel using multiple curl calls.
-
-Return a JSON map of { iconName: svgString } for ALL icons.
+Fetch ALL icons in parallel. Return a JSON map of { iconName: svgString }.
 Do NOT do any Figma work. Only gather assets.
 ```
 
 ### media-creator Agent (Stock Images)
 ```
-You are a media asset gatherer. Find stock photos for the following sections.
+Find stock photos for the following sections. Use the preloaded image-sourcing skill for search patterns and URL sizing.
 
 Images needed:
-- hero: "futuristic city skyline at night" → search Unsplash, use ?w=1440&q=80
-- card1: "cloud computing abstract" → search Unsplash, use ?w=640&q=80
-- avatar1: "professional headshot" → search Unsplash, use ?w=200&q=80
+- hero: "futuristic city skyline at night" → large (hero size)
+- card1: "cloud computing abstract" → medium (card size)
+- avatar1: "professional headshot" → small (avatar size)
 
-Search using: WebSearch "site:unsplash.com {query}"
-Extract direct image URLs with size params.
-
-Return a JSON map of { sectionName: imageUrl } for ALL images.
+Search ALL images in parallel. Return a JSON map of { sectionName: imageUrl }.
 Do NOT do any Figma work. Only gather assets.
 ```
 
 ### media-creator Agent (AI Images)
 ```
-You are a media asset gatherer. Generate the following AI images.
+Generate the following AI images. Use the preloaded image-generation skill for tool usage and prompt tips.
 
 Images to generate:
 - hero_bg: "Dramatic Mars landscape, red rocky terrain..." → 16:9, 2K
 - card_1: "Astronaut in spacesuit..." → 3:4, 1K
 - card_2: "Futuristic Mars base camp..." → 3:4, 1K
 
-Use mcp__plugin_media-plugin_media-mcp__generate_image for each.
-Generate ALL images in parallel.
-
-Return a map of { name: filePath } for ALL generated images.
+Generate ALL images in parallel. Return a map of { name: filePath }.
 Do NOT do any Figma work. Only generate images.
 ```
 
 ### design-structure Agent (Design Language Page)
 ```
-You are a Figma design builder. Build the Design Language page in Figma.
+Build the Design Language page in Figma. The figma-bridge skill is preloaded — use __figb.* helpers.
 
 Navigate to [Figma URL] and verify connection.
-Use mcp__design-playwright__browser_evaluate with __figb.* helpers.
 
 Theme:
 [paste Theme & Style + Font Stack from plan]
@@ -225,10 +215,9 @@ Max 5 elements per evaluate call. Name everything.
 
 ### design-structure Agent (Content Page)
 ```
-You are a Figma design builder. Build [Page Name] in the Figma file.
+Build [Page Name] in the Figma file. The figma-bridge skill is preloaded — use __figb.* helpers.
 
 Navigate to [Figma URL] and verify connection.
-Use mcp__design-playwright__browser_evaluate with __figb.* helpers.
 
 Design plan for this page:
 [paste the page sections here]

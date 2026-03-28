@@ -1,6 +1,6 @@
 {
   "name": "figma-plugin",
-  "version": "2.1.0",
+  "version": "2.3.0",
   "description": "Design and Figma integration for Claude Code — orchestrated parallel design workflow with specialized agents for Figma structure building and media asset gathering. Automate Figma via Plugin API, extract design tokens, generate code, and use pre-made icon libraries.",
   "author": {
     "name": "Lukas Kellerstein"
@@ -10,11 +10,6 @@
     "figma",
     "figma-bridge",
     "design-tokens",
-    "design-system",
-    "icons",
-    "lucide",
-    "heroicons",
-    "svg",
     "ui",
     "ux",
     "css",
@@ -27,9 +22,7 @@
     "./skills/figma-bridge",
     "./skills/figma-rest-api",
     "./skills/design-tokens",
-    "./skills/design-to-code",
-    "./skills/design-system",
-    "./skills/icon-library"
+    "./skills/design-to-code"
   ],
   "mcpServers": {
     "design-playwright": {

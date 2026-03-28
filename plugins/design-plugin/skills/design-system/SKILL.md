@@ -16,13 +16,13 @@ Tools and patterns for building, managing, and auditing design systems. Covers c
 - User wants to create or extend a color palette
 - User wants to check WCAG contrast compliance
 - User asks about typography scales or spacing systems
-- User wants to audit design consistency across a Figma file
+- User wants to audit design consistency across a project or Figma file
 - User wants to generate a design system from scratch
 
 ## When NOT to Use
 
-- User wants to extract existing tokens from Figma → use **design-tokens** skill
-- User wants to convert a specific design to code → use **design-to-code** skill
+- User wants to extract existing tokens from Figma → use **figma-plugin/design-tokens** skill
+- User wants to convert a specific design to code → use **figma-plugin/design-to-code** skill
 
 ## Color Systems
 
@@ -172,7 +172,7 @@ xl:   20px  — Section headings (H4)
 
 ## Design Audit Checklist
 
-When auditing a Figma file for design system compliance:
+When auditing any design or codebase for design system compliance:
 
 1. **Color consistency**
    - Are all colors from the defined palette?
@@ -199,6 +199,8 @@ When auditing a Figma file for design system compliance:
    - Focus states defined for all interactive components
 
 ## Auditing via Figma Plugin API
+
+For Figma-specific auditing, use **figma-plugin/figma-bridge** to execute these scripts in the browser:
 
 ```javascript
 // Find all unique colors in use
@@ -237,6 +239,6 @@ console.log('Possibly detached components:', detached.length);
 
 - Build the palette from a single primary hue and derive the rest systematically
 - Always test contrast ratios at the actual font sizes used in the design
-- Use Figma Variables for tokens — they support light/dark mode natively
+- In Figma, use Variables for tokens — they support light/dark mode natively
 - Spacing should follow a consistent grid (4px is the industry standard)
 - When in doubt about a color's accessibility, darken it — it's better to be safe

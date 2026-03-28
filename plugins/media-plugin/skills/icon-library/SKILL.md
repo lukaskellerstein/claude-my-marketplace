@@ -2,10 +2,10 @@
 name: icon-library
 description: >
   Fetch pre-made SVG icons from open-source icon libraries (Lucide, Heroicons, Tabler Icons) for use
-  in Figma or code projects. Use when the user asks to "add an icon", "use a search icon", "insert
-  icons in Figma", "find an icon for settings", or needs clean SVG icons. NEVER draw icons manually —
-  always fetch from these libraries. Supports browsing, searching, and inserting icons into Figma
-  via figma.createNodeFromSvg().
+  in websites, presentations, Figma designs, or any project. Use when the user asks to "add an icon",
+  "use a search icon", "find an icon for settings", "get SVG icons", or needs clean SVG icons.
+  NEVER draw icons manually — always fetch from these libraries. Supports browsing, searching, and
+  using icons in code, Figma, or any design context.
 ---
 
 # Icon Library

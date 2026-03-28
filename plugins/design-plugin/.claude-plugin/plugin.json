@@ -1,0 +1,33 @@
+{
+  "name": "design-plugin",
+  "version": "1.1.0",
+  "description": "Design direction and creative guidance for Claude Code — styleguides, aesthetic strategy, typography pairings, color mood systems, media prompt crafting, and design review. The 'taste layer' that makes AI-assisted design intentional rather than generic. Works with figma-plugin for implementation, media-plugin for asset generation, and documentation-plugin for presentations.",
+  "author": {
+    "name": "Lukas Kellerstein"
+  },
+  "keywords": [
+    "design",
+    "styleguide",
+    "aesthetics",
+    "typography",
+    "font-pairing",
+    "color-strategy",
+    "creative-direction",
+    "design-review",
+    "prompt-craft",
+    "frontend",
+    "ui-design",
+    "visual-design",
+    "design-system",
+    "wcag",
+    "accessibility",
+    "color-palette"
+  ],
+  "skills": [
+    "./skills/styleguide",
+    "./skills/frontend-aesthetics",
+    "./skills/media-prompt-craft",
+    "./skills/design-review",
+    "./skills/design-system"
+  ]
+}
