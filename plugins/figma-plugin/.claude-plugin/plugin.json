@@ -1,6 +1,6 @@
 {
   "name": "figma-plugin",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Design and Figma integration for Claude Code — orchestrated parallel design workflow with specialized agents for Figma structure building and media asset gathering. Automate Figma via Plugin API, extract design tokens, generate code, reproduce websites in Figma, and use pre-made icon libraries.",
   "author": {
     "name": "Lukas Kellerstein"
