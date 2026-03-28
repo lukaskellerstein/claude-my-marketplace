@@ -30,7 +30,7 @@ You NEVER:
 The ONLY Figma interactions you do directly are:
 - `browser_navigate` — to open the Figma file
 - `browser_take_screenshot` — for visual verification
-- `browser_evaluate` — **ONLY** for: connection verification, page pre-creation, and discovery (NOT for building UI elements)
+- `browser_evaluate` — **ONLY** for: connection verification, page pre-creation, discovery, and **status panel updates** (`__figs.*` calls) — NOT for building UI elements
 
 ## Parse Arguments
 
@@ -46,6 +46,7 @@ If either is missing, ask the user.
 
 1. Navigate to the Figma URL using `mcp__design-playwright__browser_navigate`
 2. Verify connection: `browser_evaluate` → `typeof __figb === 'object' ? '__figb v' + __figb.version : 'not injected'`
+3. Initialize the status panel: `browser_evaluate` → `__figs.init()`
 3. **Discover existing design system** — run `browser_evaluate` to inspect the file:
    ```javascript
    const pages = __figb.f.root.children.map(p => p.name);
@@ -106,21 +107,19 @@ Section 2 — [Name]:
 - Videos/GIFs: [if applicable]
 ```
 
-### Phase 2.5: User Checkpoint + Pre-create Pages
+### Phase 2.5: User Checkpoint
 
 **Checkpoint:** Present the design plan to the user. Show sections, colors, fonts, image strategy. Wait for user approval or modifications before proceeding. (Skip if user passed `--fast`.)
 
-**Pre-create all Figma pages** in one `browser_evaluate` call:
-```javascript
-const pages = ['Design Language', 'Home', 'About', 'Contact']; // from plan
-for (const name of pages) { __figb.page(name); }
-__figb.page(pages[0]); // navigate back to first
-return pages;
-```
-
-This prevents race conditions when multiple agents try to create pages simultaneously. Agents will **switch to** their assigned page, not create it.
-
 ### Phase 3: Spawn ALL Media-Creator Agents (asset gathering)
+
+**Register agents in the status panel** before spawning. Use a single `browser_evaluate` call:
+```javascript
+__figs.agent('icons', 'Icons', 'fetching-icons', 'Fetching SVG icons');
+__figs.agent('photos', 'Stock Photos', 'fetching-images', 'Searching stock photos');
+__figs.agent('ai-images', 'AI Images', 'fetching-images', 'Generating AI images');
+// Add more if spawning video/GIF agents
+```
 
 Spawn media-creator agents in a SINGLE message so they all run in parallel. Use `run_in_background: true` so you can proceed to Phase 4 while they work.
 
@@ -141,6 +140,11 @@ Each agent gets a detailed prompt with:
 
 ### Phase 4: Spawn Design-Structure Agent (Design Language page)
 
+**Register the Design Language agent** in the status panel:
+```javascript
+__figs.agent('dl', 'Design Language', 'generating', 'Building design system');
+```
+
 While media-creator agents gather assets in background, spawn a design-structure agent to build the **Design Language page** in Figma. This page only needs colors, typography, effects, and spacing — no images or icons required.
 
 **DO NOT** use hardcoded colors that differ from the plan — always pass the exact hex codes from Phase 2.
@@ -158,7 +162,6 @@ Give this agent:
 - The Theme & Style section from the plan
 - The Font Stack from the plan
 - The Figma URL (it needs to navigate/verify itself)
-- Instruction to **switch to** the pre-created "Design Language" page (not create it)
 
 ### Phase 4.5: User Checkpoint — Design Language Review
 
@@ -166,10 +169,26 @@ After the Design Language agent completes, take a screenshot of the Design Langu
 
 ### Phase 5: Collect Media Results + Spawn Page Builders
 
+**Mark completed media agents** as each returns. Use `browser_evaluate` after each completes:
+```javascript
+__figs.done('icons');    // when icons agent finishes
+__figs.done('photos');   // when photos agent finishes
+__figs.done('ai-images'); // when AI images agent finishes
+```
+If an agent fails, use `__figs.error('icons', 'Failed to fetch 3 icons')`.
+
 Wait for all media-creator agents to complete. Collect their results:
 1. Icon SVGs map: `{ iconName: svgString }`
 2. Image URLs map: `{ sectionName: imageUrl }`
 3. Generated media file paths (if any)
+
+**Mark Design Language done** and **register page builder agents**:
+```javascript
+__figs.done('dl');
+__figs.agent('page-home', 'Home Page', 'generating', 'Building layout');
+__figs.agent('page-about', 'About Page', 'generating', 'Building layout');
+// ... one per page
+```
 
 Then spawn **design-structure** agents to build content pages in Figma. Pass them the collected assets:
 
@@ -193,12 +212,18 @@ For multi-page designs (spawn in ONE message, parallel):
 
 ### Phase 6: Verify + Cleanup
 
+**Mark page builder agents done** as each completes:
+```javascript
+__figs.done('page-home');
+__figs.done('page-about');
+// If errors: __figs.error('page-about', 'Image load failed')
+```
+
 After all design-structure agents complete:
 1. Take screenshots: `mcp__design-playwright__browser_take_screenshot` to visually verify
 2. If issues found, spawn a small design-structure agent to fix them
-3. Spawn a design-structure agent to run `__figb.verify()` on each page and `__figs.remove()` for cleanup
-
-**DO NOT** skip `__figs.remove()` cleanup — the status panel is a visible design artifact that must be removed.
+3. Run `__figb.verify()` on each page
+4. Remove the status panel: `__figs.remove()`
 
 ## Agent Prompt Templates
 
@@ -243,11 +268,13 @@ Do NOT do any Figma work. Only generate images.
 ```
 Build the Design Language page in Figma. The figma-bridge skill is preloaded — use __figb.* helpers.
 
+Your agentId is "dl". Update the status panel at every major step:
+  __figs.update('dl', 'executing', 'Building color palette');
+
 Navigate to [Figma URL] and verify connection.
 
-STEP 1: Switch to Design Language page and call the deterministic builder:
+STEP 1: Call the deterministic builder (it creates its own frame with autoPosition):
 
-__figb.page('Design Language');
 const result = await __figb.designLanguagePage({
   projectName: '[project name]',
   subtitle: '[style description]',
@@ -285,11 +312,15 @@ STEP 3: Verify with __figb.verify() + take screenshot.
 ```
 Build [Page Name] in the Figma file. The figma-bridge skill is preloaded — use __figb.* helpers.
 
+Your agentId is "page-[pagename]". Update the status panel at every major step:
+  __figs.update('page-[pagename]', 'executing', 'Building hero section');
+
 Navigate to [Figma URL] and verify connection.
 
 IMPORTANT RULES:
-- Use `__figb.page('[Page Name]')` to SWITCH to your pre-created Figma page (pages are pre-created by orchestrator — do NOT create new pages)
-- Use `autoPosition: true` on ALL top-level frames to avoid overlapping
+- Create your wrapper frame: `__figb.frame('[Page Name]', { w: 1440, direction: 'VERTICAL', autoPosition: true })` — this places it in free space on the canvas
+- In subsequent chunks, find your wrapper via `__figb.find('[Page Name]')`
+- Do NOT call `__figb.page()` — all agents work on the same canvas page
 - Card/container backgrounds must match the theme (dark cards for dark themes — NEVER white cards in dark designs)
 - Use subtle borders (1px, low-opacity) instead of relying on white backgrounds for card visibility
 
@@ -314,6 +345,6 @@ Use the Design Language styles (Paint Styles, Text Styles, Effect Styles) where 
 3. **Pass results between agents** — media-creator results must be embedded into design-structure prompts
 4. **Design Language page first** — build it while media agents gather assets, before content pages
 5. **Verify at the end** — `__figb.verify()` + visual snapshot after all agents complete
-6. **Separate Figma pages for each website page** — each website page (Home, About, Contact, etc.) goes into its own Figma page via `__figb.page('PageName')`. The Design Language page is also its own Figma page.
+6. **Single canvas, separate frames** — all website pages live on the same Figma canvas page as uniquely-named top-level frames with `autoPosition: true`. Do NOT use `__figb.page()` to create separate pages — this breaks parallel agent execution.
 7. **Use autoPosition for all top-level frames** — every top-level frame must use `autoPosition: true` to avoid stacking frames at origin (0,0). Tell EVERY design-structure agent to use this.
 8. **Theme-consistent cards** — remind design-structure agents: card/container backgrounds must match the design theme. No white cards in dark designs.

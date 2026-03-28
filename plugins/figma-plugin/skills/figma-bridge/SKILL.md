@@ -216,8 +216,7 @@ await __figb.fonts(
 The Design Language page is built by a **single deterministic method** that produces a polished, compact layout every time. The agent's job is to construct the config JSON from the design plan — not write layout code.
 
 ```javascript
-__figb.page("Design Language");
-
+// designLanguagePage creates its own frame with autoPosition — no __figb.page() needed
 const result = await __figb.designLanguagePage({
   projectName: 'Omg.ai',
   subtitle: 'Dark Military / Tech — Visual foundation for all Omg.ai products',

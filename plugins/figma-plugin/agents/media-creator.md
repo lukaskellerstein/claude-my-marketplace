@@ -53,6 +53,20 @@ The media-plugin skills are preloaded — refer to them for detailed instruction
 5. **No Figma work** — you never touch Figma, only gather assets
 6. **Prefer stock over AI** — stock photos are faster and more realistic; use AI only when stock won't work
 
+## Progress Reporting
+
+You do NOT have direct access to the Figma status panel — the orchestrator tracks your progress. To help it relay accurate status, **print a progress line** after each batch of assets completes:
+
+```
+[PROGRESS] Icons: 5/8 fetched
+[PROGRESS] Images: 3/4 downloaded
+[PROGRESS] AI Images: 1/2 generated
+[DONE] All assets gathered
+[ERROR] Failed: icon "nonexistent" not found
+```
+
+The orchestrator reads these to update `__figs.update()` on your behalf.
+
 ## Output Format
 
 Always end your work with a structured summary:

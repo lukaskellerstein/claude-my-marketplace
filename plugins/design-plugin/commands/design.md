@@ -79,8 +79,7 @@ End with a "Next Steps" section pointing to specific plugins and skills:
 2. **Find stock photos** → use `media-plugin/image-sourcing` with the queries above
 3. **Fetch icons** → use `media-plugin/icon-library` for [library] icons
 4. **Check contrast** → use `design-system` to verify WCAG compliance
-5. **Build in Figma** → use `/figma` command with your Figma file URL
-6. **Build frontend** → reference `frontend-aesthetics` skill for component recipes
+5. **Build frontend** → reference `frontend-aesthetics` skill for component recipes
 ```
 
 ## Rules

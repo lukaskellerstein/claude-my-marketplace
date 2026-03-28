@@ -3,8 +3,7 @@ name: design-director
 description: >
   Orchestrates the full design workflow for a project — from assessing needs to producing a
   styleguide and coordinating asset creation. Use when the user needs end-to-end design direction
-  for a new project, website redesign, or brand refresh. Coordinates with figma-plugin for
-  implementation and media-plugin for asset generation.
+  for a new project, website redesign, or brand refresh. Coordinates with media-plugin for asset generation.
 
   <example>
   Context: User starting a new project and needs design direction
@@ -102,9 +101,8 @@ Tell the user exactly what to do next:
 2. **For icons** → "Use media-plugin/icon-library to fetch these icons: [list]"
 3. **For stock photos** → "Use media-plugin/image-sourcing with these queries: [list]"
 4. **For AI images** → "Use media-plugin/image-generation with these prompts: [list]"
-5. **For Figma** → "Use /figma command with the Figma URL to build the design"
-6. **For presentations** → "Use documentation-plugin/pptx and apply this styleguide"
-7. **For frontend code** → Reference specific patterns from frontend-aesthetics
+5. **For presentations** → "Use documentation-plugin/pptx and apply this styleguide"
+6. **For frontend code** → Reference specific patterns from frontend-aesthetics
 
 ### Phase 6: Frontend Guidance (if applicable)
 

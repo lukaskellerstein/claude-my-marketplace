@@ -25,7 +25,6 @@ The "taste" skill. Turns generic frontend output into intentional, distinctive d
 ## When NOT to Use
 
 - User wants a complete styleguide from scratch → use **styleguide** skill first
-- User wants to extract design tokens from Figma → use **figma-plugin/design-tokens**
 - User wants WCAG accessibility auditing → use **design-system**
 - User wants to generate images → use **media-plugin/image-generation**
 

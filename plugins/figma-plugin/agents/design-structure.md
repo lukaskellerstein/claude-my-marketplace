@@ -86,23 +86,44 @@ f.x = pos.x; f.y = pos.y;
 ```
 
 ### Build Order
-1. Switch to your assigned page: `__figb.page('PageName')` (pages are pre-created by the orchestrator — do NOT create new pages)
-2. Create outer frame (viewport): `__figb.frame('Main', { w: 1440, ..., autoPosition: true })`
-3. Build sections top-to-bottom, each in its own chunk
+1. Create your wrapper frame on the current canvas: `__figb.frame('PageName', { w: 1440, direction: 'VERTICAL', autoPosition: true })` — this places it in free space, avoiding other agents' frames
+2. In subsequent chunks, find your wrapper: `const wrapper = __figb.find('PageName')`
+3. Build sections top-to-bottom inside the wrapper, each in its own chunk
 4. Each section loads its own images and icons inline
 
-### Status Updates
-Update the status panel as you work:
+**Do NOT call `__figb.page()`** — all agents work on the same canvas page. Using separate pages breaks parallel execution.
+
+### Status Updates — MANDATORY
+You MUST update the status panel at every milestone via `browser_evaluate`. The orchestrator passes your `agentId` in the prompt — use it for all status calls.
+
 ```javascript
-await __figs.update('agentId', 'executing', 'Building hero section...');
+// At the start of your work
+__figs.update('agentId', 'executing', 'Starting page build');
+
+// Before each section
+__figs.update('agentId', 'executing', 'Building hero section');
+
+// When loading images/icons
+__figs.update('agentId', 'fetching-assets', 'Loading hero image');
+
+// When verifying
+__figs.update('agentId', 'verifying', 'Running verify checks');
+
+// On error (then continue to next section)
+__figs.error('agentId', 'Hero image failed to load');
+
+// When done (orchestrator may also call this)
+__figs.done('agentId');
 ```
+
+**Update status at EVERY major step** — this is how the user tracks your progress in the overlay panel.
 
 ## Design Language Page
 
 **Use `__figb.designLanguagePage(config)` — one call produces the entire page deterministically.** Do NOT write layout code manually for colors, typography, effects, or spacing sections.
 
 ```javascript
-__figb.page('Design Language');
+// No __figb.page() call — designLanguagePage creates its own frame with autoPosition
 const result = await __figb.designLanguagePage({
   projectName: '...', subtitle: '...',
   themeBg: '#0A0A0A', accentColor: '#3B82F6',
@@ -157,10 +178,11 @@ When a `browser_evaluate` call fails:
 Before creating nodes, check if they already exist (prevents duplicates on retry/re-run):
 
 ```javascript
-// Before creating a page
-const existing = __figb.f.root.children.find(p => p.name === 'Design Language');
-if (existing) { await __figb.f.setCurrentPageAsync(existing); }
-else { __figb.page('Design Language'); }
+// Before creating a wrapper frame — check if it already exists on the canvas
+const existing = __figb.find('Home');
+if (!existing) {
+  __figb.frame('Home', { w: 1440, direction: 'VERTICAL', autoPosition: true });
+}
 
 // Before creating a style
 const styles = __figb.f.getLocalPaintStyles();

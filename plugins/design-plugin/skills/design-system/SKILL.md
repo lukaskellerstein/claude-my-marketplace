@@ -16,13 +16,10 @@ Tools and patterns for building, managing, and auditing design systems. Covers c
 - User wants to create or extend a color palette
 - User wants to check WCAG contrast compliance
 - User asks about typography scales or spacing systems
-- User wants to audit design consistency across a project or Figma file
+- User wants to audit design consistency across a project
 - User wants to generate a design system from scratch
 
 ## When NOT to Use
-
-- User wants to extract existing tokens from Figma → use **figma-plugin/design-tokens** skill
-- User wants to convert a specific design to code → use **figma-plugin/design-to-code** skill
 
 ## Color Systems
 
@@ -198,47 +195,9 @@ When auditing any design or codebase for design system compliance:
    - Touch targets >= 44x44px for interactive elements
    - Focus states defined for all interactive components
 
-## Auditing via Figma Plugin API
-
-For Figma-specific auditing, use **figma-plugin/figma-bridge** to execute these scripts in the browser:
-
-```javascript
-// Find all unique colors in use
-const allNodes = figma.currentPage.findAll();
-const colors = new Set();
-allNodes.forEach(node => {
-  if ('fills' in node) {
-    node.fills.forEach(fill => {
-      if (fill.type === 'SOLID' && fill.visible !== false) {
-        const hex = figmaColorToHex(fill.color);
-        colors.add(hex);
-      }
-    });
-  }
-});
-console.log('Unique colors:', [...colors]);
-
-// Find all font sizes in use
-const textNodes = figma.currentPage.findAll(n => n.type === 'TEXT');
-const fontSizes = new Set();
-textNodes.forEach(node => {
-  if (typeof node.fontSize === 'number') {
-    fontSizes.add(node.fontSize);
-  }
-});
-console.log('Font sizes:', [...fontSizes].sort((a,b) => a-b));
-
-// Find detached instances (components used as frames)
-const detached = figma.currentPage.findAll(n =>
-  n.type === 'FRAME' && n.name.startsWith('Component/')
-);
-console.log('Possibly detached components:', detached.length);
-```
-
 ## Tips
 
 - Build the palette from a single primary hue and derive the rest systematically
 - Always test contrast ratios at the actual font sizes used in the design
-- In Figma, use Variables for tokens — they support light/dark mode natively
 - Spacing should follow a consistent grid (4px is the industry standard)
 - When in doubt about a color's accessibility, darken it — it's better to be safe

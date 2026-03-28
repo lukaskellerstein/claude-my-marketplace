@@ -24,11 +24,9 @@ Create a comprehensive design language for any project. This is the starting poi
 
 ## When NOT to Use
 
-- User wants to extract existing tokens from Figma → use **figma-plugin/design-tokens**
 - User wants to generate actual images → use **media-plugin/image-generation**
 - User wants to search for stock photos → use **media-plugin/image-sourcing**
 - User wants to audit WCAG contrast → use **design-system**
-- User wants to build components in Figma → use **figma-plugin/figma-bridge**
 
 ## Styleguide Creation Workflow
 
@@ -153,7 +151,6 @@ Produce a structured markdown document using this template:
 - **Stock photos**: use `media-plugin/image-sourcing` with these queries: [list]
 - **Generated visuals**: use `media-plugin/image-generation` with these prompts: [list]
 - **Presentations**: apply this styleguide when using `documentation-plugin/pptx`
-- **Figma implementation**: use `figma-plugin/figma-bridge` to build in Figma
 ```
 
 ## Tips

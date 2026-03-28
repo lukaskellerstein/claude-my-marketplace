@@ -1,7 +1,7 @@
 {
   "name": "design-plugin",
   "version": "1.1.0",
-  "description": "Design direction and creative guidance for Claude Code — styleguides, aesthetic strategy, typography pairings, color mood systems, media prompt crafting, and design review. The 'taste layer' that makes AI-assisted design intentional rather than generic. Works with figma-plugin for implementation, media-plugin for asset generation, and documentation-plugin for presentations.",
+  "description": "Design direction and creative guidance for Claude Code — styleguides, aesthetic strategy, typography pairings, color mood systems, media prompt crafting, and design review. The 'taste layer' that makes AI-assisted design intentional rather than generic. Works with media-plugin for asset generation and documentation-plugin for presentations.",
   "author": {
     "name": "Lukas Kellerstein"
   },

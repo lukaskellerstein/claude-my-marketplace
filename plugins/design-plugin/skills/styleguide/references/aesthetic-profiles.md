@@ -119,7 +119,6 @@ Expressive and delightful. Bouncy easing, spring physics, playful micro-interact
 
 **Reference sites**
 - notion.so
-- figma.com
 - duolingo.com
 
 ---
