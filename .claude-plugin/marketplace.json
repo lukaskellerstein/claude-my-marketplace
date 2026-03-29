@@ -34,6 +34,10 @@
     {
       "name": "web-design-plugin",
       "source": "./plugins/web-design-plugin"
+    },
+    {
+      "name": "web-selector-plugin",
+      "source": "./plugins/web-selector-plugin"
     }
   ]
 }
