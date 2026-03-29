@@ -49,6 +49,24 @@ Design direction and creative guidance — the "taste layer" that makes AI-assis
 - **Agents:** design-director
 - **Commands:** /design
 
+## Plugin Dependencies
+
+```mermaid
+graph TD
+    figma[figma-plugin] --> media[media-plugin]
+    figma --> design[design-plugin]
+    design --> media
+    design --> docs[documentation-plugin]
+    docs --> media
+    dev[dev-tools-plugin]
+    infra[infra-plugin]
+```
+
+- **media-plugin** is foundational — used by figma, design, and documentation plugins for image/video/music/speech generation and icon sourcing
+- **design-plugin** provides creative direction — used by figma-plugin for design system auditing
+- **documentation-plugin** is used by design-plugin for PPTX image dimension references
+- **dev-tools-plugin** and **infra-plugin** are standalone with no cross-plugin dependencies
+
 ## Installation
 
 ### 1. Add the marketplace

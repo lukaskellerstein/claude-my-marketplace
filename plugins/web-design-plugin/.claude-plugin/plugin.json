@@ -1,0 +1,35 @@
+{
+  "name": "web-design-plugin",
+  "version": "1.0.0",
+  "description": "End-to-end website/webapp design and implementation — from brief to working React/Vite code. Orchestrates design direction, content architecture, media generation, parallel per-page implementation, and visual testing with an opinionated anti-slop workflow.",
+  "author": {
+    "name": "Lukas Kellerstein"
+  },
+  "keywords": [
+    "web-design",
+    "website",
+    "webapp",
+    "react",
+    "vite",
+    "tailwind",
+    "shadcn",
+    "gsap",
+    "animations",
+    "implementation",
+    "landing-page",
+    "frontend"
+  ],
+  "skills": [
+    "./skills/animation-system",
+    "./skills/page-architecture",
+    "./skills/css-architecture",
+    "./skills/variation"
+  ],
+  "mcpServers": {
+    "web-playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest", "--headless"],
+      "description": "Browser automation for visual testing of built websites"
+    }
+  }
+}
