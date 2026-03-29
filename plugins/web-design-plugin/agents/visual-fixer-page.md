@@ -17,6 +17,13 @@ description: >
   </example>
 model: sonnet
 color: red
+tools:
+  - Read
+  - Edit
+  - Bash
+  - Glob
+  - Grep
+  - mcp__webdesign-playwright
 skills:
   - css-architecture
 ---

@@ -6,6 +6,7 @@
 set -euo pipefail
 
 STATS_DIR="/tmp/web-design-stats"
+DEBUG_LOG="/tmp/web-design-hooks-debug.log"
 STATS_LOG="${STATS_DIR}/events.log"
 
 # Only track if stats session is active
@@ -15,6 +16,8 @@ STATS_LOG="${STATS_DIR}/events.log"
 TOOL_JSON=$(cat)
 
 TOOL_NAME=$(echo "$TOOL_JSON" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('tool_name',''))" 2>/dev/null || echo "")
+
+echo "[$(date)] track-stats.sh fired: tool=$TOOL_NAME" >> "$DEBUG_LOG"
 
 [ -z "$TOOL_NAME" ] && exit 0
 

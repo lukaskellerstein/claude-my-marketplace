@@ -2,18 +2,6 @@
 description: Design and build a complete website or webapp from a project brief — end-to-end workflow from design to working React/Vite code
 argument-hint: "<project description or file path> [--fast] [--no-media]"
 allowed-tools: ["Read", "Write", "Bash", "Agent", "Glob", "Grep", "WebSearch", "WebFetch", "mcp__web-playwright__browser_navigate", "mcp__web-playwright__browser_take_screenshot", "mcp__web-playwright__browser_snapshot", "mcp__web-playwright__browser_click"]
-hooks:
-  UserPromptSubmit:
-    - hooks:
-        - type: command
-          command: "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/init-stats.sh"
-          timeout: 5
-          once: true
-  Stop:
-    - hooks:
-        - type: command
-          command: "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/print-stats.sh"
-          timeout: 5
 ---
 
 # /web-design — Website Design & Build Orchestrator

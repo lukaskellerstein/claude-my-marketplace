@@ -1,20 +1,35 @@
 #!/usr/bin/env bash
 # Print web-design execution statistics as a formatted table.
-# Called via Stop hook on /web-design command.
+# Called via Stop hook from hooks.json.
 # Only prints when implementation is done (PAGE events exist in log),
 # so checkpoint pauses during Phase 2/3 don't trigger output.
 
-set -euo pipefail
+set -eo pipefail
 
 STATS_DIR="/tmp/web-design-stats"
 STATS_LOG="${STATS_DIR}/events.log"
+DEBUG_LOG="/tmp/web-design-hooks-debug.log"
+
+# Helper: count matching lines in stats log (returns 0 if none)
+count_events() {
+  local pattern="$1"
+  local n
+  n=$(grep -c "$pattern" "$STATS_LOG" 2>/dev/null) || true
+  echo "${n:-0}"
+}
+
+# Debug: log every invocation
+ACTIVE_STATUS="no"
+[ -f "${STATS_DIR}/active" ] && ACTIVE_STATUS="yes"
+PAGE_COUNT_EARLY=$(count_events "^PAGE|")
+echo "[$(date)] print-stats.sh fired, active=$ACTIVE_STATUS, PAGE_COUNT=$PAGE_COUNT_EARLY" >> "$DEBUG_LOG"
 
 # Exit silently if no active stats session
 [ ! -f "${STATS_DIR}/active" ] && exit 0
 [ ! -f "${STATS_DIR}/start_time" ] && exit 0
 
 # Only print when pages have been built (implementation is done)
-PAGE_COUNT=$(grep -c "^PAGE|" "$STATS_LOG" 2>/dev/null || echo "0")
+PAGE_COUNT=$(count_events "^PAGE|")
 [ "$PAGE_COUNT" -eq 0 ] && exit 0
 
 START_TIME=$(cat "${STATS_DIR}/start_time")
@@ -24,14 +39,14 @@ MINS=$((DURATION / 60))
 SECS=$((DURATION % 60))
 
 # Count events from log
-AGENT_COUNT=$(grep -c "^AGENT|" "$STATS_LOG" 2>/dev/null || echo "0")
-IMAGES_GENERATED=$(grep -c "^IMAGE|.*|generated" "$STATS_LOG" 2>/dev/null || echo "0")
-IMAGES_SOURCED=$(grep -c "^IMAGE|.*|sourced" "$STATS_LOG" 2>/dev/null || echo "0")
+AGENT_COUNT=$(count_events "^AGENT|")
+IMAGES_GENERATED=$(count_events "^IMAGE|.*|generated")
+IMAGES_SOURCED=$(count_events "^IMAGE|.*|sourced")
 IMAGES_TOTAL=$((IMAGES_GENERATED + IMAGES_SOURCED))
-VIDEO_COUNT=$(grep -c "^VIDEO|" "$STATS_LOG" 2>/dev/null || echo "0")
-AUDIO_COUNT=$(grep -c "^AUDIO|" "$STATS_LOG" 2>/dev/null || echo "0")
-COMPONENT_COUNT=$(grep -c "^COMPONENT|" "$STATS_LOG" 2>/dev/null || echo "0")
-DOC_COUNT=$(grep -c "^DOC|" "$STATS_LOG" 2>/dev/null || echo "0")
+VIDEO_COUNT=$(count_events "^VIDEO|")
+AUDIO_COUNT=$(count_events "^AUDIO|")
+COMPONENT_COUNT=$(count_events "^COMPONENT|")
+DOC_COUNT=$(count_events "^DOC|")
 
 # Extract agent names
 AGENT_LIST=$(grep "^AGENT|" "$STATS_LOG" 2>/dev/null | cut -d'|' -f3 | sort | uniq -c | sort -rn || echo "")
