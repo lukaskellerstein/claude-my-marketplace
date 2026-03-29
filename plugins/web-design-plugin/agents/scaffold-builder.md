@@ -103,6 +103,11 @@ For each page in the design document:
 - Export typed data for page-builders to import
 
 ### 8. Generate/Source Shared Media
+
+**If `media-plan.md` does not exist yet** (scaffold runs in parallel with media planning), skip this step entirely. Focus on steps 1-7. The page-builders will handle media generation for their pages.
+
+**If `media-plan.md` exists**, issue ALL media generation/sourcing tool calls in PARALLEL in a SINGLE response. If you need a logo, 2 product images, and an OG image, call all 4 tools at once.
+
 Media assets used across multiple pages:
 - Logo (generate or source based on design doc)
 - Product images reused on multiple pages

@@ -2,6 +2,18 @@
 description: Design and build a complete website or webapp from a project brief — end-to-end workflow from design to working React/Vite code
 argument-hint: "<project description or file path> [--fast] [--no-media]"
 allowed-tools: ["Read", "Write", "Bash", "Agent", "Glob", "Grep", "WebSearch", "WebFetch", "mcp__web-playwright__browser_navigate", "mcp__web-playwright__browser_take_screenshot", "mcp__web-playwright__browser_snapshot", "mcp__web-playwright__browser_click"]
+hooks:
+  UserPromptSubmit:
+    - hooks:
+        - type: command
+          command: "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/init-stats.sh"
+          timeout: 5
+          once: true
+  Stop:
+    - hooks:
+        - type: command
+          command: "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/print-stats.sh"
+          timeout: 5
 ---
 
 # /web-design — Website Design & Build Orchestrator
@@ -13,7 +25,7 @@ You are the **web design orchestrator**. Your ONLY job is to plan, delegate to a
 You:
 - Understand the project brief and ask clarifying questions
 - Create the design plan and get user approval
-- Spawn the design-documenter agent for design documentation
+- Spawn design-doc agents for design documentation (in parallel waves)
 - Spawn scaffold-builder, page-builder, assembler, and visual-fixer agents for implementation
 - Coordinate results between agents
 - Verify the final result
@@ -21,7 +33,7 @@ You:
 You NEVER:
 - Write React components, CSS, or HTML
 - Generate or source images/videos/icons
-- Write design documents yourself (the design-documenter agent does this)
+- Write design documents yourself (the design-doc agents do this)
 - Install npm packages or run build commands
 - Do ANY implementation work — that is the agents' job
 
@@ -38,11 +50,17 @@ If the brief is a file path, read the file. If the brief is too vague (no indica
 
 | Agent | Purpose |
 |---|---|
-| `design-documenter` | Produces complete design document (Phase 3) |
-| `scaffold-builder` | Project setup, global styles, shared components, shared media (Phase 4, Step 1) |
-| `page-builder` | Builds ONE page end-to-end: structure + content + media + animations (Phase 4, Step 2) |
-| `assembler` | Wires pages together, routing, integration (Phase 4, Step 3) |
-| `visual-fixer` | Final QA — crawls every page/element, fixes visual issues directly in source (Phase 4, Step 4) |
+| `design-doc-foundation` | Produces design-document.md (index) + styleguide.md + css-architecture.md (Phase 3, Wave 1) |
+| `design-doc-animation` | Produces animation-plan.md (Phase 3, Wave 1) |
+| `design-doc-data` | Produces mock-data.md (Phase 3, Wave 1) |
+| `design-doc-media` | Produces media-plan.md — needs styleguide.md (Phase 3, Wave 2) |
+| `design-doc-pages` | Produces all pages/*.md — needs styleguide.md (Phase 3, Wave 2) |
+| `scaffold-builder` | Project setup, global styles, shared components (Phase 3, Wave 2 — runs parallel with doc agents) |
+| `page-builder` | Builds ONE page end-to-end: structure + content + media + animations (Phase 4, Step 1) |
+| `assembler` | Fast integration check — verifies routing, imports, build (Phase 4, Step 2) |
+| `visual-fixer-page` | Fixes visual issues on ONE page using its own dev server port (Phase 4, Step 3) |
+| `visual-fixer-app` | Final cross-page regression check and shared component fixes (Phase 4, Step 3) |
+
 ## Output Directory
 
 All output goes to `<project-root>/designs/`:
@@ -100,39 +118,37 @@ Create a high-level plan:
 
 **Checkpoint:** Present the plan to the user. Wait for approval or modifications. (Skip if `--fast`.)
 
-### Phase 3: Document
+### Phase 3: Document + Scaffold (Two Waves with Overlap)
 
-Spawn the **design-documenter** agent with:
-- The approved plan
-- The full project brief
-- The target output directory (`designs/N/docs/`)
+#### Wave 1 — Foundation + Independent Docs (3 agents in parallel)
 
-The design-documenter produces a set of focused design files:
-- `design-document.md` — index with project overview and links to all other files
-- `styleguide.md` — colors, fonts, spacing — uses `design-plugin:styleguide`
-- `css-architecture.md` — tailwind config, global styles — uses `css-architecture`
-- `media-plan.md` — shared media, icon list — uses `design-plugin:media-prompt-craft`
-- `animation-plan.md` — global animation settings — uses `animation-system`
-- `mock-data.md` — JSON data structures
-- `pages/{page-name}.md` — per-page specs bundling architecture + layout + media + animations
+Spawn THREE agents in a **SINGLE message**:
 
-**Checkpoint:** After the design document is complete, present a summary to the user. Highlight key choices (aesthetic profile, font pairing, color palette, animation level). Wait for approval. (Skip if `--fast`.)
+1. **design-doc-foundation** — produces `design-document.md`, `styleguide.md`, `css-architecture.md`
+2. **design-doc-animation** — produces `animation-plan.md`
+3. **design-doc-data** — produces `mock-data.md`
+
+Each receives: the approved plan, the full project brief, and the target output directory (`designs/N/docs/`).
+
+**Wait for ALL three to complete before proceeding.**
+
+#### Wave 2 — Style-Dependent Docs + Scaffold (3 agents in parallel)
+
+Spawn THREE agents in a **SINGLE message**:
+
+1. **design-doc-media** — produces `media-plan.md` (reads `styleguide.md` from Wave 1)
+2. **design-doc-pages** — produces ALL `pages/*.md` files (reads `styleguide.md` from Wave 1)
+3. **scaffold-builder** — sets up the Vite project (reads `css-architecture.md`, `design-document.md`, `mock-data.md` from Wave 1)
+
+**Wait for ALL three to complete before proceeding.**
+
+**Checkpoint:** After all design docs are complete, present a summary to the user. Highlight key choices (aesthetic profile, font pairing, color palette, animation level). Wait for approval. (Skip if `--fast`.)
 
 ### Phase 4: Implement
 
 Execute in waves:
 
-#### Step 1 — Scaffold (sequential)
-Spawn the **scaffold-builder** agent with:
-- The docs directory path (`designs/N/docs/`)
-- The target src directory (`designs/N/src/`)
-- Specific files to read: `css-architecture.md`, `design-document.md` (for routes), `media-plan.md` (shared media), `mock-data.md`
-
-It sets up: Vite project, dependencies, tailwind config, global styles, shared components (nav, footer, layout), and shared media assets (logo, product images reused across pages).
-
-Wait for scaffold-builder to complete before Step 2.
-
-#### Step 2 — Per-Page Build (parallel)
+#### Step 1 — Per-Page Build (parallel)
 Spawn one **page-builder** agent per page/major-section.
 
 Each page-builder receives:
@@ -150,27 +166,44 @@ Each page-builder handles ALL aspects of its page:
 
 **Spawn ALL page-builders in a SINGLE message** so they run in parallel.
 
-#### Step 3 — Assembly (sequential)
+#### Step 2 — Integration Check (sequential)
 Spawn the **assembler** agent with:
 - The project src directory
 - List of pages built
 
-It wires pages together: routing (React Router), shared navigation state, cross-page consistency, final layout integration.
+It quickly verifies: imports resolve, routing works, dev server starts without errors. Fixes only what's broken. Target: under 2 minutes.
 
-#### Step 4 — Visual Fix Pass (sequential)
-Spawn the **visual-fixer** agent with:
+#### Step 3 — Visual Fix Pass (parallel per page + regression)
+
+**Part A: Per-page fixes (parallel)**
+
+Spawn one **visual-fixer-page** agent per page in a **SINGLE message**.
+
+Each visual-fixer-page receives:
 - The project src directory
-- The docs directory path (`designs/N/docs/`) — it reads all files for comprehensive QA
+- The docs directory path (`designs/N/docs/`)
+- Its assigned page route(s) (e.g., `"/"` for Home, `"/about"` for About)
+- A unique port number for its dev server (5173, 5174, 5175, ...)
 
-It:
-1. Reads the design document to understand expected visuals
-2. Starts the Vite dev server (`npm run dev`)
-3. Crawls every page, every section, every element using Playwright DOM inspection
-4. Compares actual computed styles against design doc specs (colors, alignment, spacing, typography, layout)
-5. **Fixes issues directly** in the React/Tailwind source files
-6. Verifies each fix by re-inspecting
-7. Does a final verification pass to catch regressions
-8. Reports what was fixed and what needs manual attention
+Each visual-fixer-page agent:
+1. Reads the design docs relevant to its page
+2. Starts the dev server on its assigned port
+3. Inspects ONLY its assigned page(s)
+4. Fixes issues in its page's source files only
+5. Verifies fixes
+6. Kills its dev server
+7. Reports what was fixed and what needs manual attention
+
+**Wait for ALL visual-fixer-page agents to complete.**
+
+**Part B: Regression check (sequential)**
+
+Spawn ONE **visual-fixer-app** agent with:
+- The project src directory
+- The docs directory path
+- Any shared file issues reported by per-page fixers
+
+It does a quick crawl of all pages, fixes shared component issues (Navigation, Footer, Layout), checks for cross-page regressions, and takes final screenshots.
 
 ### Phase 5: Deliver
 
@@ -179,11 +212,13 @@ It:
 3. Provide instructions to run: `cd designs/N/src && npm run dev`
 4. Remind user they can generate variations later using the `variation` skill with the path to `designs/N/`
 
+The execution statistics table will be printed automatically by the Stop hook when the command finishes.
+
 ## Agent Prompt Templates
 
-### design-documenter Agent
+### design-doc-foundation Agent
 ```
-Create a complete design document for a web design project.
+Create the foundational design files for a web design project.
 
 Project brief:
 [paste brief]
@@ -193,17 +228,98 @@ Approved plan:
 
 Output directory: designs/N/docs/
 
-You have these skills preloaded:
-- design-plugin:styleguide — for aesthetic profile, fonts, colors
-- design-plugin:frontend-aesthetics — for layout composition
-- design-plugin:media-prompt-craft — for media prompts
-- design-plugin:design-system — for technical design system
-- page-architecture — for page structure, sections, content
-- animation-system — for animation planning
-- css-architecture — for CSS/Tailwind configuration
+Produce THREE files:
+1. design-document.md — project index with overview, site map, and table of contents linking to all design files
+2. styleguide.md — aesthetic profile, font pairing, color palette, spacing system, borders, shadows
+3. css-architecture.md — CSS custom properties (:root block), tailwind.config.js, global styles, shadcn component list
 
-Produce a set of focused design files that cover ALL of these.
-Write them to [output directory] following the split file structure documented in the agent.
+Use your preloaded skills for informed choices. Be specific — hex codes, font names, pixel values.
+```
+
+### design-doc-animation Agent
+```
+Create the animation plan for a web design project.
+
+Project brief:
+[paste brief]
+
+Approved plan:
+[paste plan]
+
+Output directory: designs/N/docs/
+
+Produce ONE file: animation-plan.md
+- Overall animation intensity level
+- GSAP setup instructions (plugins to register)
+- Page transition strategy (if multi-page)
+- prefers-reduced-motion fallback approach
+- Timing system and easing preferences
+
+Per-section animation specs go in page files, not here — only global settings.
+```
+
+### design-doc-data Agent
+```
+Create mock data for a web design project.
+
+Project brief:
+[paste brief]
+
+Approved plan:
+[paste plan]
+
+Output directory: designs/N/docs/
+
+Produce ONE file: mock-data.md
+- JSON structures for ALL dynamic content across all pages
+- TypeScript type definitions for each data structure
+- Realistic values — no "John Doe" or "Lorem Corp"
+- Organized by data type, not by page
+```
+
+### design-doc-media Agent
+```
+Create the media plan for a web design project.
+
+Project brief:
+[paste brief]
+
+Approved plan:
+[paste plan]
+
+IMPORTANT: First read designs/N/docs/styleguide.md — you need the aesthetic profile for the style prefix.
+
+Output directory: designs/N/docs/
+
+Produce ONE file: media-plan.md
+- Style prefix for visual consistency (derived from styleguide)
+- Shared media specs: logo, product images, OG image, favicon
+- Icon master list with Lucide/Heroicons/Tabler names and sizes
+
+Per-section media specs go in page files, not here — only shared/global media.
+CRITICAL: Every section must have real visual media. Never "CSS gradient only."
+```
+
+### design-doc-pages Agent
+```
+Create per-page specification files for a web design project.
+
+Project brief:
+[paste brief]
+
+Approved plan:
+[paste plan]
+
+IMPORTANT: First read designs/N/docs/styleguide.md — you need colors, fonts, spacing for consistent specs.
+
+Output directory: designs/N/docs/pages/
+
+Produce ONE file per page: pages/home.md, pages/about.md, etc.
+Each file is self-contained with: section architecture, text content, layout composition,
+media specs (with AI prompts or stock queries), and animation specs per section.
+
+Every text block must have explicit alignment. Every section must have explicit inner spacing.
+Every section must have at least one real visual media element.
 ```
 
 ### scaffold-builder Agent
@@ -216,8 +332,9 @@ Output directory: designs/N/src/
 Read these specific files:
 - designs/N/docs/css-architecture.md — for tailwind config, CSS tokens, shadcn components
 - designs/N/docs/design-document.md — for site map and routes
-- designs/N/docs/media-plan.md — for shared media (logo, product images, OG image)
 - designs/N/docs/mock-data.md — for data directory setup
+
+If designs/N/docs/media-plan.md exists, also read it for shared media. If it doesn't exist yet, skip shared media generation.
 
 Set up:
 1. Vite + React + TypeScript project
@@ -225,7 +342,7 @@ Set up:
 3. Apply tailwind.config.js from css-architecture.md
 4. Create globals.css with CSS custom properties from css-architecture.md
 5. Create shared components: navigation, footer, layout wrapper
-6. Generate/source shared media from media-plan.md: logo, any images reused across pages
+6. Generate/source shared media from media-plan.md (if available): logo, any images reused across pages
 7. Create the data/ directory with mock data JSON files from mock-data.md
 
 When done, the project should be runnable with `npm run dev` (showing empty pages with nav/footer).
@@ -254,45 +371,67 @@ Build the complete page:
    - Use CSS transitions for simple hover effects
 7. Self-test: verify the component renders without errors
 
-Use the preloaded skills for guidance on implementation patterns.
+CRITICAL: Call ALL media tools in PARALLEL in a SINGLE response. Batch image generation,
+icon fetching, and image sourcing into one message.
 ```
 
 ### assembler Agent
 ```
-Assemble all pages into a complete website.
+Quick integration check on the built website.
 
 Project src: designs/N/src/
 Pages built: [list of page names]
 
-Wire everything together:
-1. Set up React Router in App.tsx with routes for each page
-2. Connect the navigation component to routes
-3. Ensure shared header/footer renders on all pages
-4. Check cross-page consistency (shared styles, transitions)
-5. Verify the dev server starts without errors: npm run dev
+Verify and fix ONLY what's broken:
+1. Check all page imports resolve correctly
+2. Verify React Router routes in App.tsx match built pages
+3. Run npm run dev — check for build errors and console errors
+4. Fix broken imports or routing issues
+
+Do NOT rewrite routing, navigation, or layouts if they already work.
+Target: under 2 minutes.
 ```
 
-### visual-fixer Agent
+### visual-fixer-page Agent
 ```
-Run a full visual QA and fix pass on the built website.
+Run visual QA and fix pass on ONE page of the built website.
 
 Project src: designs/N/src/
 Design docs: designs/N/docs/
+Your assigned page: [Page Name] at route [route]
+Your assigned port: [port number]
 
-Crawl every page, inspect every section and element, compare against the design document, and fix
-all visual issues directly in the source files. Verify each fix. Report what was fixed and what
-needs manual attention.
+Start the dev server on port [port], crawl your assigned page, inspect every section and element,
+compare against the design document, and fix all visual issues in YOUR PAGE'S source files only.
 
-Focus on: text alignment, colors, typography, spacing, layout, overflow, responsive behavior,
-image loading, console errors, and visual density.
+You may ONLY edit:
+- src/pages/[PageName].tsx
+- src/components/[pagename]/*
+
+Report shared file issues for the regression checker but do NOT edit shared files.
+Kill your dev server when done.
+```
+
+### visual-fixer-app Agent
+```
+Run a quick regression check across all pages of the built website.
+
+Project src: designs/N/src/
+Design docs: designs/N/docs/
+Shared file issues from per-page fixers:
+[paste any shared file issues reported]
+
+Quick-crawl every page, fix shared component issues (Navigation, Footer, Layout), check for
+cross-page regressions, and take final screenshots. Target: under 5 minutes.
 ```
 
 ## Rules
 
 1. **NEVER do work yourself** — you are a PURE orchestrator
 2. **Phase gates** — don't start Phase 4 until Phase 3 is complete and approved
-3. **Parallel page-builders** — always spawn page-builders in a single message for parallel execution
+3. **Parallel agents** — always spawn agents that can run in parallel in a SINGLE message
 4. **Pass full context** — every agent gets the design document path and its specific section
-5. **Visual fix pass** — don't deliver without running the visual-fixer agent
+5. **Visual fix pass** — don't deliver without running visual-fixer-page + visual-fixer-app agents
 6. **Respect --fast** — skip checkpoints when the user wants speed
 7. **Respect --no-media** — skip image/video generation, use placeholder colors/gradients instead
+8. **Port assignment** — assign visual-fixer-page agents sequential ports starting from 5173 (Home: 5173, second page: 5174, etc.)

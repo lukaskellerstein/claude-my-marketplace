@@ -48,6 +48,9 @@ Read the design document section for your assigned page. Extract:
 - Animation plan per section
 
 ### 2. Gather Media Assets
+
+**CRITICAL: Call ALL media tools in PARALLEL in a SINGLE response.** When you need 3 images and 5 icons, issue all 8 tool calls in ONE message. Do NOT generate one image, wait for it, then generate the next. Batch ALL media tool calls together.
+
 Before building components, gather all media your page needs:
 
 **Icons** — Use `media-plugin:icon-library`:
