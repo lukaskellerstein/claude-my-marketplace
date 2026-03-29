@@ -202,7 +202,7 @@ Dark mode is not just "invert the colors." It's a design choice:
 
 ## Component Design Recipes
 
-See [references/component-recipes.md](references/component-recipes.md) for detailed patterns including:
+See [references/component-recipes.md](${CLAUDE_PLUGIN_ROOT}/skills/frontend-aesthetics/references/component-recipes.md) for detailed patterns including:
 - Hero sections with staggered reveal animations
 - Feature cards with icon accents and hover states
 - Testimonial cards with pull-quote styling
@@ -216,7 +216,7 @@ See [references/component-recipes.md](references/component-recipes.md) for detai
 
 ## Spatial Composition
 
-See [references/layout-composition.md](references/layout-composition.md) for techniques including:
+See [references/layout-composition.md](${CLAUDE_PLUGIN_ROOT}/skills/frontend-aesthetics/references/layout-composition.md) for techniques including:
 - Asymmetric grids (8-col/4-col splits)
 - Overlapping elements with negative margins
 - Diagonal flow with clip-path and skew transforms
@@ -227,7 +227,7 @@ See [references/layout-composition.md](references/layout-composition.md) for tec
 
 ## Motion Design
 
-See [references/motion-choreography.md](references/motion-choreography.md) for patterns including:
+See [references/motion-choreography.md](${CLAUDE_PLUGIN_ROOT}/skills/frontend-aesthetics/references/motion-choreography.md) for patterns including:
 - Page load orchestration with stagger timing
 - Scroll-triggered reveals with IntersectionObserver
 - Hover state progressions

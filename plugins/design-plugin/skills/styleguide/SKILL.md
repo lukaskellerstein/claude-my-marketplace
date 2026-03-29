@@ -45,13 +45,13 @@ Gather these inputs from the user (ask if not provided):
 
 ### Step 2: Aesthetic Profile Selection
 
-Choose an aesthetic profile from [references/aesthetic-profiles.md](references/aesthetic-profiles.md) that matches the project discovery. Each profile provides default directions for typography, color, spacing, imagery, and motion.
+Choose an aesthetic profile from [references/aesthetic-profiles.md](${CLAUDE_PLUGIN_ROOT}/skills/styleguide/references/aesthetic-profiles.md) that matches the project discovery. Each profile provides default directions for typography, color, spacing, imagery, and motion.
 
 The profile is a **starting point**, not a rigid template. Customize based on the specific project needs.
 
 ### Step 3: Typography Strategy
 
-Select a font pairing from [references/font-pairings.md](references/font-pairings.md).
+Select a font pairing from [references/font-pairings.md](${CLAUDE_PLUGIN_ROOT}/skills/styleguide/references/font-pairings.md).
 
 Define:
 - **Heading font** — what emotion does it carry?
@@ -62,7 +62,7 @@ Define:
 
 ### Step 4: Color Strategy
 
-Build a palette using [references/color-moods.md](references/color-moods.md).
+Build a palette using [references/color-moods.md](${CLAUDE_PLUGIN_ROOT}/skills/styleguide/references/color-moods.md).
 
 Define:
 - **Primary** — the dominant brand color (60% of visual space)

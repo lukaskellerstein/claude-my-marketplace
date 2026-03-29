@@ -126,7 +126,7 @@ Example: `"aerial cityscape dusk warm tones" > "city at night"`
 - Specify "no people" or "with people" for better results
 - Use size parameters: `?w=1440&q=80` for hero images, `?w=640&q=80` for cards
 
-See [references/search-strategy.md](references/search-strategy.md) for advanced query patterns.
+See [references/search-strategy.md](${CLAUDE_PLUGIN_ROOT}/skills/media-prompt-craft/references/search-strategy.md) for advanced query patterns.
 
 ## Media Type Patterns
 
@@ -200,7 +200,7 @@ subtle movement, seamless loop, no text, 16:9, 10 seconds"
 
 ## Style Vocabulary Quick Reference
 
-See [references/style-vocabulary.md](references/style-vocabulary.md) for the comprehensive vocabulary. Key terms:
+See [references/style-vocabulary.md](${CLAUDE_PLUGIN_ROOT}/skills/media-prompt-craft/references/style-vocabulary.md) for the comprehensive vocabulary. Key terms:
 
 **Lighting**: golden hour, rim light, soft diffused, dramatic high-contrast, backlit, overcast flat
 **Composition**: rule of thirds, centered, negative space, leading lines, frame within frame, aerial/bird's eye

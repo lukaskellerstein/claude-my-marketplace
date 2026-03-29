@@ -28,9 +28,9 @@ From the project description, determine:
 
 Read the reference files and make opinionated choices:
 
-1. Read [aesthetic profiles](skills/styleguide/references/aesthetic-profiles.md) → pick the best match
-2. Read [font pairings](skills/styleguide/references/font-pairings.md) → pick the best match
-3. Read [color moods](skills/styleguide/references/color-moods.md) → pick the best match
+1. Read [aesthetic profiles](${CLAUDE_PLUGIN_ROOT}/skills/styleguide/references/aesthetic-profiles.md) → pick the best match
+2. Read [font pairings](${CLAUDE_PLUGIN_ROOT}/skills/styleguide/references/font-pairings.md) → pick the best match
+3. Read [color moods](${CLAUDE_PLUGIN_ROOT}/skills/styleguide/references/color-moods.md) → pick the best match
 
 ### Step 3: Produce the Styleguide
 

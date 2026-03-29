@@ -152,37 +152,37 @@ function AnimatedSection() {
 ### Page Load Orchestration
 A master timeline that sequences: hero background → headline reveal → subtitle fade → CTA bounce-in → nav fade → scroll indicator pulse.
 
-See: [references/gsap-patterns.md → Timeline Patterns](references/gsap-patterns.md)
+See: [references/gsap-patterns.md → Timeline Patterns](${CLAUDE_PLUGIN_ROOT}/skills/animation-system/references/gsap-patterns.md)
 
 ### Scroll-Triggered Section Reveals
 Elements fade + slide into view as the user scrolls. The most common animation on modern websites.
 
-See: [references/gsap-patterns.md → ScrollTrigger Patterns](references/gsap-patterns.md)
+See: [references/gsap-patterns.md → ScrollTrigger Patterns](${CLAUDE_PLUGIN_ROOT}/skills/animation-system/references/gsap-patterns.md)
 
 ### Stagger Animations
 Cards, list items, or grid cells appear one-by-one with a delay offset. Creates a "wave" effect.
 
-See: [references/gsap-patterns.md → Stagger Patterns](references/gsap-patterns.md)
+See: [references/gsap-patterns.md → Stagger Patterns](${CLAUDE_PLUGIN_ROOT}/skills/animation-system/references/gsap-patterns.md)
 
 ### Parallax Effects
 Background images or decorative elements move at different speeds during scroll, creating depth.
 
-See: [references/gsap-patterns.md → Parallax Patterns](references/gsap-patterns.md)
+See: [references/gsap-patterns.md → Parallax Patterns](${CLAUDE_PLUGIN_ROOT}/skills/animation-system/references/gsap-patterns.md)
 
 ### Text Animations
 Headlines split into characters/words/lines and animate individually. High-impact for hero sections.
 
-See: [references/gsap-patterns.md → Text Animation Patterns](references/gsap-patterns.md)
+See: [references/gsap-patterns.md → Text Animation Patterns](${CLAUDE_PLUGIN_ROOT}/skills/animation-system/references/gsap-patterns.md)
 
 ### Hover Progressions
 Multi-property CSS transitions on hover: scale + shadow + color shift simultaneously.
 
-See: [references/css-animations.md → Hover State Progressions](references/css-animations.md)
+See: [references/css-animations.md → Hover State Progressions](${CLAUDE_PLUGIN_ROOT}/skills/animation-system/references/css-animations.md)
 
 ### Page Transitions
 Smooth transitions between routes using the View Transitions API or GSAP-powered overlays.
 
-See: [references/css-animations.md → View Transitions API](references/css-animations.md)
+See: [references/css-animations.md → View Transitions API](${CLAUDE_PLUGIN_ROOT}/skills/animation-system/references/css-animations.md)
 
 ---
 
@@ -251,7 +251,7 @@ When documenting animations in a design document, use this format for each secti
 
 | File | What It Covers |
 |------|---------------|
-| [references/gsap-patterns.md](references/gsap-patterns.md) | Full GSAP code — ScrollTrigger, timelines, staggers, text, parallax, reusable React components |
-| [references/css-animations.md](references/css-animations.md) | CSS transitions, @keyframes, hover states, View Transitions API, scroll-driven animations |
-| [references/animation-recipes.md](references/animation-recipes.md) | Complete per-section recipes — hero, features, testimonials, stats, gallery, pricing, nav, footer |
-| [references/performance.md](references/performance.md) | 60fps rules, GPU layers, prefers-reduced-motion, bundle size, mobile optimization, DevTools |
+| [references/gsap-patterns.md](${CLAUDE_PLUGIN_ROOT}/skills/animation-system/references/gsap-patterns.md) | Full GSAP code — ScrollTrigger, timelines, staggers, text, parallax, reusable React components |
+| [references/css-animations.md](${CLAUDE_PLUGIN_ROOT}/skills/animation-system/references/css-animations.md) | CSS transitions, @keyframes, hover states, View Transitions API, scroll-driven animations |
+| [references/animation-recipes.md](${CLAUDE_PLUGIN_ROOT}/skills/animation-system/references/animation-recipes.md) | Complete per-section recipes — hero, features, testimonials, stats, gallery, pricing, nav, footer |
+| [references/performance.md](${CLAUDE_PLUGIN_ROOT}/skills/animation-system/references/performance.md) | 60fps rules, GPU layers, prefers-reduced-motion, bundle size, mobile optimization, DevTools |
