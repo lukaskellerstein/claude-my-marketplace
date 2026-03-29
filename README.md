@@ -49,12 +49,22 @@ Design direction and creative guidance — the "taste layer" that makes AI-assis
 - **Agents:** design-director
 - **Commands:** /design
 
+### [web-design-plugin](plugins/web-design-plugin)
+
+End-to-end website/webapp design and implementation — from brief to working React/Vite code. Orchestrates design direction, content architecture, media generation, parallel per-page implementation, and visual testing with an opinionated anti-slop workflow.
+
+- **Skills:** animation-system, page-architecture, css-architecture, variation
+- **Agents:** web-design-orchestrator, page-builder, scaffold-builder, assembler, variation-generator, visual-tester, design-documenter
+- **Commands:** /web-design
+- **MCP:** Playwright
+
 ## Plugin Dependencies
 
 ```mermaid
 graph TD
     figma[figma-plugin] --> media[media-plugin]
     figma --> design[design-plugin]
+    webdesign[web-design-plugin] --> design
     design --> media
     design --> docs[documentation-plugin]
     docs --> media
@@ -63,7 +73,8 @@ graph TD
 ```
 
 - **media-plugin** is foundational — used by figma, design, and documentation plugins for image/video/music/speech generation and icon sourcing
-- **design-plugin** provides creative direction — used by figma-plugin for design system auditing
+- **design-plugin** provides creative direction — used by figma-plugin and web-design-plugin for design system auditing and styleguides
+- **web-design-plugin** uses design-plugin skills for aesthetic direction, styleguides, and design review
 - **documentation-plugin** is used by design-plugin for PPTX image dimension references
 - **dev-tools-plugin** and **infra-plugin** are standalone with no cross-plugin dependencies
 
@@ -94,6 +105,7 @@ Once the marketplace is added, install individual plugins:
 /plugin install figma-plugin@claude-my-marketplace
 /plugin install media-plugin@claude-my-marketplace
 /plugin install design-plugin@claude-my-marketplace
+/plugin install web-design-plugin@claude-my-marketplace
 ```
 
 ### 3. Update
