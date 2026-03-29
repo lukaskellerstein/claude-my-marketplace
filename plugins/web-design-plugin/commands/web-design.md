@@ -1,6 +1,6 @@
 ---
 description: Design and build a complete website or webapp from a project brief — end-to-end workflow from design to working React/Vite code
-argument-hint: "<project description or file path> [--variations N] [--fast] [--no-media]"
+argument-hint: "<project description or file path> [--fast] [--no-media]"
 allowed-tools: ["Read", "Write", "Bash", "Agent", "Glob", "Grep", "WebSearch", "WebFetch", "mcp__web-playwright__browser_navigate", "mcp__web-playwright__browser_take_screenshot", "mcp__web-playwright__browser_snapshot", "mcp__web-playwright__browser_click"]
 ---
 
@@ -29,7 +29,6 @@ You NEVER:
 
 Extract from the user's input:
 - **Brief**: Project description (inline text) or path to a file containing the brief
-- **--variations N**: Generate N visual variations after the main design (default: 0)
 - **--fast**: Skip user checkpoints, go straight through all phases
 - **--no-media**: Skip media generation (structure-only prototype)
 
@@ -44,14 +43,11 @@ If the brief is a file path, read the file. If the brief is too vague (no indica
 | `page-builder` | Builds ONE page end-to-end: structure + content + media + animations (Phase 4, Step 2) |
 | `assembler` | Wires pages together, routing, integration (Phase 4, Step 3) |
 | `visual-tester` | Playwright screenshots vs design doc (Phase 4, Step 4) |
-| `variation-generator` | Creates alternative design documents (post-workflow) |
-
 ## Output Directory
 
 All output goes to `<project-root>/designs/`:
 - `designs/1/docs/` — design documentation
 - `designs/1/src/` — implementation code
-- Variations: `designs/1v1/`, `designs/1v2/`, etc.
 
 If `designs/1/` already exists, use the next available number.
 
@@ -178,22 +174,7 @@ If issues found:
 1. Present final screenshots to the user
 2. Report: pages built, media assets generated, test results
 3. Provide instructions to run: `cd designs/N/src && npm run dev`
-4. If `--variations N` was specified, proceed to variation workflow
-
-### Post-Workflow: Variations
-
-If the user requested variations (or asks for them after delivery):
-
-1. Spawn the **variation-generator** agent with:
-   - Path to the base design document (`designs/N/docs/`)
-   - Number of variations to generate
-   - Output paths (`designs/Nv1/docs/`, `designs/Nv2/docs/`, etc.)
-
-2. The variation-generator produces N alternative design documents that vary visual style (colors, fonts, animations, spacing) while preserving page structure and content.
-
-3. For each variation, run Phase 4 (Implement) with the variation's design document.
-
-4. Present all variations side-by-side to the user.
+4. Remind user they can generate variations later using the `variation` skill with the path to `designs/N/`
 
 ## Agent Prompt Templates
 

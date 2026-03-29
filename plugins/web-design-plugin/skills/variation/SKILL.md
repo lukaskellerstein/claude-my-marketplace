@@ -1,11 +1,11 @@
 ---
 name: variation
-description: Generate alternative design variations from an existing web design — systematically vary colors, typography, animation intensity, and spacing density while preserving page structure and content. Use when the user wants multiple visual options from a base design.
-when-to-use:
-  - User wants N alternative designs from an existing base
-  - User says "generate variations" or "try different styles"
-  - User wants to compare visual approaches side-by-side
-  - Post-workflow option after completing a web design
+description: >
+  Generate alternative design variations from an existing web design — systematically vary colors,
+  typography, animation intensity, and spacing density while preserving page structure and content.
+  Use when the user wants multiple visual options from a base design, says "generate variations"
+  or "try different styles", wants to compare visual approaches side-by-side, or as a post-workflow
+  option after completing a web design.
 ---
 
 # Variation — Design Variation Generation

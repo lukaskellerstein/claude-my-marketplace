@@ -1,13 +1,11 @@
 ---
 name: animation-system
-description: CSS and GSAP animation patterns for websites — ScrollTrigger, timelines, stagger effects, page transitions, micro-interactions, and performance optimization. Use when implementing animations for web design projects.
-when-to-use:
-  - User wants scroll-triggered animations on a website
-  - User needs page load animations or reveal effects
-  - User wants GSAP integration with React/Vite
-  - User needs animation plan for a web design project
-  - User asks about animation performance or best practices
-  - Design document specifies animations for sections
+description: >
+  CSS and GSAP animation patterns for websites — ScrollTrigger, timelines, stagger effects,
+  page transitions, micro-interactions, and performance optimization. Use when implementing
+  animations for web design projects, when the user wants scroll-triggered animations, page
+  load reveals, GSAP integration with React/Vite, animation planning, performance best
+  practices, or when a design document specifies animations for sections.
 ---
 
 # Animation System

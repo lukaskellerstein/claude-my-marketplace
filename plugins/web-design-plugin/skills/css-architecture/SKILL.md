@@ -1,13 +1,11 @@
 ---
 name: css-architecture
-description: Project-level CSS architecture for React/Vite websites — Tailwind CSS configuration with design tokens, shadcn/ui theming, CSS custom properties, and responsive strategy. Tailwind-first approach. Use when setting up global styles for a web design project.
-when-to-use:
-  - Setting up CSS for a new React/Vite project
-  - Mapping a styleguide/design system to Tailwind config
-  - Configuring shadcn/ui theme
-  - Defining responsive breakpoint strategy
-  - Creating global styles and CSS custom properties
-  - Design document needs CSS architecture section
+description: >
+  Project-level CSS architecture for React/Vite websites — Tailwind CSS configuration with
+  design tokens, shadcn/ui theming, CSS custom properties, and responsive strategy. Tailwind-first
+  approach. Use when setting up CSS for a new React/Vite project, mapping a styleguide to
+  Tailwind config, configuring shadcn/ui theme, defining responsive breakpoints, creating
+  global styles, or when a design document needs a CSS architecture section.
 ---
 
 # CSS Architecture

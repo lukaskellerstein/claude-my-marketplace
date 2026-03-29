@@ -3,14 +3,9 @@ name: page-architecture
 description: >
   Information architecture and content planning for websites — page structure, section definitions,
   content hierarchy, text content, and mock data strategy. Use when planning what pages a website
-  needs, what sections go on each page, and what content fills them.
-when-to-use:
-  - User needs to plan pages and sections for a website
-  - User needs content structure for a web design project
-  - Design document needs page/section definitions
-  - User asks "what pages/sections should my website have?"
-  - User needs mock data for a prototype
-  - User needs text content (headlines, body, CTAs) for sections
+  needs, what sections go on each page, what content fills them, when the user asks "what
+  pages/sections should my website have?", needs mock data for a prototype, or needs text
+  content (headlines, body, CTAs) for sections.
 ---
 
 # Page Architecture
