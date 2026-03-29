@@ -46,7 +46,10 @@ If the brief is a file path, read the file. If the brief is too vague (no indica
 ## Output Directory
 
 All output goes to `<project-root>/designs/`:
-- `designs/1/docs/` — design documentation
+- `designs/1/docs/` — design documentation (split into focused files)
+  - `design-document.md` — index with project overview and links
+  - `styleguide.md`, `css-architecture.md`, `media-plan.md`, `animation-plan.md`, `mock-data.md`
+  - `pages/home.md`, `pages/about.md`, etc. — per-page specs
 - `designs/1/src/` — implementation code
 
 If `designs/1/` already exists, use the next available number.
@@ -104,13 +107,14 @@ Spawn the **design-documenter** agent with:
 - The full project brief
 - The target output directory (`designs/N/docs/`)
 
-The design-documenter produces a complete design document covering:
-- Styleguide (colors, fonts, spacing) — uses `design-plugin:styleguide`
-- Page architecture (sections, content, mock data) — uses `page-architecture`
-- Layout composition per section — uses `design-plugin:frontend-aesthetics`
-- Media prompts and icon list — uses `design-plugin:media-prompt-craft`
-- Animation plan per section — uses `animation-system`
-- CSS architecture (tailwind config, global styles) — uses `css-architecture`
+The design-documenter produces a set of focused design files:
+- `design-document.md` — index with project overview and links to all other files
+- `styleguide.md` — colors, fonts, spacing — uses `design-plugin:styleguide`
+- `css-architecture.md` — tailwind config, global styles — uses `css-architecture`
+- `media-plan.md` — shared media, icon list — uses `design-plugin:media-prompt-craft`
+- `animation-plan.md` — global animation settings — uses `animation-system`
+- `mock-data.md` — JSON data structures
+- `pages/{page-name}.md` — per-page specs bundling architecture + layout + media + animations
 
 **Checkpoint:** After the design document is complete, present a summary to the user. Highlight key choices (aesthetic profile, font pairing, color palette, animation level). Wait for approval. (Skip if `--fast`.)
 
@@ -120,8 +124,9 @@ Execute in waves:
 
 #### Step 1 — Scaffold (sequential)
 Spawn the **scaffold-builder** agent with:
-- The design document path
+- The docs directory path (`designs/N/docs/`)
 - The target src directory (`designs/N/src/`)
+- Specific files to read: `css-architecture.md`, `design-document.md` (for routes), `media-plan.md` (shared media), `mock-data.md`
 
 It sets up: Vite project, dependencies, tailwind config, global styles, shared components (nav, footer, layout), and shared media assets (logo, product images reused across pages).
 
@@ -131,9 +136,9 @@ Wait for scaffold-builder to complete before Step 2.
 Spawn one **page-builder** agent per page/major-section.
 
 Each page-builder receives:
-- Its page's section from the design document
+- Its page file path (`designs/N/docs/pages/{page-name}.md`)
 - The project src directory path
-- The design document path (for reference)
+- Paths to global design files: `styleguide.md` and `css-architecture.md`
 
 Each page-builder handles ALL aspects of its page:
 - React component structure
@@ -155,7 +160,7 @@ It wires pages together: routing (React Router), shared navigation state, cross-
 #### Step 4 — Test Loop
 Spawn the **visual-tester** agent with:
 - The project src directory
-- The design document path
+- The docs directory path (`designs/N/docs/`) — it reads all files for comprehensive QA
 
 It:
 1. Starts the Vite dev server (`npm run dev`)
@@ -199,25 +204,31 @@ You have these skills preloaded:
 - animation-system — for animation planning
 - css-architecture — for CSS/Tailwind configuration
 
-Produce a single comprehensive design document that covers ALL of these.
-Write it to [output path].
+Produce a set of focused design files that cover ALL of these.
+Write them to [output directory] following the split file structure documented in the agent.
 ```
 
 ### scaffold-builder Agent
 ```
 Set up the project scaffold for a web design.
 
-Design document: [path]
+Design docs directory: designs/N/docs/
 Output directory: designs/N/src/
 
-Read the design document and set up:
+Read these specific files:
+- designs/N/docs/css-architecture.md — for tailwind config, CSS tokens, shadcn components
+- designs/N/docs/design-document.md — for site map and routes
+- designs/N/docs/media-plan.md — for shared media (logo, product images, OG image)
+- designs/N/docs/mock-data.md — for data directory setup
+
+Set up:
 1. Vite + React + TypeScript project
 2. Install: tailwindcss, @tailwindcss/vite, gsap, @gsap/react, shadcn components needed
-3. Apply tailwind.config.js from the CSS architecture section
-4. Create globals.css with CSS custom properties from the design document
+3. Apply tailwind.config.js from css-architecture.md
+4. Create globals.css with CSS custom properties from css-architecture.md
 5. Create shared components: navigation, footer, layout wrapper
-6. Generate/source shared media: logo, any images reused across pages
-7. Create the data/ directory with mock data JSON files
+6. Generate/source shared media from media-plan.md: logo, any images reused across pages
+7. Create the data/ directory with mock data JSON files from mock-data.md
 
 When done, the project should be runnable with `npm run dev` (showing empty pages with nav/footer).
 ```
