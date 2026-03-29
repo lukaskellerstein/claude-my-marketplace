@@ -52,7 +52,19 @@ npx shadcn@latest add [component-list]
 
 ### 3. Configure Tailwind
 - Apply the `tailwind.config.js` from the design document's CSS Architecture section
-- Update `vite.config.ts` with Tailwind plugin
+- Write `vite.config.ts` with both React and Tailwind plugins (enables HMR — source changes appear instantly without page reload):
+```typescript
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
+
+export default defineConfig({
+  plugins: [
+    react(),
+    tailwindcss(),
+  ],
+})
+```
 - Create `src/index.css` with:
   - Tailwind directives (`@import "tailwindcss"`)
   - CSS custom properties from the design document (`:root` block)

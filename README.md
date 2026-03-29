@@ -58,6 +58,15 @@ End-to-end website/webapp design and implementation — from brief to working Re
 - **Commands:** /web-design
 - **MCP:** Playwright
 
+### [web-selector-plugin](plugins/web-selector-plugin)
+
+Visual element selector for Claude Code — select elements on your website in Chrome, annotate with instructions, and send batches to Claude Code for automated codebase changes. Includes a local bridge server and lifecycle hooks.
+
+- **Skills:** element-selector
+- **Commands:** /select
+- **Hooks:** SessionStart (bridge launch), SessionEnd (deregister), PostToolUse (heartbeat)
+- **Bridge Server:** zero-dependency Node.js HTTP+WebSocket on localhost:3456
+
 ## Plugin Dependencies
 
 ```mermaid
@@ -70,13 +79,14 @@ graph TD
     docs --> media
     dev[dev-tools-plugin]
     infra[infra-plugin]
+    selector[web-selector-plugin]
 ```
 
 - **media-plugin** is foundational — used by figma, design, and documentation plugins for image/video/music/speech generation and icon sourcing
 - **design-plugin** provides creative direction — used by figma-plugin and web-design-plugin for design system auditing and styleguides
 - **web-design-plugin** uses design-plugin skills for aesthetic direction, styleguides, and design review
 - **documentation-plugin** is used by design-plugin for PPTX image dimension references
-- **dev-tools-plugin** and **infra-plugin** are standalone with no cross-plugin dependencies
+- **dev-tools-plugin**, **infra-plugin**, and **web-selector-plugin** are standalone with no cross-plugin dependencies
 
 ## Installation
 
@@ -106,6 +116,7 @@ Once the marketplace is added, install individual plugins:
 /plugin install media-plugin@claude-my-marketplace
 /plugin install design-plugin@claude-my-marketplace
 /plugin install web-design-plugin@claude-my-marketplace
+/plugin install web-selector-plugin@claude-my-marketplace
 ```
 
 ### 3. Update

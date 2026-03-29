@@ -1,0 +1,11 @@
+{
+  "name": "claude-selector-bridge",
+  "version": "1.0.0",
+  "description": "Local bridge server relaying element selections between the Claude Selector Chrome extension and Claude Code",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "license": "MIT"
+}

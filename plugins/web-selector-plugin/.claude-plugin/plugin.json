@@ -1,0 +1,23 @@
+{
+  "name": "claude-selector",
+  "version": "1.0.0",
+  "description": "Visual element selector for Claude Code — select elements in Chrome, annotate with instructions, and send batches to Claude Code for automated codebase changes. Includes a local bridge server and lifecycle hooks.",
+  "author": {
+    "name": "Lukas Kellerstein"
+  },
+  "keywords": [
+    "selector",
+    "browser",
+    "chrome-extension",
+    "visual",
+    "element-picker",
+    "css",
+    "styling",
+    "frontend",
+    "batch",
+    "screenshot"
+  ],
+  "skills": [
+    "./skills/element-selector"
+  ]
+}
