@@ -26,7 +26,7 @@
     "./skills/variation"
   ],
   "mcpServers": {
-    "web-playwright": {
+    "webdesign-playwright": {
       "command": "npx",
       "args": [
         "@playwright/mcp@latest",

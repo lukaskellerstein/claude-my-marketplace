@@ -14,8 +14,8 @@ Create and edit professional Excel spreadsheets using **openpyxl** for spreadshe
 | Create from scratch | [Creating from Scratch](#creating-from-scratch) below |
 | Edit existing XLSX | [editing.md](editing.md) |
 | Read/analyze data | [Reading and Analyzing](#reading-and-analyzing) below |
-| Financial models | [references/financial-modeling.md](references/financial-modeling.md) |
-| openpyxl API | [references/openpyxl-api.md](references/openpyxl-api.md) |
+| Financial models | [references/financial-modeling.md](${CLAUDE_PLUGIN_ROOT}/skills/xlsx/references/financial-modeling.md) |
+| openpyxl API | [references/openpyxl-api.md](${CLAUDE_PLUGIN_ROOT}/skills/xlsx/references/openpyxl-api.md) |
 
 ## Setup
 
@@ -38,7 +38,7 @@ Define:
 2. **Formulas needed** — calculations, summaries, cross-sheet references
 3. **Formatting** — headers, number formats, conditional formatting, colors
 4. **Charts** — any visualizations to embed
-5. **Financial model?** — if yes, read [references/financial-modeling.md](references/financial-modeling.md)
+5. **Financial model?** — if yes, read [references/financial-modeling.md](${CLAUDE_PLUGIN_ROOT}/skills/xlsx/references/financial-modeling.md)
 
 ### Step 2: Design Sheet Structure
 
@@ -57,7 +57,7 @@ Sheet 3: "Summary"     — summary metrics (formulas referencing Revenue)
 
 ### Step 3: Generate XLSX
 
-Read [references/openpyxl-api.md](references/openpyxl-api.md) for the full API reference.
+Read [references/openpyxl-api.md](${CLAUDE_PLUGIN_ROOT}/skills/xlsx/references/openpyxl-api.md) for the full API reference.
 
 Write a Python script using openpyxl:
 
@@ -241,8 +241,8 @@ python3 ${CLAUDE_PLUGIN_ROOT}/skills/xlsx/scripts/preview.py file.xlsx --rows 20
 
 | File | When to Read |
 |------|-------------|
-| [references/openpyxl-api.md](references/openpyxl-api.md) | Always — openpyxl API quick reference |
-| [references/financial-modeling.md](references/financial-modeling.md) | When building financial models |
+| [references/openpyxl-api.md](${CLAUDE_PLUGIN_ROOT}/skills/xlsx/references/openpyxl-api.md) | Always — openpyxl API quick reference |
+| [references/financial-modeling.md](${CLAUDE_PLUGIN_ROOT}/skills/xlsx/references/financial-modeling.md) | When building financial models |
 | [editing.md](editing.md) | When editing existing XLSX files |
 
 Read the reference files before generating any spreadsheet.

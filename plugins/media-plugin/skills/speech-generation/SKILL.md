@@ -11,17 +11,17 @@ Use the `mcp__ElevenLabs__text_to_speech` tool to convert text to natural-soundi
 
 | I want to create... | Read This | Preset to Start With |
 |---------------------|-----------|---------------------|
-| Product demo / explainer video | [voiceover.md](references/voiceover.md) | Product Demo or Explainer Video |
-| Marketing / promo voiceover | [voiceover.md](references/voiceover.md) | Marketing / Promo |
-| Audiobook / fiction | [narration.md](references/narration.md) | Fiction / Audiobook |
-| Documentary narration | [narration.md](references/narration.md) | Documentary |
-| Technical tutorial audio | [documentation.md](references/documentation.md) | Technical Tutorial |
-| README / docs narration | [documentation.md](references/documentation.md) | README Narration |
-| Podcast episode | [podcast.md](references/podcast.md) | Conversational Host |
-| IVR / phone menu | [announcement.md](references/announcement.md) | IVR / Phone Menu |
-| App notification sound | [announcement.md](references/announcement.md) | App Notification |
-| Multi-language content | [multilingual.md](references/multilingual.md) | — |
-| Custom parameter tuning | [voice-settings.md](references/voice-settings.md) | See Named Presets table |
+| Product demo / explainer video | [voiceover.md](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/voiceover.md) | Product Demo or Explainer Video |
+| Marketing / promo voiceover | [voiceover.md](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/voiceover.md) | Marketing / Promo |
+| Audiobook / fiction | [narration.md](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/narration.md) | Fiction / Audiobook |
+| Documentary narration | [narration.md](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/narration.md) | Documentary |
+| Technical tutorial audio | [documentation.md](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/documentation.md) | Technical Tutorial |
+| README / docs narration | [documentation.md](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/documentation.md) | README Narration |
+| Podcast episode | [podcast.md](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/podcast.md) | Conversational Host |
+| IVR / phone menu | [announcement.md](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/announcement.md) | IVR / Phone Menu |
+| App notification sound | [announcement.md](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/announcement.md) | App Notification |
+| Multi-language content | [multilingual.md](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/multilingual.md) | — |
+| Custom parameter tuning | [voice-settings.md](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/voice-settings.md) | See Named Presets table |
 
 ## When to Use
 
@@ -65,7 +65,7 @@ Use the `mcp__ElevenLabs__text_to_speech` tool to convert text to natural-soundi
 | `eleven_turbo_v2` | 1 (EN) | Good | English-only, balanced |
 | `eleven_monolingual_v1` | 1 (EN) | Basic | Legacy — avoid unless reproducing old output |
 
-For detailed model comparison and selection guidance, see [voice-settings.md](references/voice-settings.md).
+For detailed model comparison and selection guidance, see [voice-settings.md](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/voice-settings.md).
 
 ## Voice Selection
 
@@ -91,7 +91,7 @@ Use `mcp__ElevenLabs__voice_clone` to create an instant voice clone from audio f
 
 ## Voice Controls
 
-Controls are summarized below. For parameter interaction details, named presets, and advanced tuning, see [voice-settings.md](references/voice-settings.md).
+Controls are summarized below. For parameter interaction details, named presets, and advanced tuning, see [voice-settings.md](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/voice-settings.md).
 
 | Parameter | Low | Medium | High |
 |-----------|-----|--------|------|
@@ -111,12 +111,12 @@ Controls are summarized below. For parameter interaction details, named presets,
 | `opus_48000_128` | Opus 128kbps (efficient streaming) |
 | `ulaw_8000` | μ-law 8kHz (Twilio compatible) |
 
-For platform-specific format recommendations, see [announcement.md](references/announcement.md).
+For platform-specific format recommendations, see [announcement.md](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/announcement.md).
 
 ## Common Patterns
 
 ### Documentation narration
-See [documentation.md](references/documentation.md) for text cleaning, code block handling, and segmentation.
+See [documentation.md](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/documentation.md) for text cleaning, code block handling, and segmentation.
 ```
 text: [cleaned documentation content]
 voice_name: "Rachel"
@@ -128,7 +128,7 @@ speed: 0.90
 ```
 
 ### Video voiceover
-See [voiceover.md](references/voiceover.md) for timing tables, text prep, ffmpeg mixing, the timed voiceover pipeline, and golden rules.
+See [voiceover.md](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/voiceover.md) for timing tables, text prep, ffmpeg mixing, the timed voiceover pipeline, and golden rules.
 ```
 text: "Introducing our new dashboard. With real-time analytics,
       you can track performance at a glance."
@@ -141,7 +141,7 @@ speed: 0.95
 ```
 
 ### Announcement / notification
-See [announcement.md](references/announcement.md) for brevity rules, templates, and platform formats.
+See [announcement.md](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/announcement.md) for brevity rules, templates, and platform formats.
 ```
 text: "Deployment complete. All 12 services are running."
 voice_name: "Bella"
@@ -153,7 +153,7 @@ speed: 1.05
 ```
 
 ### Story / narrative
-See [narration.md](references/narration.md) for character voices, long-form strategy, and pacing.
+See [narration.md](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/narration.md) for character voices, long-form strategy, and pacing.
 ```
 text: [story content]
 voice_name: "Rachel"
@@ -165,12 +165,12 @@ speed: 0.90
 ```
 
 ### Multi-language
-See [multilingual.md](references/multilingual.md) for language tiers, pronunciation hints, and batch workflows.
+See [multilingual.md](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/multilingual.md) for language tiers, pronunciation hints, and batch workflows.
 
 Set `language` to the ISO 639-1 code and write text in the target language. Use `eleven_v3` (70+ languages) or `eleven_multilingual_v2` (29 languages).
 
 ### Podcast / multi-speaker
-See [podcast.md](references/podcast.md) for multi-speaker workflow, voice pairing, and episode structure.
+See [podcast.md](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/podcast.md) for multi-speaker workflow, voice pairing, and episode structure.
 
 Generate each speaker's lines separately with different voices, then concatenate with natural gaps.
 
@@ -201,7 +201,7 @@ Generate each speaker's lines separately with different voices, then concatenate
 2. Generate intro/outro jingle with `generate_music`
 3. Concatenate: `ffmpeg -i intro.wav -i part1.mp3 -i part2.mp3 -i outro.wav -filter_complex "concat=n=4:v=0:a=1" podcast.mp3`
 
-See [podcast.md](references/podcast.md) for the complete step-by-step workflow.
+See [podcast.md](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/podcast.md) for the complete step-by-step workflow.
 
 ## Tips
 
@@ -211,19 +211,19 @@ See [podcast.md](references/podcast.md) for the complete step-by-step workflow.
 - For numbers, write them as words if pronunciation matters: "twenty-three" vs "23"
 - Test with a short sentence first to verify the voice before generating long content
 - Use `output_directory` to control where files are saved (defaults to ~/Desktop)
-- For advanced parameter tuning, consult [voice-settings.md](references/voice-settings.md)
-- For video voiceover, follow the [Golden Rules](references/voiceover.md#golden-rules-for-video-voiceover) and [Timed Voiceover Pipeline](references/voiceover.md#timed-voiceover-pipeline)
-- Check [voice tiers](references/voice-settings.md#voice-tiers--api-access) before selecting a voice — library/cloned voices need a paid plan
-- Use the [Voice Selection Guide](references/voiceover.md#voice-selection-guide) to match voice type to content — always test the voice before writing the full script
+- For advanced parameter tuning, consult [voice-settings.md](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/voice-settings.md)
+- For video voiceover, follow the [Golden Rules](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/voiceover.md#golden-rules-for-video-voiceover) and [Timed Voiceover Pipeline](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/voiceover.md#timed-voiceover-pipeline)
+- Check [voice tiers](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/voice-settings.md#voice-tiers--api-access) before selecting a voice — library/cloned voices need a paid plan
+- Use the [Voice Selection Guide](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/voiceover.md#voice-selection-guide) to match voice type to content — always test the voice before writing the full script
 
 ## Reference Files
 
 | File | What It Covers | When to Read |
 |------|---------------|--------------|
-| [voice-settings.md](references/voice-settings.md) | Parameter interactions, named presets, model selection, output formats | Tuning voice parameters or choosing a model |
-| [voiceover.md](references/voiceover.md) | Product demos, explainers, marketing, corporate training | Creating audio for video content |
-| [narration.md](references/narration.md) | Audiobooks, fiction, documentaries, children's stories | Long-form narrative or character voices |
-| [documentation.md](references/documentation.md) | Tutorials, READMEs, API docs, e-learning | Converting technical docs to audio |
-| [podcast.md](references/podcast.md) | Multi-speaker, interviews, episode structure | Podcast or dialogue production |
-| [announcement.md](references/announcement.md) | IVR, notifications, system alerts, public address | Short-form announcements or telephony |
-| [multilingual.md](references/multilingual.md) | Language support, pronunciation, localization | Non-English or multi-language content |
+| [voice-settings.md](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/voice-settings.md) | Parameter interactions, named presets, model selection, output formats | Tuning voice parameters or choosing a model |
+| [voiceover.md](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/voiceover.md) | Product demos, explainers, marketing, corporate training | Creating audio for video content |
+| [narration.md](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/narration.md) | Audiobooks, fiction, documentaries, children's stories | Long-form narrative or character voices |
+| [documentation.md](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/documentation.md) | Tutorials, READMEs, API docs, e-learning | Converting technical docs to audio |
+| [podcast.md](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/podcast.md) | Multi-speaker, interviews, episode structure | Podcast or dialogue production |
+| [announcement.md](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/announcement.md) | IVR, notifications, system alerts, public address | Short-form announcements or telephony |
+| [multilingual.md](${CLAUDE_PLUGIN_ROOT}/skills/speech-generation/references/multilingual.md) | Language support, pronunciation, localization | Non-English or multi-language content |

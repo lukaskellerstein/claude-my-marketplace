@@ -48,7 +48,7 @@ This step is about the **skeleton** — no content details yet.
 
 ### Step 2: Select a Design Template
 
-Before choosing colors and fonts individually, **select a design template** from [references/templates.md](references/templates.md) that matches the presentation's purpose. The template provides a complete, pre-tested design system: palette, fonts, motif, rhythm, and background strategy.
+Before choosing colors and fonts individually, **select a design template** from [references/templates.md](${CLAUDE_PLUGIN_ROOT}/skills/pptx/references/templates.md) that matches the presentation's purpose. The template provides a complete, pre-tested design system: palette, fonts, motif, rhythm, and background strategy.
 
 Available templates: Pitch Deck, Corporate Quarterly, Tech/Product, Educational/Workshop, Creative/Portfolio, Minimalist Executive, Bold Marketing.
 
@@ -57,16 +57,16 @@ Available templates: Pitch Deck, Corporate Quarterly, Tech/Product, Educational/
 For each slide in the structure, define:
 
 1. **Text content** — title, subtitle, bullet points, quotes, data points
-2. **Layout type** — pick from the layout catalog (see [references/layouts.md](references/layouts.md))
+2. **Layout type** — pick from the layout catalog (see [references/layouts.md](${CLAUDE_PLUGIN_ROOT}/skills/pptx/references/layouts.md))
 3. **Image plan** — which slides need images and at what aspect ratio (see [Image Sizing Rules](#image-sizing-rules))
-4. **Colors + Fonts** — use the design template's recommendations, or customize from [references/design.md](references/design.md)
+4. **Colors + Fonts** — use the design template's recommendations, or customize from [references/design.md](${CLAUDE_PLUGIN_ROOT}/skills/pptx/references/design.md)
 
 Vary slide layouts. Monotonous decks with the same layout repeated are the most common failure. Use at least 3 different layout types across a deck.
 
 ### Design Quality Target
 
-Read [references/design.md](references/design.md) for the full design system. Key requirements:
-- **Follow your chosen design template** from [references/templates.md](references/templates.md) — don't pick colors/fonts/layouts independently
+Read [references/design.md](${CLAUDE_PLUGIN_ROOT}/skills/pptx/references/design.md) for the full design system. Key requirements:
+- **Follow your chosen design template** from [references/templates.md](${CLAUDE_PLUGIN_ROOT}/skills/pptx/references/templates.md) — don't pick colors/fonts/layouts independently
 - At least 2-3 slides with full-bleed photo backgrounds + dark overlay
 - **Pick ONE visual motif** and apply it consistently (color-block headers, side accent strip, generous whitespace, etc.)
 - **Never combine multiple motifs** — no decorative circles AND accent bars AND colored headers on the same deck
@@ -90,7 +90,7 @@ Always match the image aspect ratio to its placement dimensions. See [Image Sizi
 
 ### Step 5: Generate PPTX
 
-Read [references/pptxgenjs-api.md](references/pptxgenjs-api.md) for the full PptxGenJS API reference and [references/layouts.md](references/layouts.md) for slide layout implementations.
+Read [references/pptxgenjs-api.md](${CLAUDE_PLUGIN_ROOT}/skills/pptx/references/pptxgenjs-api.md) for the full PptxGenJS API reference and [references/layouts.md](${CLAUDE_PLUGIN_ROOT}/skills/pptx/references/layouts.md) for slide layout implementations.
 
 Write a Node.js script that generates the .pptx using PptxGenJS:
 
@@ -130,7 +130,7 @@ async function main() {
 main().catch(console.error);
 ```
 
-**Use the layout functions from [references/layouts.md](references/layouts.md)** — copy the relevant functions into your script and call them with your content.
+**Use the layout functions from [references/layouts.md](${CLAUDE_PLUGIN_ROOT}/skills/pptx/references/layouts.md)** — copy the relevant functions into your script and call them with your content.
 
 ### Critical Rules (violating these corrupts the PPTX file)
 
@@ -247,9 +247,9 @@ When using images (sourced or AI-generated) in the presentation, **always match 
 
 ## Design Ideas
 
-See [references/templates.md](references/templates.md) for **7 topic-aware design templates** — complete presets for palette, fonts, motif, and rhythm.
+See [references/templates.md](${CLAUDE_PLUGIN_ROOT}/skills/pptx/references/templates.md) for **7 topic-aware design templates** — complete presets for palette, fonts, motif, and rhythm.
 
-See [references/design.md](references/design.md) for:
+See [references/design.md](${CLAUDE_PLUGIN_ROOT}/skills/pptx/references/design.md) for:
 - Color palettes (22 curated palettes including modern dark themes)
 - Dark theme design system with contrast rules
 - Font pairings organized by personality (25+ options)
@@ -292,10 +292,10 @@ See [Step 6](#step-6-qa) above for the full QA process. Key points:
 
 | File | When to Read |
 |------|-------------|
-| [references/templates.md](references/templates.md) | Always — 7 topic-aware design templates (palette, fonts, motif, rhythm) |
-| [references/design.md](references/design.md) | Always — color palettes, dark themes, fonts, typography, motifs, depth techniques |
-| [references/layouts.md](references/layouts.md) | Always — 14 slide layouts with PptxGenJS implementations |
-| [references/pptxgenjs-api.md](references/pptxgenjs-api.md) | Always — full PptxGenJS API reference |
+| [references/templates.md](${CLAUDE_PLUGIN_ROOT}/skills/pptx/references/templates.md) | Always — 7 topic-aware design templates (palette, fonts, motif, rhythm) |
+| [references/design.md](${CLAUDE_PLUGIN_ROOT}/skills/pptx/references/design.md) | Always — color palettes, dark themes, fonts, typography, motifs, depth techniques |
+| [references/layouts.md](${CLAUDE_PLUGIN_ROOT}/skills/pptx/references/layouts.md) | Always — 14 slide layouts with PptxGenJS implementations |
+| [references/pptxgenjs-api.md](${CLAUDE_PLUGIN_ROOT}/skills/pptx/references/pptxgenjs-api.md) | Always — full PptxGenJS API reference |
 | [editing.md](editing.md) | When editing existing PPTX templates |
 
 Read templates.md first (to pick a design system), then design.md and layouts.md before generating any presentation.

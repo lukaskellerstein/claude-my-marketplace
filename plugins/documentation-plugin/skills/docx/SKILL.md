@@ -54,12 +54,12 @@ For each section, define:
 1. **Text content** — headings, paragraphs, bullet points, tables, data
 2. **Image plan** — which sections need images/charts and at what size
 3. **Chart plan** — which data needs D3.js charts or Mermaid diagrams
-4. **Color palette** — pick a palette matching the topic (see [references/design.md](references/design.md))
-5. **Font pairing** — pick header + body fonts (see [references/design.md](references/design.md))
+4. **Color palette** — pick a palette matching the topic (see [references/design.md](${CLAUDE_PLUGIN_ROOT}/skills/docx/references/design.md))
+5. **Font pairing** — pick header + body fonts (see [references/design.md](${CLAUDE_PLUGIN_ROOT}/skills/docx/references/design.md))
 
 ### Design Quality Target
 
-Read the Design System in [references/design.md](references/design.md). Key requirements:
+Read the Design System in [references/design.md](${CLAUDE_PLUGIN_ROOT}/skills/docx/references/design.md). Key requirements:
 - Professional cover page with title, subtitle, date, author
 - Consistent heading hierarchy (Heading1 for sections, Heading2 for subsections)
 - Tables with header row shading and alternating row colors
@@ -91,7 +91,7 @@ For each chart/diagram:
 
 ### Step 4: Generate DOCX
 
-Read [references/docx-js-api.md](references/docx-js-api.md) for the full docx-js API reference.
+Read [references/docx-js-api.md](${CLAUDE_PLUGIN_ROOT}/skills/docx/references/docx-js-api.md) for the full docx-js API reference.
 
 Write a Node.js script that generates the .docx:
 
@@ -312,8 +312,8 @@ new Paragraph({
 
 | File | When to Read |
 |------|-------------|
-| [references/docx-js-api.md](references/docx-js-api.md) | Always — full API reference for docx-js |
-| [references/design.md](references/design.md) | Always — document design system, colors, fonts, spacing |
+| [references/docx-js-api.md](${CLAUDE_PLUGIN_ROOT}/skills/docx/references/docx-js-api.md) | Always — full API reference for docx-js |
+| [references/design.md](${CLAUDE_PLUGIN_ROOT}/skills/docx/references/design.md) | Always — document design system, colors, fonts, spacing |
 | [editing.md](editing.md) | When editing existing DOCX files |
 
 Read the reference files before generating any document.

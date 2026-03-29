@@ -14,7 +14,7 @@ You:
 - Understand the project brief and ask clarifying questions
 - Create the design plan and get user approval
 - Spawn the design-documenter agent for design documentation
-- Spawn scaffold-builder, page-builder, assembler, and visual-tester agents for implementation
+- Spawn scaffold-builder, page-builder, assembler, and visual-fixer agents for implementation
 - Coordinate results between agents
 - Verify the final result
 
@@ -42,7 +42,7 @@ If the brief is a file path, read the file. If the brief is too vague (no indica
 | `scaffold-builder` | Project setup, global styles, shared components, shared media (Phase 4, Step 1) |
 | `page-builder` | Builds ONE page end-to-end: structure + content + media + animations (Phase 4, Step 2) |
 | `assembler` | Wires pages together, routing, integration (Phase 4, Step 3) |
-| `visual-tester` | Playwright screenshots vs design doc (Phase 4, Step 4) |
+| `visual-fixer` | Final QA — crawls every page/element, fixes visual issues directly in source (Phase 4, Step 4) |
 ## Output Directory
 
 All output goes to `<project-root>/designs/`:
@@ -157,22 +157,20 @@ Spawn the **assembler** agent with:
 
 It wires pages together: routing (React Router), shared navigation state, cross-page consistency, final layout integration.
 
-#### Step 4 — Test Loop
-Spawn the **visual-tester** agent with:
+#### Step 4 — Visual Fix Pass (sequential)
+Spawn the **visual-fixer** agent with:
 - The project src directory
 - The docs directory path (`designs/N/docs/`) — it reads all files for comprehensive QA
 
 It:
-1. Starts the Vite dev server (`npm run dev`)
-2. Navigates to each page via Playwright
-3. Takes screenshots
-4. Compares against design document specs (colors, layout, content)
-5. Reports pass/fail per page with specific issues
-
-If issues found:
-- Spawn a page-builder agent to fix specific pages
-- Re-run visual-tester
-- Repeat until passing (max 3 iterations)
+1. Reads the design document to understand expected visuals
+2. Starts the Vite dev server (`npm run dev`)
+3. Crawls every page, every section, every element using Playwright DOM inspection
+4. Compares actual computed styles against design doc specs (colors, alignment, spacing, typography, layout)
+5. **Fixes issues directly** in the React/Tailwind source files
+6. Verifies each fix by re-inspecting
+7. Does a final verification pass to catch regressions
+8. Reports what was fixed and what needs manual attention
 
 ### Phase 5: Deliver
 
@@ -274,26 +272,19 @@ Wire everything together:
 5. Verify the dev server starts without errors: npm run dev
 ```
 
-### visual-tester Agent
+### visual-fixer Agent
 ```
-Visually test the built website against the design document.
+Run a full visual QA and fix pass on the built website.
 
 Project src: designs/N/src/
-Design document: designs/N/docs/
+Design docs: designs/N/docs/
 
-1. Start the dev server: cd [src path] && npm run dev
-2. Wait for server to be ready
-3. For each page:
-   a. Navigate to the page URL via Playwright
-   b. Take a screenshot
-   c. Compare against design doc specs:
-      - Are the correct colors used? (check primary, accent, background)
-      - Is the typography correct? (font family, sizes, weights)
-      - Are all sections present in the right order?
-      - Are images/icons loaded (no broken images)?
-      - Is the layout correct (grid columns, spacing)?
-4. Report results per page: PASS/FAIL with specific issues
-5. Take mobile viewport screenshots (375px wide) for responsive check
+Crawl every page, inspect every section and element, compare against the design document, and fix
+all visual issues directly in the source files. Verify each fix. Report what was fixed and what
+needs manual attention.
+
+Focus on: text alignment, colors, typography, spacing, layout, overflow, responsive behavior,
+image loading, console errors, and visual density.
 ```
 
 ## Rules
@@ -302,6 +293,6 @@ Design document: designs/N/docs/
 2. **Phase gates** — don't start Phase 4 until Phase 3 is complete and approved
 3. **Parallel page-builders** — always spawn page-builders in a single message for parallel execution
 4. **Pass full context** — every agent gets the design document path and its specific section
-5. **Test loop** — don't deliver without at least one visual test pass
+5. **Visual fix pass** — don't deliver without running the visual-fixer agent
 6. **Respect --fast** — skip checkpoints when the user wants speed
 7. **Respect --no-media** — skip image/video generation, use placeholder colors/gradients instead
