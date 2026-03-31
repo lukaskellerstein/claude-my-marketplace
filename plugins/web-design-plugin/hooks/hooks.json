@@ -31,9 +31,9 @@
         "matcher": "*",
         "hooks": [
           {
-            "type": "prompt",
-            "prompt": "Check if /tmp/web-design-stats/active exists. If it does NOT exist, do nothing — just stop normally. If it DOES exist, read /tmp/web-design-stats/events.log and /tmp/web-design-stats/start_time, then print a formatted statistics summary table showing: total time, agents spawned (with breakdown by type), pages built, components created, design docs, images (AI generated vs stock sourced), videos, and audio. Use a clean bordered table format. After printing, delete /tmp/web-design-stats/active so it doesn't re-trigger.",
-            "timeout": 30
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/print-stats.sh",
+            "timeout": 10
           }
         ]
       }

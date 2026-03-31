@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# Print web-design execution statistics as a formatted table.
-# Called via Stop hook from hooks.json.
-# Only prints when implementation is done (PAGE events exist in log),
-# so checkpoint pauses during Phase 2/3 don't trigger output.
+# Print web-design execution statistics via Stop hook.
+# Outputs a blocking JSON response so Claude prints the stats table.
+# On second Stop (after active marker removed), allows normal stop.
 
 set -eo pipefail
 
@@ -24,7 +23,7 @@ ACTIVE_STATUS="no"
 PAGE_COUNT_EARLY=$(count_events "^PAGE|")
 echo "[$(date)] print-stats.sh fired, active=$ACTIVE_STATUS, PAGE_COUNT=$PAGE_COUNT_EARLY" >> "$DEBUG_LOG"
 
-# Exit silently if no active stats session
+# Exit silently if no active stats session — allows Claude to stop
 [ ! -f "${STATS_DIR}/active" ] && exit 0
 [ ! -f "${STATS_DIR}/start_time" ] && exit 0
 
@@ -48,45 +47,49 @@ AUDIO_COUNT=$(count_events "^AUDIO|")
 COMPONENT_COUNT=$(count_events "^COMPONENT|")
 DOC_COUNT=$(count_events "^DOC|")
 
-# Extract agent names
-AGENT_LIST=$(grep "^AGENT|" "$STATS_LOG" 2>/dev/null | cut -d'|' -f3 | sort | uniq -c | sort -rn || echo "")
-
-# Print the table
-echo ""
-echo "╔══════════════════════════════════════════════════════════════╗"
-echo "║                  /web-design Statistics                     ║"
-echo "╠══════════════════════════════════════════════════════════════╣"
-echo "║                                                            ║"
-printf "║  %-20s  %35s  ║\n" "Total Time:" "${MINS}m ${SECS}s"
-echo "║                                                            ║"
-echo "╠══════════════════════════════════════════════════════════════╣"
-echo "║  AGENTS                                                    ║"
-echo "╠══════════════════════════════════════════════════════════════╣"
-printf "║  %-20s  %35s  ║\n" "Agents spawned:" "$AGENT_COUNT"
-if [ -n "$AGENT_LIST" ]; then
-  echo "$AGENT_LIST" | while read -r COUNT NAME; do
-    printf "║    %-18s  %35s  ║\n" "$NAME" "x${COUNT}"
-  done
+# Extract agent names for breakdown
+AGENT_BREAKDOWN=""
+if [ "$AGENT_COUNT" -gt 0 ]; then
+  AGENT_BREAKDOWN=$(grep "^AGENT|" "$STATS_LOG" 2>/dev/null | cut -d'|' -f3 | sort | uniq -c | sort -rn | while read -r COUNT NAME; do
+    echo "  - ${NAME}: x${COUNT}"
+  done)
 fi
-echo "║                                                            ║"
-echo "╠══════════════════════════════════════════════════════════════╣"
-echo "║  OUTPUT                                                    ║"
-echo "╠══════════════════════════════════════════════════════════════╣"
-printf "║  %-20s  %35s  ║\n" "Pages built:" "$PAGE_COUNT"
-printf "║  %-20s  %35s  ║\n" "Components created:" "$COMPONENT_COUNT"
-printf "║  %-20s  %35s  ║\n" "Design docs:" "$DOC_COUNT"
-echo "║                                                            ║"
-echo "╠══════════════════════════════════════════════════════════════╣"
-echo "║  MEDIA                                                     ║"
-echo "╠══════════════════════════════════════════════════════════════╣"
-printf "║  %-20s  %35s  ║\n" "Images (total):" "$IMAGES_TOTAL"
-printf "║    %-18s  %35s  ║\n" "AI generated:" "$IMAGES_GENERATED"
-printf "║    %-18s  %35s  ║\n" "Stock sourced:" "$IMAGES_SOURCED"
-printf "║  %-20s  %35s  ║\n" "Videos:" "$VIDEO_COUNT"
-printf "║  %-20s  %35s  ║\n" "Audio:" "$AUDIO_COUNT"
-echo "║                                                            ║"
-echo "╚══════════════════════════════════════════════════════════════╝"
-echo ""
 
-# Deactivate tracking so subsequent Stop events don't re-print
+# Build the stats summary
+STATS_TEXT="## /web-design Statistics
+
+| Metric | Value |
+|---|---|
+| Total Time | ${MINS}m ${SECS}s |
+| Agents spawned | ${AGENT_COUNT} |
+| Pages built | ${PAGE_COUNT} |
+| Components created | ${COMPONENT_COUNT} |
+| Design docs | ${DOC_COUNT} |
+| Images (total) | ${IMAGES_TOTAL} |
+| — AI generated | ${IMAGES_GENERATED} |
+| — Stock sourced | ${IMAGES_SOURCED} |
+| Videos | ${VIDEO_COUNT} |
+| Audio | ${AUDIO_COUNT} |"
+
+if [ -n "$AGENT_BREAKDOWN" ]; then
+  STATS_TEXT="${STATS_TEXT}
+
+### Agent breakdown
+${AGENT_BREAKDOWN}"
+fi
+
+# Deactivate BEFORE outputting — so next Stop allows normal exit
 rm -f "${STATS_DIR}/active"
+
+echo "[$(date)] print-stats.sh blocking with stats table" >> "$DEBUG_LOG"
+
+# Output blocking JSON — Claude sees the reason and prints the stats
+# Using python to safely JSON-encode the multiline string
+python3 -c "
+import json, sys
+stats = sys.stdin.read()
+print(json.dumps({
+    'decision': 'block',
+    'reason': 'Before finishing, print this execution statistics table exactly as shown (do not modify it):\n\n' + stats
+}))
+" <<< "$STATS_TEXT"
