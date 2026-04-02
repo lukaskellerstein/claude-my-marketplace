@@ -6,7 +6,7 @@ Video voiceovers, product demos, explainer videos, and marketing content.
 
 | Use Case | stability | similarity_boost | style | speed | Voice Traits |
 |----------|-----------|-------------------|-------|-------|-------------|
-| **Product Demo** | 0.50 | 0.80 | 0.25 | 0.95 | Clear, confident, measured. Not salesy — let the product speak. |
+| **Product Demo** | 0.75 | 0.80 | 0.00 | 1.00 | Clear, confident, measured. Not salesy — let the product speak. High stability + zero style = consistent across many segments. |
 | **Explainer Video** | 0.45 | 0.75 | 0.20 | 0.95 | Warm, approachable, teacher-like. Slightly slower for comprehension. |
 | **Marketing / Promo** | 0.40 | 0.75 | 0.40 | 1.05 | Energetic, compelling, upbeat. Higher style for enthusiasm. |
 | **Corporate Training** | 0.60 | 0.80 | 0.10 | 0.90 | Professional, neutral, patient. Higher stability for consistency. |
@@ -20,13 +20,19 @@ Video voiceovers, product demos, explainer videos, and marketing content.
 
 3. **Natural pace over exact timing.** It's better to have speech end early (with natural silence) than to cram too many words into a slot. Silence between sections gives the viewer time to absorb visuals.
 
-4. **Combine related sub-sections into flowing sentences.** Don't force one sentence per timestamp — it creates choppy, unnatural narration. Group 2–3 related visual moments into a single thought.
+4. **Write flowing sentences, not bullet points.** Each segment must read as natural human speech. Fragmented bullet points ("select element / describe changes / click send") cause TTS to reset intonation on each phrase, producing inconsistent pitch, pace, and energy across the clip. Rewrite as: "Select any element on the page and describe your changes in natural language." One continuous thought per segment.
 
 5. **Don't narrate what the viewer can see.** The voiceover should ADD context, not describe mouse clicks. "Click the button" is bad. "Every aircraft tracked in real time" is good.
 
 6. **Avoid closed lists when the actual set is open.** When listing types, categories, or capabilities, use "and more" or similar phrasing to signal the list is not exhaustive. E.g., "artillery, drones, radar, infantry, and more" — not "artillery, armor, radar, or infantry."
 
 7. **Watch for breath/artifact noise.** ElevenLabs sometimes adds audible breaths at the end of segments. If detected, trim trailing silence/noise using the reverse-silenceremove technique (see Timed Voiceover Pipeline, Step 4).
+
+8. **Normalize volume across all segments before assembly.** ElevenLabs generates clips at different volumes — up to 5 dB mean spread across segments. Always normalize all clips to the same mean volume (e.g., -23 dB) before assembly. See Pipeline Step 4.
+
+9. **Never use `amix` for multi-segment assembly.** The `amix` filter applies automatic gain normalization that causes progressive volume drift (audio gets louder over time). Always use `concat` instead — pad each clip to its slot duration, then concatenate sequentially.
+
+10. **Generate multiple takes for short clips.** Very short sentences (< 5 words) are prone to volume and energy variance in TTS. Generate 3 takes, measure their volume, and pick the one closest to the other segments.
 
 ## Text Preparation
 
@@ -176,7 +182,7 @@ Complete step-by-step workflow for generating voiceover audio synced to video ti
 3. Flag any segment where speech exceeds slot by >0.5s — these will get trimmed and lose words
 4. For flagged segments: **rewrite the text shorter** and regenerate (never use atempo)
 
-### Step 4: Trim silence, pad, and assemble
+### Step 4: Trim silence, normalize volume, pad, and assemble
 
 #### Trim leading silence (CRITICAL)
 ElevenLabs often adds **0.5–3.5 seconds of silence** at the start of generated audio. Without trimming, speech starts late in each segment:
@@ -192,20 +198,44 @@ ffmpeg -y -i <input> \
   -ar 44100 -ab 128k <trimmed>
 ```
 
+#### Normalize volume across all segments (CRITICAL)
+ElevenLabs generates clips at different volumes. Normalize all clips to the same **mean volume** before assembly. Do NOT use peak normalization — it doesn't reflect perceived loudness.
+
+1. Measure mean volume of each clip:
+   ```bash
+   ffmpeg -i <clip> -af "volumedetect" -f null - 2>&1 | grep "mean_volume"
+   ```
+2. Pick a target (e.g., -23.0 dB) and adjust each clip:
+   ```bash
+   # For a clip with mean_volume -25.6, adjustment = -23.0 - (-25.6) = +2.6
+   ffmpeg -y -i <clip> -af "volume=2.6dB" -ar 44100 -ac 1 <normalized>
+   ```
+3. Verify all normalized clips are within 0.2 dB of target
+
+**Why not peak normalization?** Two clips can have the same peak (-5 dB) but wildly different perceived loudness if one speaks softly with a single loud consonant. Mean volume correlates with what your ears hear.
+
+**Why not `loudnorm`?** The EBS R128 loudnorm filter is designed for broadcast content, not short TTS clips. It can produce inconsistent results on clips under 5 seconds.
+
 #### Pad and concatenate
-1. Pad each trimmed segment with silence to its exact target duration:
+1. Pad each normalized segment with silence to its exact target duration using ffmpeg filter_complex:
    ```bash
-   ffmpeg -y -i <trimmed> -af "apad=whole_dur=<target>" -t <target> -ar 44100 -ab 128k <output>
+   # For each clip: resample, pad to slot duration
+   [0]aresample=44100,aformat=sample_fmts=fltp:channel_layouts=mono,apad=whole_dur=<slot_seconds>[s0];
    ```
-2. Create a concat list file with `file 'seg_XX.mp3'` entries
-3. Concatenate all segments to **WAV** (primary output):
+2. Concatenate all padded segments (including silence slots):
    ```bash
-   ffmpeg -y -f concat -safe 0 -i concat_list.txt -ar 44100 -ac 1 -c:a pcm_s16le output.wav
+   # Generate silence for non-voiced slots (e.g., logo intro, title cards):
+   anullsrc=r=44100:cl=mono,atrim=0:<duration>[sil];
+   
+   # Concatenate everything in order:
+   [sil][s0][s1]...[sN]concat=n=<count>:v=0:a=1[out]
    ```
-4. Also create a clean MP3 re-encode (backup):
+3. Output to WAV:
    ```bash
-   ffmpeg -y -f concat -safe 0 -i concat_list.txt -ar 44100 -ab 128k -ac 1 -c:a libmp3lame output_clean.mp3
+   ffmpeg -y ... -map "[out]" -ar 44100 -ac 1 output.wav
    ```
+
+**WARNING: Never use `amix` for multi-segment assembly.** The `amix` filter applies automatic gain normalization that causes progressive volume drift — audio starts quiet and gets louder over time. This is clearly visible in video editor waveforms. Always use `concat` instead.
 
 ### Step 5: Final output
 - **Always output WAV** as the primary file — video editors (especially DaVinci Resolve) handle WAV flawlessly
@@ -287,6 +317,7 @@ The voice should match the **tone, audience, and content type** of the video.
 - **Too cinematic for product demos** — deep trailer voices sound epic but speak at ~1.5 w/s, forcing heavy text cuts. They also feel out of place for feature walkthroughs.
 - **Too calm/flat for demos** — voices marketed as "professional" or "calm" can lack the enthusiasm needed to keep viewers engaged through a 3–4 minute demo.
 - **Too casual for serious content** — laid-back voices feel wrong for military, intelligence, or enterprise products.
+- **"Professional" (community) voices are inconsistent across segments** — ElevenLabs voice categories matter. "Professional" voices are community-uploaded and vary significantly in pitch, volume, and energy between separate TTS calls. "Premade" voices (ElevenLabs' own curated voices) are more stable but may have limited character. For multi-segment voiceovers (10+ clips), prefer voices with `fine_tuned` status across multiple models — these produce the most consistent output. Always test 3+ segments before committing.
 
 ### Key lesson
 
@@ -302,7 +333,10 @@ The voice should match the **tone, audience, and content type** of the video.
 
 | Pitfall | Why It Happens | Fix |
 |---------|---------------|-----|
-| Voice sounds different across segments | Parameters or model changed between calls | Lock all parameters, use voice_id not voice_name — see [voice-settings.md](voice-settings.md) |
+| Voice sounds different across segments | Parameters or model changed between calls, or "professional" voice with high variance | Lock all parameters, use voice_id not voice_name. Prefer voices with `fine_tuned` status. Use stability ≥ 0.75 and style = 0 for multi-segment work. See [voice-settings.md](voice-settings.md) |
+| Volume varies across segments | ElevenLabs generates clips at different loudness levels (up to 5 dB spread) | Normalize all clips to same mean volume before assembly (see Pipeline Step 4). Do NOT rely on peak normalization. |
+| Progressive volume drift in assembled file | Used `amix` filter which applies automatic gain | Never use `amix` — use `concat` with pre-padded clips instead (see Pipeline Step 4) |
+| Short clips sound quieter/different | Very short text (< 5 words) gives TTS less context for consistent delivery | Generate 3 takes, pick the one with best volume match. Consider making the text slightly longer if possible. |
 | Rushed or breathless delivery | Sentences too long, no pause points | Break into 15–20 word sentences, add commas and periods |
 | Flat/monotone for marketing content | Stability too high or style too low | Use Marketing preset: stability 0.40, style 0.40 |
 | Unnatural emphasis | ALL CAPS overuse or awkward phrasing | Write as you'd naturally speak. Read your script aloud first. |
@@ -324,6 +358,9 @@ The voice should match the **tone, audience, and content type** of the video.
 - [ ] Section intros say title only (no subtitles read aloud)
 - [ ] Lists use open phrasing ("and more") not closed ("or")
 - [ ] Voice is consistent across all segments (check API responses)
+- [ ] All segments volume-normalized to same mean dB (within 0.2 dB)
+- [ ] Assembly uses `concat`, NOT `amix`
+- [ ] Short clips (< 5 words) tested with multiple takes
 - [ ] Final file is WAV format (for video editor compatibility)
 - [ ] Clean MP3 backup also generated
 - [ ] Total duration matches video length
