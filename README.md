@@ -143,51 +143,59 @@ To pull the latest versions:
 /plugin marketplace update
 ```
 
-## Project Structure
-
-```
-plugins/
-├── design-plugin/          # Creative direction and styleguides
-├── dev-tools-plugin/       # Git workflows and code hygiene
-├── documentation-plugin/   # Docs, diagrams, and Office files
-├── figma-plugin/           # Figma integration and design tokens
-├── infra-plugin/           # Kubernetes, Terraform, Istio
-├── media-plugin/           # AI image/video/music/speech generation
-└── web-design-plugin/      # End-to-end website builder
-```
-
-Each plugin follows the Claude Code plugin structure:
-
-```
-<plugin>/
-├── .claude-plugin/
-│   └── plugin.json         # Plugin manifest (name, version, MCP servers)
-├── skills/                 # Skill definitions (SKILL.md + references/)
-├── agents/                 # Specialized subagent definitions
-├── commands/               # Slash commands
-└── hooks/                  # Event-driven hooks (optional)
-```
-
 ## Environment Variables
 
-Some plugins require API keys for their MCP server integrations:
+Only the **media-plugin** requires environment variables. All other plugins work without any configuration.
 
-| Variable | Required By | Purpose |
-|----------|------------|---------|
-| `GEMINI_API_KEY` | media-plugin | Google Gemini for media generation |
-| `MEDIA_OUTPUT_DIR` | media-plugin | Output directory for generated media |
-| `ELEVENLABS_API_KEY` | media-plugin | ElevenLabs text-to-speech |
+### media-plugin
 
-## Contributing
+| Variable | Required | Description |
+|---|---|---|
+| `GEMINI_API_KEY` | **Yes** | Google Gemini API key for image, video, and music generation via the `media-mcp` server. Get one at [aistudio.google.com](https://aistudio.google.com/apikey). |
+| `ELEVENLABS_API_KEY` | **Yes** | ElevenLabs API key for text-to-speech, voice cloning, and audio tools. Get one at [elevenlabs.io](https://elevenlabs.io). |
+| `MEDIA_OUTPUT_DIR` | Recommended | Absolute path where generated media files are saved. When set, MCP servers return file paths instead of base64 data, keeping the conversation context clean. Falls back to the current directory if unset. |
 
-Contributions are welcome! To add or improve a plugin:
+### Setup by OS
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/my-plugin`)
-3. Follow the existing plugin structure conventions
-4. Commit your changes (`git commit -m 'Add my-plugin'`)
-5. Push to the branch (`git push origin feature/my-plugin`)
-6. Open a Pull Request
+#### macOS / Linux (bash)
+
+Add to your `~/.bashrc`, `~/.bash_profile`, or `~/.zshrc`:
+
+```bash
+export GEMINI_API_KEY="your-gemini-api-key"
+export ELEVENLABS_API_KEY="your-elevenlabs-api-key"
+export MEDIA_OUTPUT_DIR="/path/to/media/output"
+```
+
+Then reload your shell:
+
+```bash
+source ~/.bashrc   # or ~/.zshrc
+```
+
+#### Windows (PowerShell)
+
+Set permanently for your user via PowerShell:
+
+```powershell
+[System.Environment]::SetEnvironmentVariable("GEMINI_API_KEY", "your-gemini-api-key", "User")
+[System.Environment]::SetEnvironmentVariable("ELEVENLABS_API_KEY", "your-elevenlabs-api-key", "User")
+[System.Environment]::SetEnvironmentVariable("MEDIA_OUTPUT_DIR", "C:\path\to\media\output", "User")
+```
+
+Then restart your terminal for changes to take effect.
+
+#### Windows (Command Prompt)
+
+Set permanently via `setx`:
+
+```cmd
+setx GEMINI_API_KEY "your-gemini-api-key"
+setx ELEVENLABS_API_KEY "your-elevenlabs-api-key"
+setx MEDIA_OUTPUT_DIR "C:\path\to\media\output"
+```
+
+Then restart your terminal for changes to take effect.
 
 ## Author
 
