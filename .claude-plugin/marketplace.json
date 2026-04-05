@@ -34,6 +34,10 @@
     {
       "name": "web-design-plugin",
       "source": "./plugins/web-design-plugin"
+    },
+    {
+      "name": "paperclip-plugin",
+      "source": "./plugins/paperclip-plugin"
     }
   ]
 }

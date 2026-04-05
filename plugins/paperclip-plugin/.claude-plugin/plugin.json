@@ -1,0 +1,31 @@
+{
+  "name": "paperclip-plugin",
+  "version": "1.0.0",
+  "description": "Create and manage autonomous AI companies on the Paperclip platform — guided company setup, agent design, org structure, infrastructure planning, and blueprint generation.",
+  "author": {
+    "name": "Lukas Kellerstein"
+  },
+  "keywords": [
+    "paperclip",
+    "company",
+    "agents",
+    "organization",
+    "blueprint",
+    "infrastructure",
+    "kubernetes",
+    "docker",
+    "github",
+    "slack",
+    "google-workspace",
+    "stripe",
+    "logistics",
+    "delegation",
+    "heartbeat",
+    "brainstorming"
+  ],
+  "skills": [
+    "./skills/company-creation",
+    "./skills/agent-design",
+    "./skills/infrastructure-planning"
+  ]
+}
