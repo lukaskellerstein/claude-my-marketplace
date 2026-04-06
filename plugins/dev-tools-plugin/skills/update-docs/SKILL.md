@@ -246,7 +246,7 @@ Documentation [created|updated]:
 ## Important
 
 - Always use mermaid diagrams — never ASCII art or external image links
-- Use the mermaid MCP server (`mcp__mermaid__*`) to validate diagram syntax
+- Use the mermaid MCP server (`mcp__plugin_media-plugin_mermaid__*`) to validate diagram syntax
 - Base ALL content on actual codebase analysis — never speculate or assume
 - Keep generated docs concise — they are starting points to be expanded
 - Never include actual secrets, credentials, or sensitive data

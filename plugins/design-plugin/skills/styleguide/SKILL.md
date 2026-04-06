@@ -150,7 +150,7 @@ Produce a structured markdown document using this template:
 - **Icons**: use `media-plugin/icon-library` to fetch SVGs from [chosen library]
 - **Stock photos**: use `media-plugin/image-sourcing` with these queries: [list]
 - **Generated visuals**: use `media-plugin/image-generation` with these prompts: [list]
-- **Presentations**: apply this styleguide when using `documentation-plugin/pptx`
+- **Presentations**: apply this styleguide when using `office-plugin/pptx`
 ```
 
 ## Tips

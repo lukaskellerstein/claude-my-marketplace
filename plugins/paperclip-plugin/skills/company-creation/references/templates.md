@@ -389,12 +389,13 @@ echo "  3. Approve the CEO's strategy in the Paperclip UI"
 {
   "enabledPlugins": {
     "dev-tools-plugin@claude-my-marketplace": true,
-    "documentation-plugin@claude-my-marketplace": true
+    "office-plugin@claude-my-marketplace": true,
+    "media-plugin@claude-my-marketplace": true
   },
   "permissions": {
     "allow": [
-      "mcp__plugin_documentation-plugin_mermaid",
-      "mcp__plugin_documentation-plugin_docs-playwright"
+      "mcp__plugin_media-plugin_mermaid",
+      "mcp__plugin_media-plugin_media-playwright"
     ]
   }
 }

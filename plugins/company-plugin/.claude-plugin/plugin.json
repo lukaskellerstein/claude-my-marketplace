@@ -1,0 +1,45 @@
+{
+  "name": "company-plugin",
+  "version": "1.0.0",
+  "description": "Business operations toolkit — shipping logistics via Zásilkovna (Czech) and DHL (worldwide), and payment processing via Stripe. Provides skills for integrating, configuring, and managing these services.",
+  "author": {
+    "name": "Lukas Kellerstein"
+  },
+  "keywords": [
+    "zasilkovna",
+    "packeta",
+    "dhl",
+    "shipping",
+    "logistics",
+    "tracking",
+    "stripe",
+    "payments",
+    "invoices",
+    "subscriptions",
+    "e-commerce",
+    "business"
+  ],
+  "skills": [
+    "./skills/zasilkovna",
+    "./skills/dhl",
+    "./skills/stripe"
+  ],
+  "mcpServers": {
+    "dhl": {
+      "url": "https://api-sandbox.dhl.com/development/mcp/v1/",
+      "type": "http",
+      "headers": {
+        "dhl-api-key": "${DHL_API_KEY}"
+      },
+      "description": "DHL API Assistant — shipment tracking, parcel shipping, returns via DHL sandbox"
+    },
+    "stripe": {
+      "command": "npx",
+      "args": ["-y", "@stripe/mcp@latest"],
+      "env": {
+        "STRIPE_SECRET_KEY": "${STRIPE_SECRET_KEY}"
+      },
+      "description": "Stripe MCP — payments, subscriptions, invoicing, and financial operations"
+    }
+  }
+}

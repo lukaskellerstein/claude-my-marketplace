@@ -21,7 +21,7 @@ skills:
   - design-plugin:media-prompt-craft
   - page-architecture
   - animation-system
-  - documentation-plugin:graph-generation
+  - media-plugin:graph-generation
 ---
 
 You are a page specification writer. You produce detailed, self-contained spec files for every page in the website.

@@ -222,4 +222,4 @@ See [references/style-vocabulary.md](${CLAUDE_PLUGIN_ROOT}/skills/media-prompt-c
 - Stock photos for people, AI generation for abstract/conceptual — AI struggles with natural-looking humans
 - Include negative prompts to avoid common AI artifacts: "no watermark, no text, no distortion"
 - Test your Unsplash queries before committing — search results vary significantly with keyword order
-- For presentations, reference **documentation-plugin/pptx** for recommended image dimensions per slide type
+- For presentations, reference **office-plugin/pptx** for recommended image dimensions per slide type

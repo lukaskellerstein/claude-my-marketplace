@@ -46,7 +46,7 @@ You have access to these paperclip-plugin skills:
 
 You also leverage other marketplace plugins where relevant:
 - **dev-tools-plugin** — for engineering-focused agents
-- **documentation-plugin** — for docs, diagrams, presentations
+- **office-plugin** — for presentations (PPTX), documents (DOCX), spreadsheets (XLSX)
 - **infra-plugin** — for K8s, Helm, Terraform configuration
 - **media-plugin** — for content and marketing agents
 - **design-plugin** — for design-focused agents

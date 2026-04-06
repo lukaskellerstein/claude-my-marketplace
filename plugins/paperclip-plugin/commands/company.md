@@ -101,7 +101,7 @@ Read BOTH skills before generating:
 }
 ```
 - Plugin names use the `{name}-plugin@claude-my-marketplace` format (e.g., `"dev-tools-plugin@claude-my-marketplace": true`)
-- MCP permissions use `mcp__plugin_{plugin-namespace}_{server}` format (e.g., `"mcp__plugin_documentation-plugin_mermaid"`)
+- MCP permissions use `mcp__plugin_{plugin-namespace}_{server}` format (e.g., `"mcp__plugin_media-plugin_mermaid"`)
 - Agents with NO MCP-providing plugins omit the `permissions` key entirely
 - Frontend/QA agents that need Chrome DevTools must have it in their `mcp.json`, not in `settings.json`
 

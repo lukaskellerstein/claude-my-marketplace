@@ -12,8 +12,12 @@
       "source": "./plugins/dev-tools-plugin"
     },
     {
-      "name": "documentation-plugin",
-      "source": "./plugins/documentation-plugin"
+      "name": "office-plugin",
+      "source": "./plugins/office-plugin"
+    },
+    {
+      "name": "company-plugin",
+      "source": "./plugins/company-plugin"
     },
     {
       "name": "infra-plugin",

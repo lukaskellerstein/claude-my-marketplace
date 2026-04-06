@@ -200,7 +200,7 @@ Feature documented: <Feature Name>
 ## Important
 
 - Always use mermaid diagrams — at minimum one diagram showing the feature's architecture or flow
-- Use the mermaid MCP server (`mcp__mermaid__*`) to validate diagram syntax
+- Use the mermaid MCP server (`mcp__plugin_media-plugin_mermaid__*`) to validate diagram syntax
 - Base everything on actual code changes — do not speculate about intent
 - If the feature modifies existing architecture, note what changed from the previous state
 - Omit sections that have no relevant content (e.g., no API changes) rather than leaving them empty

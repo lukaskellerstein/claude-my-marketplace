@@ -18,7 +18,7 @@ model: sonnet
 color: green
 skills:
   - design-plugin:media-prompt-craft
-  - documentation-plugin:graph-generation
+  - media-plugin:graph-generation
 ---
 
 You are a media planner. You define the visual media strategy that ensures consistency across all pages.
@@ -39,7 +39,7 @@ Write to the specified output directory (e.g., `designs/1/docs/media-plan.md`).
 
 ### `media-plan.md`
 
-Use the `design-plugin:media-prompt-craft` skill for images/videos and the `documentation-plugin:graph-generation` skill for charts, graphs, infographics, and maps:
+Use the `design-plugin:media-prompt-craft` skill for images/videos and the `media-plugin:graph-generation` skill for charts, graphs, infographics, and maps:
 
 - **Style prefix** — reusable prompt prefix for visual consistency (derived from the styleguide's aesthetic profile)
 - **Shared media** — logo, product images, OG image, favicon (with generation prompts or stock search queries)
@@ -52,10 +52,10 @@ NOTE: Per-section media specs go in each page's file under `pages/`, not here. T
 **Visual media types to choose from (use generously — the more the better):**
 - AI-generated images or stock photos (use `media-prompt-craft` skill)
 - Videos (hero backgrounds, product demos, ambient loops)
-- Charts and graphs — bar, line, pie, donut, radial/gauge, scatter, heatmap, treemap, sankey (use `documentation-plugin:graph-generation` skill)
-- Infographics — process flows, timelines, comparison visuals, stat dashboards (use `documentation-plugin:graph-generation` skill)
-- Maps — choropleth world/country maps, location markers, coverage areas (use `documentation-plugin:graph-generation` skill)
-- Network graphs — force-directed diagrams (use `documentation-plugin:graph-generation` skill)
+- Charts and graphs — bar, line, pie, donut, radial/gauge, scatter, heatmap, treemap, sankey (use `media-plugin:graph-generation` skill)
+- Infographics — process flows, timelines, comparison visuals, stat dashboards (use `media-plugin:graph-generation` skill)
+- Maps — choropleth world/country maps, location markers, coverage areas (use `media-plugin:graph-generation` skill)
+- Network graphs — force-directed diagrams (use `media-plugin:graph-generation` skill)
 - Product screenshot mockups (browser frames, device frames)
 - Illustrations and abstract art
 

@@ -124,9 +124,9 @@ Map plugins to roles using this reference:
 | Plugin | Best For | MCP Servers |
 |--------|----------|-------------|
 | `dev-tools-plugin` | All technical roles | -- |
-| `documentation-plugin` | Managers, content roles | mermaid, docs-playwright |
+| `office-plugin` | Managers, content roles | -- |
 | `infra-plugin` | CTO, backend, devops | -- |
-| `media-plugin` | Marketing, content, design | media-mcp, ElevenLabs |
+| `media-plugin` | Marketing, content, design, diagrams | media-mcp, ElevenLabs, mermaid, media-playwright |
 | `design-plugin` | Frontend, UX, content | -- |
 | `web-design-plugin` | Frontend, UX | webdesign-playwright |
 
@@ -153,7 +153,7 @@ Map plugins to roles using this reference:
 ```
 
 **MCP permission naming:**
-- Plugin-provided: `mcp__plugin_{plugin-name}-plugin_{server-name}` (e.g., `mcp__plugin_documentation-plugin_mermaid`)
+- Plugin-provided: `mcp__plugin_{plugin-name}-plugin_{server-name}` (e.g., `mcp__plugin_media-plugin_mermaid`)
 - Agent-level: `mcp__{server-name}` (e.g., `mcp__chrome`)
 
 **Always read `references/role-plugin-matrix.md`** for complete examples per role.
@@ -193,7 +193,7 @@ The agent identity card summarizing everything:
 When designing agents, consider which marketplace plugins can enhance their capabilities:
 
 - **dev-tools-plugin** — git workflows, code hygiene, dependency management
-- **documentation-plugin** — docs generation, Mermaid diagrams, presentations (PPTX), spreadsheets (XLSX)
+- **office-plugin** — presentations (PPTX), documents (DOCX), spreadsheets (XLSX)
 - **infra-plugin** — Kubernetes, Helm, Terraform, Traefik configuration
 - **media-plugin** — image/video/music/speech generation for marketing and content
 - **design-plugin** — styleguides, aesthetics, design review for UI work

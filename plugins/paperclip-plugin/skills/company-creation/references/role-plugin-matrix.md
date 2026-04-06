@@ -4,8 +4,8 @@ Quick reference for assigning marketplace plugins and MCP permissions to agents 
 
 ## Plugin Assignments by Role
 
-| Role | dev-tools | documentation | infra | media | design | web-design |
-|------|-----------|--------------|-------|-------|--------|------------|
+| Role | dev-tools | office | infra | media | design | web-design |
+|------|-----------|--------|-------|-------|--------|------------|
 | CEO | x | x | | | | |
 | CTO | x | x | x | | | |
 | CMO | | x | | x | x | |
@@ -28,8 +28,8 @@ When a plugin with MCP servers is enabled, the agent's `settings.json` must also
 
 | Plugin | MCP Server | Permission String |
 |--------|-----------|-------------------|
-| documentation-plugin | mermaid | `mcp__plugin_documentation-plugin_mermaid` |
-| documentation-plugin | docs-playwright | `mcp__plugin_documentation-plugin_docs-playwright` |
+| media-plugin | mermaid | `mcp__plugin_media-plugin_mermaid` |
+| media-plugin | media-playwright | `mcp__plugin_media-plugin_media-playwright` |
 | media-plugin | media-mcp | `mcp__plugin_media-plugin_media-mcp` |
 | media-plugin | ElevenLabs | `mcp__plugin_media-plugin_ElevenLabs` |
 | web-design-plugin | webdesign-playwright | `mcp__plugin_web-design-plugin_webdesign-playwright` |
@@ -44,54 +44,56 @@ Some agents need MCP servers defined in their own `mcp.json` (not from plugins):
 
 ## settings.json Examples
 
-### CEO (dev-tools + documentation)
+### CEO (dev-tools + office + media)
 
 ```json
 {
   "enabledPlugins": {
     "dev-tools-plugin@claude-my-marketplace": true,
-    "documentation-plugin@claude-my-marketplace": true
+    "office-plugin@claude-my-marketplace": true,
+    "media-plugin@claude-my-marketplace": true
   },
   "permissions": {
     "allow": [
-      "mcp__plugin_documentation-plugin_mermaid",
-      "mcp__plugin_documentation-plugin_docs-playwright"
+      "mcp__plugin_media-plugin_mermaid",
+      "mcp__plugin_media-plugin_media-playwright"
     ]
   }
 }
 ```
 
-### CTO (dev-tools + documentation + infra)
+### CTO (dev-tools + office + media + infra)
 
 ```json
 {
   "enabledPlugins": {
     "dev-tools-plugin@claude-my-marketplace": true,
-    "documentation-plugin@claude-my-marketplace": true,
+    "office-plugin@claude-my-marketplace": true,
+    "media-plugin@claude-my-marketplace": true,
     "infra-plugin@claude-my-marketplace": true
   },
   "permissions": {
     "allow": [
-      "mcp__plugin_documentation-plugin_mermaid",
-      "mcp__plugin_documentation-plugin_docs-playwright"
+      "mcp__plugin_media-plugin_mermaid",
+      "mcp__plugin_media-plugin_media-playwright"
     ]
   }
 }
 ```
 
-### CMO (documentation + media + design)
+### CMO (office + media + design)
 
 ```json
 {
   "enabledPlugins": {
-    "documentation-plugin@claude-my-marketplace": true,
+    "office-plugin@claude-my-marketplace": true,
     "media-plugin@claude-my-marketplace": true,
     "design-plugin@claude-my-marketplace": true
   },
   "permissions": {
     "allow": [
-      "mcp__plugin_documentation-plugin_mermaid",
-      "mcp__plugin_documentation-plugin_docs-playwright",
+      "mcp__plugin_media-plugin_mermaid",
+      "mcp__plugin_media-plugin_media-playwright",
       "mcp__plugin_media-plugin_media-mcp",
       "mcp__plugin_media-plugin_ElevenLabs"
     ]
@@ -128,19 +130,19 @@ Some agents need MCP servers defined in their own `mcp.json` (not from plugins):
 }
 ```
 
-### Content Creator (documentation + media + design)
+### Content Creator (office + media + design)
 
 ```json
 {
   "enabledPlugins": {
-    "documentation-plugin@claude-my-marketplace": true,
+    "office-plugin@claude-my-marketplace": true,
     "media-plugin@claude-my-marketplace": true,
     "design-plugin@claude-my-marketplace": true
   },
   "permissions": {
     "allow": [
-      "mcp__plugin_documentation-plugin_mermaid",
-      "mcp__plugin_documentation-plugin_docs-playwright",
+      "mcp__plugin_media-plugin_mermaid",
+      "mcp__plugin_media-plugin_media-playwright",
       "mcp__plugin_media-plugin_media-mcp",
       "mcp__plugin_media-plugin_ElevenLabs"
     ]

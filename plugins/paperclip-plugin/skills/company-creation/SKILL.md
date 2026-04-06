@@ -198,12 +198,13 @@ Primary coordination tool.
 {
   "enabledPlugins": {
     "dev-tools-plugin@claude-my-marketplace": true,
-    "documentation-plugin@claude-my-marketplace": true
+    "office-plugin@claude-my-marketplace": true,
+    "media-plugin@claude-my-marketplace": true
   },
   "permissions": {
     "allow": [
-      "mcp__plugin_documentation-plugin_mermaid",
-      "mcp__plugin_documentation-plugin_docs-playwright"
+      "mcp__plugin_media-plugin_mermaid",
+      "mcp__plugin_media-plugin_media-playwright"
     ]
   }
 }
@@ -221,16 +222,16 @@ Role-to-plugin summary (see `role-plugin-matrix.md` for full details):
 
 | Role | Plugins | MCP Permissions |
 |------|---------|----------------|
-| CEO | dev-tools-plugin, documentation-plugin | mermaid, docs-playwright |
-| CTO | dev-tools-plugin, documentation-plugin, infra-plugin | mermaid, docs-playwright |
-| CMO | documentation-plugin, media-plugin, design-plugin | mermaid, docs-playwright, media-mcp, ElevenLabs |
+| CEO | dev-tools-plugin, office-plugin, media-plugin | mermaid, media-playwright |
+| CTO | dev-tools-plugin, office-plugin, media-plugin, infra-plugin | mermaid, media-playwright |
+| CMO | office-plugin, media-plugin, design-plugin | mermaid, media-playwright, media-mcp, ElevenLabs |
 | Engineers (backend) | dev-tools-plugin, infra-plugin | -- |
 | Engineers (frontend) | dev-tools-plugin, design-plugin, web-design-plugin | webdesign-playwright, chrome |
 | DevOps | dev-tools-plugin, infra-plugin | -- |
 | QA | dev-tools-plugin | chrome |
 | UX/Design | dev-tools-plugin, design-plugin, web-design-plugin | webdesign-playwright |
-| Content | documentation-plugin, media-plugin, design-plugin | mermaid, docs-playwright, media-mcp, ElevenLabs |
-| HeadOfOperations | documentation-plugin | mermaid, docs-playwright |
+| Content | office-plugin, media-plugin, design-plugin | mermaid, media-playwright, media-mcp, ElevenLabs |
+| HeadOfOperations | office-plugin, media-plugin | mermaid, media-playwright |
 
 #### mcp.json (Per-Agent)
 

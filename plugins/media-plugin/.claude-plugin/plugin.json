@@ -1,7 +1,7 @@
 {
   "name": "media-plugin",
-  "version": "1.4.0",
-  "description": "Media generation and manipulation for Claude Code — images, videos/GIFs, music, and text-to-speech using Google Gemini via the media-mcp server.",
+  "version": "1.5.0",
+  "description": "Media generation and manipulation for Claude Code — images, videos/GIFs, music, text-to-speech, and data visualizations (charts, graphs, diagrams, maps) using Google Gemini, D3.js, and Mermaid.",
   "author": {
     "name": "Lukas Kellerstein"
   },
@@ -21,7 +21,14 @@
     "icons",
     "svg",
     "lucide",
-    "heroicons"
+    "heroicons",
+    "charts",
+    "graphs",
+    "d3",
+    "visualization",
+    "maps",
+    "mermaid",
+    "diagrams"
   ],
   "skills": [
     "./skills/image-generation",
@@ -29,7 +36,9 @@
     "./skills/video-generation",
     "./skills/music-generation",
     "./skills/speech-generation",
-    "./skills/icon-library"
+    "./skills/icon-library",
+    "./skills/graph-generation",
+    "./skills/svg-mastery"
   ],
   "mcpServers": {
     "media-mcp": {
@@ -54,6 +63,19 @@
         "ELEVENLABS_API_KEY": "${ELEVENLABS_API_KEY}"
       },
       "description": "Text-to-speech, voice cloning, and audio tools via ElevenLabs"
+    },
+    "mermaid": {
+      "url": "https://mcp.mermaidchart.com/mcp",
+      "type": "http",
+      "description": "Mermaid diagram generation for architecture and documentation"
+    },
+    "media-playwright": {
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest",
+        "--headless"
+      ],
+      "description": "Browser automation for rendering D3.js charts and capturing screenshots"
     }
   }
 }
