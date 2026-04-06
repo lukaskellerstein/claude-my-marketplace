@@ -133,7 +133,8 @@ Generate ALL files in a single folder:
 - `AGENTS.md` — specific to the business, not generic. Mentions actual systems, APIs, and domains this agent owns.
 - `HEARTBEAT.md` — follows the standard Paperclip heartbeat procedure with role-specific additions.
 - `SOUL.md` — unique persona for each agent. A CEO sounds different from an engineer. Match the business domain.
-- `settings.json` — correct plugin and MCP assignments based on the role matrix.
+- `settings.json` — **MUST read `role-plugin-matrix.md`** from the agent-design skill references and follow the exact JSON format. Use `enabledPlugins` as an object with `{name}-plugin@claude-my-marketplace` keys, and `permissions.allow` array with `mcp__plugin_{namespace}_{server}` strings. NEVER use array format for `enabledPlugins` or put MCP servers in `mcpServers` inside settings.json.
+- `mcp.json` — empty for most agents. Frontend/QA agents get Chrome DevTools MCP.
 - `setup.sh` — actually runnable. Uses curl + jq, captures IDs, creates entities in the right order.
 
 ### Phase 6: Review & Handoff

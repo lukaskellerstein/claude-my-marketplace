@@ -130,23 +130,33 @@ Map plugins to roles using this reference:
 | `design-plugin` | Frontend, UX, content | -- |
 | `web-design-plugin` | Frontend, UX | webdesign-playwright |
 
-**settings.json format:**
+**settings.json format — YOU MUST USE THIS EXACT STRUCTURE:**
 ```json
 {
   "enabledPlugins": {
-    "{plugin-name}@claude-my-marketplace": true
+    "{plugin-name}-plugin@claude-my-marketplace": true
   },
   "permissions": {
     "allow": [
-      "mcp__plugin_{plugin-namespace}__{mcp-server-name}"
+      "mcp__plugin_{plugin-name}-plugin_{mcp-server-name}"
     ]
   }
 }
 ```
 
+**WRONG — DO NOT USE these formats:**
+```json
+// WRONG: array for enabledPlugins
+{"enabledPlugins": ["dev-tools", "documentation"]}
+// WRONG: mcpServers in settings.json
+{"mcpServers": {"mermaid": {}}}
+```
+
 **MCP permission naming:**
-- Plugin-provided: `mcp__plugin_{plugin-name}_{server-name}`
-- Agent-level: `mcp__{server-name}`
+- Plugin-provided: `mcp__plugin_{plugin-name}-plugin_{server-name}` (e.g., `mcp__plugin_documentation-plugin_mermaid`)
+- Agent-level: `mcp__{server-name}` (e.g., `mcp__chrome`)
+
+**Always read `references/role-plugin-matrix.md`** for complete examples per role.
 
 ### Step 8: Generate README.md
 

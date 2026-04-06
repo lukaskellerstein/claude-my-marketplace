@@ -381,30 +381,41 @@ echo "  3. Approve the CEO's strategy in the Paperclip UI"
 
 ## Agent File Templates
 
-### settings.json (with plugins)
+**IMPORTANT:** Read `role-plugin-matrix.md` in the agent-design skill references for complete per-role examples.
+
+### settings.json (with MCP-providing plugins)
 
 ```json
 {
   "enabledPlugins": {
-    "{plugin-name}@claude-my-marketplace": true
+    "dev-tools-plugin@claude-my-marketplace": true,
+    "documentation-plugin@claude-my-marketplace": true
   },
   "permissions": {
     "allow": [
-      "mcp__plugin_{plugin-namespace}__{mcp-server}"
+      "mcp__plugin_documentation-plugin_mermaid",
+      "mcp__plugin_documentation-plugin_docs-playwright"
     ]
   }
 }
 ```
 
-### settings.json (no MCP)
+### settings.json (no MCP-providing plugins)
 
 ```json
 {
   "enabledPlugins": {
-    "{plugin-name}@claude-my-marketplace": true
+    "dev-tools-plugin@claude-my-marketplace": true,
+    "infra-plugin@claude-my-marketplace": true
   }
 }
 ```
+
+**Format rules:**
+- `enabledPlugins` is an **object** (not array), keys are `{name}-plugin@claude-my-marketplace`
+- `permissions.allow` lists MCP tool prefixes as `mcp__plugin_{plugin-name}-plugin_{server}`
+- Omit `permissions` entirely if no MCP-providing plugins are enabled
+- NEVER put `mcpServers` inside settings.json — that goes in `mcp.json`
 
 ### mcp.json (empty — most agents)
 

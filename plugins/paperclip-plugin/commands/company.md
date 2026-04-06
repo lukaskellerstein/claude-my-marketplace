@@ -83,7 +83,29 @@ Present and confirm with the user.
 
 ### Step 4: Generate the Blueprint
 
-Read the **company-creation** skill for the full structure, then generate all files:
+Read BOTH skills before generating:
+1. **company-creation** — for the full folder structure and templates
+2. **agent-design** — for the `settings.json` / `mcp.json` format. **YOU MUST read the `role-plugin-matrix.md` reference** in the agent-design skill directory to get the EXACT `enabledPlugins` and `permissions` format. Do NOT invent your own format.
+
+**Critical: `settings.json` format** — every agent's `settings.json` MUST use this exact structure:
+```json
+{
+  "enabledPlugins": {
+    "{plugin-name}-plugin@claude-my-marketplace": true
+  },
+  "permissions": {
+    "allow": [
+      "mcp__plugin_{plugin-name}-plugin_{mcp-server-name}"
+    ]
+  }
+}
+```
+- Plugin names use the `{name}-plugin@claude-my-marketplace` format (e.g., `"dev-tools-plugin@claude-my-marketplace": true`)
+- MCP permissions use `mcp__plugin_{plugin-namespace}_{server}` format (e.g., `"mcp__plugin_documentation-plugin_mermaid"`)
+- Agents with NO MCP-providing plugins omit the `permissions` key entirely
+- Frontend/QA agents that need Chrome DevTools must have it in their `mcp.json`, not in `settings.json`
+
+Generate all files:
 
 1. `{company-name}/README.md` — setup guide
 2. `{company-name}/company.md` — full business description
@@ -98,7 +120,8 @@ Read the **company-creation** skill for the full structure, then generate all fi
 11. `{company-name}/org/deployment-flow.md` — CI/CD workflow
 12. For each agent in `{company-name}/org/agents/{AgentName}/`:
     - `README.md`, `AGENTS.md`, `HEARTBEAT.md`, `SOUL.md`
-    - `settings.json`, `mcp.json`
+    - `settings.json` — **MUST follow the `enabledPlugins` object + `permissions.allow` format from role-plugin-matrix.md**
+    - `mcp.json` — empty for most agents; Chrome MCP for frontend/QA agents
     - `TOOLS.md` (CEO and CTO only)
 13. `{company-name}/setup.sh` — API setup script
 

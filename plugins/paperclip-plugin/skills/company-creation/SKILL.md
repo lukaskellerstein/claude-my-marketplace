@@ -191,23 +191,64 @@ Primary coordination tool.
 
 #### settings.json (Per-Agent)
 
-Assign plugins based on role:
+**CRITICAL:** You MUST read the `role-plugin-matrix.md` reference in the **agent-design** skill directory for the exact JSON format and complete role-to-plugin mapping. The format uses `enabledPlugins` as an **object** (not array) with `@claude-my-marketplace` suffix, and MCP permissions go in `permissions.allow`.
+
+**Correct format example (CEO):**
+```json
+{
+  "enabledPlugins": {
+    "dev-tools-plugin@claude-my-marketplace": true,
+    "documentation-plugin@claude-my-marketplace": true
+  },
+  "permissions": {
+    "allow": [
+      "mcp__plugin_documentation-plugin_mermaid",
+      "mcp__plugin_documentation-plugin_docs-playwright"
+    ]
+  }
+}
+```
+
+**WRONG format (DO NOT USE):**
+```json
+{
+  "enabledPlugins": ["dev-tools", "documentation"],
+  "mcpServers": { "mermaid": {} }
+}
+```
+
+Role-to-plugin summary (see `role-plugin-matrix.md` for full details):
 
 | Role | Plugins | MCP Permissions |
 |------|---------|----------------|
-| CEO | dev-tools, documentation | mermaid, docs-playwright |
-| CTO | dev-tools, documentation, infra | mermaid, docs-playwright |
-| CMO | documentation, media, design | mermaid, docs-playwright, media-mcp, ElevenLabs |
-| Engineers (backend) | dev-tools, infra | -- |
-| Engineers (frontend) | dev-tools, design, web-design | webdesign-playwright |
-| QA | dev-tools | -- |
-| UX/Design | dev-tools, design, web-design | webdesign-playwright |
-| Content | documentation, media, design | mermaid, docs-playwright, media-mcp, ElevenLabs |
+| CEO | dev-tools-plugin, documentation-plugin | mermaid, docs-playwright |
+| CTO | dev-tools-plugin, documentation-plugin, infra-plugin | mermaid, docs-playwright |
+| CMO | documentation-plugin, media-plugin, design-plugin | mermaid, docs-playwright, media-mcp, ElevenLabs |
+| Engineers (backend) | dev-tools-plugin, infra-plugin | -- |
+| Engineers (frontend) | dev-tools-plugin, design-plugin, web-design-plugin | webdesign-playwright, chrome |
+| DevOps | dev-tools-plugin, infra-plugin | -- |
+| QA | dev-tools-plugin | chrome |
+| UX/Design | dev-tools-plugin, design-plugin, web-design-plugin | webdesign-playwright |
+| Content | documentation-plugin, media-plugin, design-plugin | mermaid, docs-playwright, media-mcp, ElevenLabs |
+| HeadOfOperations | documentation-plugin | mermaid, docs-playwright |
 
 #### mcp.json (Per-Agent)
 
-Most agents have empty `mcpServers: {}`. Exceptions:
-- Frontend engineers and UX testers may need `chrome` MCP for browser testing
+Most agents have empty `mcpServers: {}`. Agents that need Chrome DevTools for browser testing:
+
+```json
+{
+  "mcpServers": {
+    "chrome": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@anthropic-ai/mcp-chrome-devtools@latest"]
+    }
+  }
+}
+```
+
+**Which agents get Chrome MCP:** Frontend Engineer, QA Engineer, UX Tester
 
 ### Phase 4: Company-Level Documents
 
