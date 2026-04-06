@@ -1,6 +1,6 @@
 {
   "name": "claude-my-marketplace",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "A marketplace for Claude Code plugins focused on ME",
   "owner": {
     "name": "Lukas Kellerstein",
@@ -26,10 +26,6 @@
     {
       "name": "media-plugin",
       "source": "./plugins/media-plugin"
-    },
-    {
-      "name": "figma-plugin",
-      "source": "./plugins/figma-plugin"
     },
     {
       "name": "design-plugin",

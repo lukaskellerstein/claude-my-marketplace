@@ -1,6 +1,6 @@
 {
   "name": "company-plugin",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Business operations toolkit — shipping logistics via Zásilkovna (Czech) and DHL (worldwide), and payment processing via Stripe. Provides skills for integrating, configuring, and managing these services.",
   "author": {
     "name": "Lukas Kellerstein"

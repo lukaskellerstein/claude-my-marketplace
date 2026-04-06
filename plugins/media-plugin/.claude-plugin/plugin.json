@@ -1,6 +1,6 @@
 {
   "name": "media-plugin",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "description": "Media generation and manipulation for Claude Code — images, videos/GIFs, music, text-to-speech, and data visualizations (charts, graphs, diagrams, maps) using Google Gemini, D3.js, and Mermaid.",
   "author": {
     "name": "Lukas Kellerstein"

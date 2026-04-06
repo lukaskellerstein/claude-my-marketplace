@@ -1,6 +1,6 @@
 {
   "name": "dev-tools-plugin",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "General developer tooling — git workflows, code hygiene, dependency management, and project documentation generation.",
   "author": {
     "name": "Lukas Kellerstein"

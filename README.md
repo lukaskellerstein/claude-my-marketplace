@@ -1,12 +1,12 @@
 # claude-my-marketplace
 
 [![GitHub](https://img.shields.io/github/stars/lukaskellerstein/claude-my-marketplace?style=flat&logo=github)](https://github.com/lukaskellerstein/claude-my-marketplace)
-[![Plugins](https://img.shields.io/badge/plugins-8-blue)](plugins/)
+[![Plugins](https://img.shields.io/badge/plugins-8-blue?logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0id2hpdGUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE0IiBoZWlnaHQ9IjE0IiByeD0iMiIvPjwvc3ZnPg==)](plugins/)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-orange?logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0id2hpdGUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMTAiIGN5PSIxMCIgcj0iOCIvPjwvc3ZnPg==)](https://docs.anthropic.com/en/docs/claude-code)
 
 > A curated collection of [Claude Code](https://docs.anthropic.com/en/docs/claude-code) plugins for design, development, documentation, media generation, and infrastructure management.
 
-This marketplace bundles **8 plugins** with **30+ skills**, **10+ specialized agents**, and multiple MCP server integrations — giving Claude Code capabilities spanning the full software development lifecycle from design to deployment.
+This marketplace bundles **8 plugins** with **35+ skills**, **10+ specialized agents**, and multiple MCP server integrations — giving Claude Code capabilities spanning the full software development lifecycle from design to deployment, plus autonomous AI company creation.
 
 ## Plugins
 
@@ -40,7 +40,7 @@ Infrastructure management for Kubernetes/GKE, Istio, Helm, Terraform, Traefik, a
 
 AI-powered media generation — images, videos/GIFs, music, text-to-speech, and data visualizations (charts, graphs, diagrams, maps) via Google Gemini, ElevenLabs, D3.js, and Mermaid. Also supports sourcing stock photos and fetching pre-made SVG icons.
 
-- **Skills:** image-generation, image-sourcing, video-generation, music-generation, speech-generation, icon-library, graph-generation
+- **Skills:** image-generation, image-sourcing, video-generation, music-generation, speech-generation, icon-library, graph-generation, svg-mastery
 - **Agents:** media-director
 - **MCP:** media-mcp (Gemini), ElevenLabs, Mermaid Chart, Playwright
 
@@ -61,36 +61,43 @@ End-to-end website/webapp design and implementation — from brief to working Re
 - **Commands:** /web-design
 - **MCP:** Playwright
 
+### [paperclip-plugin](plugins/paperclip-plugin) `v1.0.0`
+
+Autonomous AI company advisor for the [Paperclip](https://paperclip.ing) platform — create, design, and manage AI-powered companies with proper agent hierarchies, infrastructure, and runtime configurations following the Agent Companies spec.
+
+- **Skills:** company-creation, agent-design, infrastructure-planning
+- **Agents:** company-builder
+- **Commands:** /company, /brainstorming
+
 ## Architecture
 
 ### Plugin Dependencies
 
 ```mermaid
 graph TD
-    figma[figma-plugin] --> media[media-plugin]
-    figma --> design[design-plugin]
-    webdesign[web-design-plugin] --> design
-    design --> media
+    webdesign[web-design-plugin] --> design[design-plugin]
+    design --> media[media-plugin]
     design --> office[office-plugin]
     dev[dev-tools-plugin]
     infra[infra-plugin]
     company[company-plugin]
+    paperclip[paperclip-plugin]
 
     style media fill:#4a9eff,color:#fff
     style design fill:#a855f7,color:#fff
     style webdesign fill:#22c55e,color:#fff
-    style figma fill:#f97316,color:#fff
     style office fill:#eab308,color:#000
     style dev fill:#6b7280,color:#fff
     style infra fill:#6b7280,color:#fff
     style company fill:#ef4444,color:#fff
+    style paperclip fill:#f97316,color:#fff
 ```
 
-- **media-plugin** is foundational — used by figma and design plugins for image/video/music/speech generation, icon sourcing, and data visualizations
-- **design-plugin** provides creative direction — used by figma-plugin and web-design-plugin for design system auditing and styleguides
+- **media-plugin** is foundational — used by design-plugin for image/video/music/speech generation, icon sourcing, and data visualizations
+- **design-plugin** provides creative direction — used by web-design-plugin for design system auditing and styleguides
 - **web-design-plugin** uses design-plugin skills for aesthetic direction, styleguides, and design review
 - **office-plugin** is used by design-plugin for PPTX image dimension references
-- **dev-tools-plugin**, **infra-plugin**, and **company-plugin** are standalone with no cross-plugin dependencies
+- **dev-tools-plugin**, **infra-plugin**, **company-plugin**, and **paperclip-plugin** are standalone with no cross-plugin dependencies
 
 ### MCP Server Integrations
 
@@ -100,7 +107,6 @@ graph TD
 | media-plugin | `elevenlabs-mcp` (uvx) | Text-to-speech and voice cloning |
 | media-plugin | Mermaid Chart (HTTP) | Diagram generation |
 | media-plugin | Playwright (npx) | D3.js chart rendering |
-| figma-plugin | Playwright (npx) | Figma Plugin API automation |
 | web-design-plugin | Playwright (npx) | Visual testing of built websites |
 | company-plugin | DHL API Assistant (HTTP) | DHL shipment tracking, parcel shipping, returns |
 | company-plugin | `@stripe/mcp` (npx) | Stripe payments, subscriptions, invoicing |
@@ -130,8 +136,8 @@ Once the marketplace is added, install individual plugins:
 /plugin install office-plugin@claude-my-marketplace
 /plugin install company-plugin@claude-my-marketplace
 /plugin install infra-plugin@claude-my-marketplace
-/plugin install figma-plugin@claude-my-marketplace
 /plugin install media-plugin@claude-my-marketplace
+/plugin install paperclip-plugin@claude-my-marketplace
 /plugin install design-plugin@claude-my-marketplace
 /plugin install web-design-plugin@claude-my-marketplace
 ```
