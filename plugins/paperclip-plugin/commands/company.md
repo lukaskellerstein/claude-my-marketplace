@@ -20,7 +20,8 @@ If the description is too vague (less than a sentence), ask ONE clarifying quest
 Read these skills in order:
 1. **company-creation** — for the full package structure, generation phases, and templates
 2. **agent-design** — for the per-agent file format, `settings.json` structure, and plugin assignments. **You MUST read `references/role-plugin-matrix.md`** for the exact `enabledPlugins` and `permissions` format.
-3. **infrastructure-planning** — for GitHub, Docker, K8s, Stripe, and logistics planning
+3. **project-design** — for project scoping, PROJECT.md format, and task-project assignment
+4. **infrastructure-planning** — for GitHub, Docker, K8s, Stripe, and logistics planning
 
 Also read the Agent Companies spec:
 ```
@@ -33,7 +34,7 @@ Follow the phased workflow defined in the **company-creation** skill:
 
 1. **Discovery interview** — understand the business (ask 2-3 focused questions per round, not 10)
 2. **Org design** — propose agent hierarchy with roles, budgets, and plugin assignments
-3. **Goal & task definition** — company goal + 5-10 initial tasks for CEO
+3. **Goal, project & task definition** — company goals (2-5 specific, measurable) + projects with starter tasks + CEO strategic tasks
 4. **Package generation** — generate ALL files following the spec
 5. **Summary & next steps** — list what was created and what the user needs to do
 

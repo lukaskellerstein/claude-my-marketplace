@@ -58,11 +58,30 @@ Use `references/standard-roles.md` as a catalog of available roles.
 
 Ask: "Does this org structure look right?"
 
-### Phase 3: Goal & Task Definition
+### Phase 3: Goal, Project & Task Definition
 
 Propose:
-1. Company goal — clear, measurable objective
-2. Initial tasks (5-10) — strategic tasks assigned to CEO
+1. Company goals (2-5) — specific, measurable objectives that define success for this company
+2. Projects (1-3) — group related work under a clear owner (e.g., "mvp-launch", "marketing-engine", "infrastructure-setup")
+3. Starter tasks per project (3-8 each) — placed under `projects/{slug}/tasks/` with `project` frontmatter
+4. Company-level strategic tasks — cross-cutting CEO directives at top-level `tasks/`
+
+**Goal quality bar:**
+- Each goal must be specific to the business (not generic like "grow revenue")
+- Goals must be measurable or verifiable (e.g., "Launch a public API with 3+ endpoints" not "Build technology")
+- Include a mix of product, growth, and operational goals
+- 2 goals minimum, 5 maximum — fewer is better if they're precise
+
+**Example goals for a SaaS company:**
+```yaml
+goals:
+  - Launch MVP web application with user authentication and core workflow
+  - Acquire first 100 beta users through content marketing and direct outreach
+  - Establish CI/CD pipeline with automated testing achieving 80%+ code coverage
+  - Generate first revenue through a paid tier within 90 days of launch
+```
+
+**Task-project assignment:** every non-strategic task must belong to a project. Place tasks at `projects/{project-slug}/tasks/{task-slug}/TASK.md` and include `project: {project-slug}` in frontmatter. Only CEO-level cross-cutting directives belong at top-level `tasks/`. See the **project-design** skill for detailed guidance.
 
 ### Phase 4: Generate the Package
 
@@ -74,11 +93,13 @@ Propose:
 Generate all files following the structure in `references/package-structure.md`.
 
 **Quality bar:**
-- `COMPANY.md` — proper YAML frontmatter with `schema: agentcompanies/v1`, version, goals
+- `COMPANY.md` — proper YAML frontmatter with `schema: agentcompanies/v1`, version, goals (2-5 specific, measurable)
 - `AGENTS.md` — specific to the business, not generic. Mentions actual systems and domains.
 - `HEARTBEAT.md` — follows standard Paperclip heartbeat procedure with role-specific additions
 - `SOUL.md` — two sections: strategic posture + voice and tone. Unique per agent.
 - `TOOLS.md` — minimal scaffold, NOT pre-filled
+- `PROJECT.md` — proper YAML frontmatter with name, description, slug, owner. At least one project per company.
+- Tasks under projects — every non-strategic task lives at `projects/{slug}/tasks/{slug}/TASK.md` with `project` and `assignee` frontmatter. See the **project-design** skill for detailed guidance.
 - `runtime/settings.json` — follows exact `enabledPlugins` object format from role-plugin-matrix
 - `runtime/mcp.json` — empty for most agents. Frontend/QA get Chrome DevTools.
 - `.paperclip.yaml` — adapter config, budgets, env inputs. Only agents with overrides appear.

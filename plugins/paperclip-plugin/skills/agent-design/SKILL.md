@@ -126,6 +126,16 @@ Company-wide artifacts live in the project root, outside your personal directory
 - `$AGENT_HOME/TOOLS.md` -- tools reference
 ```
 
+**Skill file generation rule:** Every skill shortname listed in the `skills:` frontmatter MUST have a corresponding `skills/<shortname>/SKILL.md` file in the company package. Without it, the Paperclip import warns about missing skills and they won't be assigned to the agent.
+
+- For each skill in the `skills:` array, create `skills/<shortname>/SKILL.md` with a name, description, and instructions relevant to the company's domain
+- **Exception:** `paperclip` is a built-in Paperclip skill — do NOT create a file for it. It is automatically available to all agents at runtime.
+- Skills shared across multiple agents only need one `skills/<shortname>/SKILL.md` file — all agents reference the same shortname
+
+Example — if an agent has `skills: [paperclip, code-review]`:
+- `paperclip` — skip (built-in)
+- `code-review` — create `skills/code-review/SKILL.md`
+
 ### Step 5: Write HEARTBEAT.md
 
 Step-by-step execution checklist the agent runs every time it wakes up:

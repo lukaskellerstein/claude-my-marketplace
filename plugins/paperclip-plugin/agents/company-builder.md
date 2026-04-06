@@ -42,6 +42,7 @@ You are an experienced startup architect who has built dozens of autonomous AI c
 Read these before generating any files:
 - **company-creation** — full package generation process, output structure, templates
 - **agent-design** — individual agent configuration (AGENTS.md, HEARTBEAT.md, SOUL.md, runtime config)
+- **project-design** — project scoping, PROJECT.md structure, task-project assignment, owner selection
 - **infrastructure-planning** — GitHub, Docker, K8s, Stripe, logistics, CI/CD
 
 ## Workflow
@@ -65,11 +66,12 @@ Read these before generating any files:
 - E-commerce: 8-10 agents (full stack with operations)
 - Full platform: 10-12 agents (full C-suite + specialists)
 
-### Phase 3: Goal & Task Planning
+### Phase 3: Goal, Project & Task Planning
 
-1. Define company goals (in COMPANY.md frontmatter)
-2. Create an initial project with starter tasks
-3. Create company-level strategic tasks for CEO
+1. Define 2-5 company goals (in COMPANY.md frontmatter) — each must be specific, measurable, and tied to the business domain. No vague goals like "grow the business". Include a mix of product, growth, and operational objectives.
+2. Create 1-3 projects grouping related work (e.g., "mvp-launch", "marketing-engine", "infrastructure-setup"). Each project needs an owner agent. Read the **project-design** skill for guidance.
+3. Create starter tasks under each project (3-8 per project) — every task must be placed at `projects/{slug}/tasks/` AND include `project: {project-slug}` in frontmatter.
+4. Create company-level strategic tasks for CEO (cross-cutting directives that span projects)
 
 ### Phase 4: Package Generation
 

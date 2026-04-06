@@ -24,7 +24,7 @@ A company package follows the Agent Companies specification (`agentcompanies/v1`
 ├── tasks/
 │   └── {task-slug}/TASK.md             # Company-level starter tasks
 ├── skills/
-│   └── {skill-slug}/SKILL.md           # Shared skills
+│   └── {skill-slug}/SKILL.md           # Shared skills (one per skill referenced in any AGENTS.md)
 ├── global/                             # Shared runtime config (all agents)
 │   ├── settings.json                   # Global Claude Code settings (baseline)
 │   └── plugins.json                    # Marketplace and plugin installation
@@ -49,8 +49,10 @@ slug: company-slug
 schema: agentcompanies/v1
 version: 1.0.0
 goals:
-  - First goal
-  - Second goal
+  - Launch MVP product with core features and user onboarding
+  - Acquire first 50 paying customers within 90 days
+  - Establish automated CI/CD pipeline with test coverage above 80%
+  - Build content marketing engine producing 2+ blog posts per week
 ```
 
 ### AGENTS.md
@@ -64,6 +66,8 @@ skills:
 ```
 
 Body contains the agent's instructions.
+
+**Skill resolution rule:** Every skill shortname in `skills:` must have a matching `skills/<shortname>/SKILL.md` in the package. Exception: `paperclip` is a Paperclip built-in — do not create a file for it. Without the SKILL.md file, the import warns and the skill won't be assigned.
 
 ### PROJECT.md
 

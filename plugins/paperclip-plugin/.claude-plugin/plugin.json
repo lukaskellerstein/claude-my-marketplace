@@ -26,6 +26,7 @@
   "skills": [
     "./skills/company-creation",
     "./skills/agent-design",
+    "./skills/project-design",
     "./skills/company-analysis",
     "./skills/infrastructure-planning"
   ]
