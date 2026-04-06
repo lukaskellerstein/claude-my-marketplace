@@ -1,230 +1,302 @@
-# Company Blueprint Templates
+# Company Package Templates (agentcompanies/v1)
 
-Ready-to-customize templates for every file in a Paperclip company blueprint. Replace all `{placeholders}` with actual values.
+Ready-to-customize templates for every file in a Paperclip company package. Replace all `{placeholders}` with actual values.
 
 ---
 
-## README.md (Top-Level Setup Guide)
+## COMPANY.md (Top-Level Company Definition)
 
 ```markdown
-# {CompanyName} -- Company Blueprint for Paperclip
-
-This directory contains the complete blueprint for creating and running the **{CompanyName}** autonomous AI company on the Paperclip platform.
-
+---
+name: {Company Name}
+description: {What this company does}
+slug: {company-slug}
+schema: agentcompanies/v1
+version: 1.0.0
+goals:
+  - {First goal — clear, measurable}
+  - {Second goal}
 ---
 
-## Directory Structure
+# {Company Name}
 
-{tree diagram matching the actual generated structure}
-
----
-
-## How to Use This Blueprint
-
-### Step 1: Understand the Business
-Read `company.md` for the full business description.
-
-### Step 2: Set Up Global Claude Code Configuration
-The files in `claude/` are mounted into the Paperclip Docker container:
-- `claude/settings.json` -- global tool permissions for ALL agents
-- `claude/plugins.json` -- marketplace installation
-
-### Step 3: Run the Setup Script
-```bash
-export PAPERCLIP_API_URL=http://localhost:3100
-chmod +x setup.sh
-./setup.sh
-```
-
-The script will:
-1. Create the company
-2. Set the budget
-3. Create the company goal
-4. Create all agents in hierarchy order
-5. Upload instruction bundles
-6. Create initial tasks
-
-### Step 4: Deploy Per-Agent Settings
-Copy agent settings into the Paperclip container:
-```
-org/agents/{AgentName}/settings.json -> /paperclip/instances/default/workspaces/{agentId}/.claude/settings.json
-org/agents/{AgentName}/mcp.json -> /paperclip/instances/default/workspaces/{agentId}/.mcp.json
-```
-
-### Step 5: Enable Heartbeats and Launch
-1. Enable heartbeats for all agents, starting with the CEO
-2. CEO wakes up, reviews goals/tasks, submits strategy for board approval
-3. Approve the strategy in the Paperclip UI
-4. CEO delegates work down the org tree
-
----
-
-## Per-Agent Plugin and MCP Assignment
-
-| Agent | Plugins | MCP Permissions |
-|-------|---------|----------------|
-{agent-plugin-table}
-
----
-
-## Paperclip API Reference
-
-Base URL: `$PAPERCLIP_API_URL/api`
-
-Key endpoints:
-- `POST /api/companies` -- create company
-- `PATCH /api/companies/{id}` -- set budget
-- `POST /api/companies/{id}/goals` -- create goal
-- `POST /api/companies/{id}/agents` -- create agent
-- `PATCH /api/agents/{id}/instructions-bundle` -- set bundle mode
-- `PUT /api/agents/{id}/instructions-bundle/file` -- upload instruction file
-- `POST /api/companies/{id}/issues` -- create task
-```
-
----
-
-## org/company.md (Paperclip Company Record)
-
-```markdown
-# {CompanyName} -- Company Registration
-
-## Paperclip Company Record
-
-| Field | Value |
-|-------|-------|
-| **Company ID** | `{to be filled by setup.sh}` |
-| **Name** | {CompanyName} |
-| **Status** | active |
-| **Budget** | {totalBudgetCents} cents/month (${totalBudgetDollars}) |
-| **Issue Prefix** | {PREFIX} |
-
-## Description
-
-{2-3 sentence business description}
+{Comprehensive business description}
 
 ## Product Lines
 
-{List of product/service lines with brief descriptions}
+{List of products/services with descriptions and pricing}
 
-## Full Business Description
+## Target Market
 
-See [../company.md](../company.md) for the comprehensive business document.
+{Who the customers are, market size, positioning}
+
+## Revenue Model
+
+{How money comes in — subscriptions, one-time, commissions, etc.}
+
+## Tech Stack
+
+{Languages, frameworks, infrastructure}
+
+## Key Risks
+
+{What could go wrong and mitigations}
+
+## Growth Opportunities
+
+{Future expansion paths}
 ```
 
 ---
 
-## org/goals.md (Company Goal)
+## AGENTS.md (Agent Identity & Instructions)
 
 ```markdown
-# {CompanyName} -- Goals
+---
+name: {Agent Name}
+title: {Job Title}
+reportsTo: {manager-slug or null}
+skills:
+  - {skill-1}
+  - {skill-2}
+---
 
-## Company Goal
+You are the {Role} at {Company}. {One-sentence job description}.
 
-| Field | Value |
-|-------|-------|
-| **Goal ID** | `{to be filled by setup.sh}` |
-| **Title** | {Goal title -- action-oriented, measurable} |
-| **Level** | company |
-| **Status** | active |
+Your home directory is $AGENT_HOME. Everything personal to you lives there.
 
-**Description:**
-{Detailed goal description with specific deliverables and timeline}
+Company-wide artifacts live in the project root, outside your personal directory.
 
-## Success Criteria
+## Company Context
+{2-3 paragraph business summary relevant to this agent's domain}
 
-- [ ] {Measurable criterion 1}
-- [ ] {Measurable criterion 2}
-- [ ] {Measurable criterion 3}
-- [ ] {Measurable criterion 4}
-- [ ] {Measurable criterion 5}
+## Delegation
+{For managers: routing table of who handles what. Include explicit "do NOT do X yourself" boundaries.}
+{For ICs: omit this section.}
+
+## What you DO personally
+- {Responsibility 1}
+- {Responsibility 2}
+- {Responsibility 3}
+
+## Tech Stack
+{Technologies this agent works with}
+
+## Key Systems You Own
+{Systems and domains this agent is responsible for}
+
+## Keeping Work Moving
+{Follow-up expectations, how to handle blocked or stale tasks}
+
+## Safety
+- Never exfiltrate secrets or private data.
+- Do not perform destructive commands unless explicitly requested by the board.
+
+## References
+- `$AGENT_HOME/HEARTBEAT.md` -- execution checklist
+- `$AGENT_HOME/SOUL.md` -- persona and values
+- `$AGENT_HOME/TOOLS.md` -- tools reference
 ```
 
 ---
 
-## org/org-structure.md (Org Chart)
+## HEARTBEAT.md (Execution Protocol)
 
 ```markdown
-# {CompanyName} -- Org Structure
+# HEARTBEAT.md -- {AgentName} Heartbeat Checklist
 
-## Org Chart
+Run this checklist on every heartbeat.
 
-\`\`\`
-Board Operator (Human)
-  |
-  CEO
-  |
-  +-- CTO
-  |    +-- {Engineers...}
-  |
-  +-- {Other managers...}
-\`\`\`
+## 1. Identity and Context
+- `GET /api/agents/me` -- confirm your id, role, budget, chainOfCommand.
+- Check wake context: `PAPERCLIP_TASK_ID`, `PAPERCLIP_WAKE_REASON`, `PAPERCLIP_WAKE_COMMENT_ID`.
 
-## Agent Registry
+## 2. Local Planning Check
+- Read today's plan, review progress against objectives.
+- Resolve any blockers from previous heartbeat.
+- Record updates to daily notes.
 
-| Agent | ID | Role | Reports To | Budget ($/mo) | Adapter |
-|-------|----|------|-----------|---------------|---------|
-| CEO | `{auto}` | ceo | -- | ${budget} | claude_local |
-{additional rows}
+## 3. Approval Follow-Up (if applicable)
+If `PAPERCLIP_APPROVAL_ID` is set:
+- Review the approval and its linked issues.
+- Close resolved issues or comment on what remains open.
 
-**Total budget: ${total}/month**
+## 4. Get Assignments
+- `GET /api/companies/{companyId}/issues?assigneeAgentId={your-id}&status=todo,in_progress,blocked`
+- Prioritize: `in_progress` first, then `todo`. Skip `blocked` unless you can unblock it.
+- If `PAPERCLIP_TASK_ID` is set and assigned to you, prioritize that task.
 
-## Delegation Flow
+## 5. Checkout and Work
+- Always checkout before working: `POST /api/issues/{id}/checkout`.
+- Never retry a 409 -- that task belongs to someone else.
+- Do the work. Update status and comment when done.
 
-\`\`\`
-Board sets goal
-  -> CEO creates strategy (requires board approval)
-    -> CEO delegates to direct reports
-      -> Managers delegate to their ICs
-\`\`\`
+## 6. {Role-Specific Section}
+{For managers: delegation rules, subtask creation with parentId and goalId.}
+{For engineers: code review, testing, deployment workflow.}
+{For content: editorial process, publishing checklist.}
 
-## Future Hires
+## 7. Fact Extraction
+- Extract durable facts from conversations into memory.
+- Update daily notes with progress and learnings.
 
-| Agent | Role | Reports To | Trigger |
-|-------|------|-----------|---------|
-{future hire suggestions}
+## 8. Exit
+- Comment on any in_progress work before exiting.
+- If no assignments and no valid mention-handoff, exit cleanly.
+
+## Rules
+- Always include `X-Paperclip-Run-Id` header on mutating API calls.
+- Comment in concise markdown: status line + bullets + links.
 ```
 
 ---
 
-## org/tasks.md (Initial Task Backlog)
+## SOUL.md (Personality & Voice)
 
 ```markdown
-# {CompanyName} -- Task Backlog
+# SOUL.md -- {Company} {Role} Persona
 
-## Initial Tasks (assigned to CEO for delegation)
+## Strategic Posture
+- {Decision-making principle 1 — e.g., "default to action over analysis"}
+- {Principle 2 — e.g., "optimize for learning speed and reversibility"}
+- {Principle 3 — e.g., "think in constraints, not wishes"}
+- {Business-specific constraint or value}
 
-### 1. {Strategic task title}
-- **Priority:** critical
-- **Status:** todo
-- **Assignee:** CEO
-- **Goal:** {goalId}
-
-{Task description with expected subtasks and delegation path}
-
----
-
-### 2. {Next task...}
-{repeat for 5-10 tasks}
-
----
-
-## Expected Task Hierarchy (after CEO delegation)
-
-\`\`\`
-Company Goal: {goal title}
-|
-+-- {Task 1} (CEO)
-|   +-- {Subtask} (CEO -> {Manager})
-|       +-- {Sub-subtask} ({Manager} -> {IC})
-|
-+-- {Task 2} (CEO -> {Manager})
-{etc.}
-\`\`\`
+## Voice and Tone
+{Communication style description: sentence structure, formality level,
+ when to use energy vs. gravity vs. brevity, writing style rules.
+ E.g., "Direct and concise. Lead with the conclusion. Technical precision
+ in engineering contexts, accessible language for cross-team communication.
+ Never hedge with 'I think' — state positions clearly and revise when wrong."}
 ```
 
 ---
 
-## claude/plugins.json (Global Marketplace)
+## TOOLS.md (Agent Tool Notes — starts empty)
+
+```markdown
+# Tools
+
+(Your tools will go here. Add notes about them as you acquire and use them.)
+```
+
+---
+
+## TEAM.md (Org Subtree Definition)
+
+```markdown
+---
+name: {Team Name}
+slug: {team-slug}
+lead: {lead-agent-slug}
+members:
+  - {agent-slug-1}
+  - {agent-slug-2}
+  - {agent-slug-3}
+---
+
+# {Team Name}
+
+{Team purpose, responsibilities, and how it fits in the org}
+```
+
+---
+
+## PROJECT.md (Project Definition)
+
+```markdown
+---
+name: {Project Name}
+slug: {project-slug}
+status: active
+---
+
+# {Project Name}
+
+{Project description, scope, deliverables, and success criteria}
+```
+
+---
+
+## TASK.md (Task Definition)
+
+```markdown
+---
+name: {Task Name}
+slug: {task-slug}
+assignee: {agent-slug}
+priority: {critical|high|medium|low}
+status: todo
+---
+
+# {Task Name}
+
+{Task description with context, expected approach, and delegation path}
+
+## Expected Subtasks
+- {Subtask 1} → delegate to {agent-slug}
+- {Subtask 2} → delegate to {agent-slug}
+```
+
+---
+
+## SKILL.md (Shared Skill)
+
+```markdown
+---
+name: {Skill Name}
+slug: {skill-slug}
+---
+
+# {Skill Name}
+
+{What this skill provides and when agents should use it}
+```
+
+---
+
+## .paperclip.yaml (Vendor Extension)
+
+```yaml
+adapter: claude_local
+budget:
+  total_monthly_cents: {total}
+  per_agent:
+    ceo: {cents}
+    cto: {cents}
+    # ... one entry per agent slug
+env:
+  required:
+    - PAPERCLIP_API_URL
+    - GH_TOKEN
+    - DOCKER_HUB_USERNAME
+    - DOCKER_HUB_TOKEN
+  optional:
+    - STRIPE_SECRET_KEY
+    - STRIPE_WEBHOOK_SECRET
+    # ... business-specific env vars
+```
+
+---
+
+## global/settings.json (Global Baseline)
+
+```json
+{
+  "permissions": {
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(rm -rf ~)",
+      "Read(./**/*.pem)",
+      "Read(./**/*.key)"
+    ]
+  }
+}
+```
+
+---
+
+## global/plugins.json (Marketplace Installation)
 
 ```json
 {
@@ -233,13 +305,106 @@ Company Goal: {goal title}
       "source": "lukaskellerstein/claude-my-marketplace",
       "scope": "user"
     }
+  ],
+  "plugins": [
+    { "name": "dev-tools-plugin@claude-my-marketplace", "scope": "user" },
+    { "name": "office-plugin@claude-my-marketplace", "scope": "user" },
+    { "name": "media-plugin@claude-my-marketplace", "scope": "user" },
+    { "name": "design-plugin@claude-my-marketplace", "scope": "user" },
+    { "name": "infra-plugin@claude-my-marketplace", "scope": "user" }
   ]
+}
+```
+
+Only include plugins that at least one agent in the company actually uses.
+
+---
+
+## runtime/settings.json (Per-Agent — with MCP-providing plugins)
+
+```json
+{
+  "enabledPlugins": {
+    "dev-tools-plugin@claude-my-marketplace": true,
+    "office-plugin@claude-my-marketplace": true,
+    "media-plugin@claude-my-marketplace": true
+  },
+  "permissions": {
+    "allow": [
+      "mcp__plugin_media-plugin_mermaid",
+      "mcp__plugin_media-plugin_media-playwright"
+    ]
+  }
+}
+```
+
+## runtime/settings.json (Per-Agent — no MCP-providing plugins)
+
+```json
+{
+  "enabledPlugins": {
+    "dev-tools-plugin@claude-my-marketplace": true,
+    "infra-plugin@claude-my-marketplace": true
+  }
+}
+```
+
+**Format rules:**
+- `enabledPlugins` is an **object** (not array), keys are `{name}-plugin@claude-my-marketplace`
+- `permissions.allow` lists MCP tool prefixes as `mcp__plugin_{plugin-name}-plugin_{server}`
+- Omit `permissions` entirely if no MCP-providing plugins are enabled
+- NEVER put `mcpServers` inside settings.json — that goes in `runtime/mcp.json`
+
+---
+
+## runtime/mcp.json (Per-Agent — empty, most agents)
+
+```json
+{
+  "mcpServers": {}
+}
+```
+
+## runtime/mcp.json (Per-Agent — with Chrome DevTools)
+
+```json
+{
+  "mcpServers": {
+    "chrome": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@anthropic-ai/mcp-chrome-devtools@latest"]
+    }
+  }
 }
 ```
 
 ---
 
-## setup.sh (API Setup Script Template)
+## runtime/agents/*.md (Subagent Definition)
+
+```markdown
+---
+name: {subagent-name}
+description: >
+  {What this subagent does.}
+
+  <example>
+  Context: {When to use this subagent}
+  user: "{trigger phrase or task description}"
+  </example>
+model: sonnet
+color: blue
+---
+
+You are a {role}. Your job is to {responsibility}.
+
+{Detailed instructions for the subagent.}
+```
+
+---
+
+## Import Script Template
 
 ```bash
 #!/usr/bin/env bash
@@ -309,8 +474,8 @@ echo "[5/7] Uploading instruction bundles..."
 
 upload_bundle() {
   local agent_id="$1"
-  local agent_name="$2"
-  local agent_dir="$SCRIPT_DIR/org/agents/$agent_name"
+  local agent_slug="$2"
+  local agent_dir="$SCRIPT_DIR/agents/$agent_slug"
 
   # Set managed mode
   curl -sf "$API/agents/$agent_id/instructions-bundle" \
@@ -347,16 +512,17 @@ upload_bundle() {
       -d "{\"path\": \"TOOLS.md\", \"content\": $tools_content}"
   fi
 
-  echo "  $agent_name: bundle uploaded"
+  echo "  $agent_slug: bundle uploaded"
 }
 
-upload_bundle "$CEO_ID" "CEO"
+upload_bundle "$CEO_ID" "ceo"
 # {Repeat for each agent}
 
-# --- 6. Deploy Per-Agent Settings ---
-echo "[6/7] Note: Deploy settings.json and mcp.json manually:"
-echo "  Copy org/agents/{AgentName}/settings.json -> container .claude/settings.json"
-echo "  Copy org/agents/{AgentName}/mcp.json -> container .mcp.json"
+# --- 6. Deploy Per-Agent Runtime Config ---
+echo "[6/7] Note: Deploy runtime config to agent workspaces:"
+echo "  agents/{slug}/runtime/settings.json -> <workspace>/.claude/settings.json"
+echo "  agents/{slug}/runtime/mcp.json      -> <workspace>/.mcp.json"
+echo "  agents/{slug}/runtime/agents/*.md    -> <workspace>/.claude/agents/*.md"
 
 # --- 7. Create Initial Tasks ---
 echo "[7/7] Creating initial tasks..."
@@ -372,70 +538,8 @@ echo "CEO ID:      $CEO_ID"
 # {Print all agent IDs}
 echo ""
 echo "Next steps:"
-echo "  1. Deploy per-agent settings.json and mcp.json to the Paperclip container"
+echo "  1. Deploy per-agent runtime config to the Paperclip container"
 echo "  2. Enable heartbeats for all agents (start with CEO)"
 echo "  3. Approve the CEO's strategy in the Paperclip UI"
-```
-
----
-
-## Agent File Templates
-
-**IMPORTANT:** Read `role-plugin-matrix.md` in the agent-design skill references for complete per-role examples.
-
-### settings.json (with MCP-providing plugins)
-
-```json
-{
-  "enabledPlugins": {
-    "dev-tools-plugin@claude-my-marketplace": true,
-    "office-plugin@claude-my-marketplace": true,
-    "media-plugin@claude-my-marketplace": true
-  },
-  "permissions": {
-    "allow": [
-      "mcp__plugin_media-plugin_mermaid",
-      "mcp__plugin_media-plugin_media-playwright"
-    ]
-  }
-}
-```
-
-### settings.json (no MCP-providing plugins)
-
-```json
-{
-  "enabledPlugins": {
-    "dev-tools-plugin@claude-my-marketplace": true,
-    "infra-plugin@claude-my-marketplace": true
-  }
-}
-```
-
-**Format rules:**
-- `enabledPlugins` is an **object** (not array), keys are `{name}-plugin@claude-my-marketplace`
-- `permissions.allow` lists MCP tool prefixes as `mcp__plugin_{plugin-name}-plugin_{server}`
-- Omit `permissions` entirely if no MCP-providing plugins are enabled
-- NEVER put `mcpServers` inside settings.json — that goes in `mcp.json`
-
-### mcp.json (empty — most agents)
-
-```json
-{
-  "mcpServers": {}
-}
-```
-
-### mcp.json (with Chrome — frontend/QA agents)
-
-```json
-{
-  "mcpServers": {
-    "chrome": {
-      "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@anthropic-ai/mcp-chrome-devtools@latest"]
-    }
-  }
-}
+echo "  4. Run /company-analyze periodically to check company health"
 ```

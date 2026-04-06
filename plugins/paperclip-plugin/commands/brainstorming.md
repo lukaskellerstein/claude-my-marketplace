@@ -85,3 +85,4 @@ Iterate until the user is satisfied with the concept.
 3. **Keep energy high** — brainstorming should be creative and exciting, not dry
 4. **Connect to Paperclip** — always tie ideas back to what's possible with AI agents on the platform
 5. **End with action** — always point the user to `/company` when they're ready to build
+6. **Mention analysis** — for existing companies, suggest `/company-analyze` for ongoing improvement
