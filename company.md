@@ -23,8 +23,6 @@ A company follows the Agent Companies specification (`agentcompanies/v1`). The p
 │           └── agents/                 # Claude Code subagent definitions
 │               ├── reviewer.md
 │               └── test-runner.md
-├── teams/
-│   └── <team-slug>/TEAM.md            # Org subtree definition
 ├── projects/
 │   └── <project-slug>/
 │       ├── PROJECT.md                  # Project definition
@@ -121,9 +119,100 @@ Numbered protocol:
 
 https://docs.paperclip.ing/guides/agent-developer/heartbeat-protocol
 
-### `TEAM.md`, `PROJECT.md`, `TASK.md`, `SKILL.md`
+### `PROJECT.md`, `TASK.md`, `SKILL.md`
 
 Follow the Agent Companies spec. See `docs/companies/companies-spec.md` for full details.
+
+---
+
+## Standard Roles
+
+Paperclip supports these role types: `ceo`, `cto`, `cmo`, `cfo`, `engineer`, `designer`, `pm`, `qa`, `devops`, `researcher`, `general`. Each agent has a `role` (from this list) and a freeform `title` and `name` for specificity.
+
+Use these as inspiration when designing a company org. Not every company needs all roles — start with the minimum viable org and grow.
+
+### Executive & Leadership
+
+| Name | Role | Title | Description | Reports to |
+|------|------|-------|-------------|------------|
+| CEO | `ceo` | Chief Executive Officer | Strategy, goal decomposition, delegation, board communication, hiring proposals. The only agent that talks to the board. | — |
+| CTO | `cto` | Chief Technology Officer | Technical architecture, engineering leadership, build-vs-buy decisions, code quality standards, unblocking engineers. | CEO |
+| CMO | `cmo` | Chief Marketing Officer | Brand strategy, marketing campaigns, content planning, SEO, customer acquisition, social media strategy. | CEO |
+| CFO | `cfo` | Chief Financial Officer | Financial planning, budgeting, cost analysis, pricing strategy, revenue forecasting, cash flow management. | CEO |
+| COO | `general` | Chief Operating Officer | Operations management, vendor relations, fulfillment logistics, supply chain, process optimization. | CEO |
+
+### Engineering
+
+| Name | Role | Title | Description | Reports to |
+|------|------|-------|-------------|------------|
+| BackendEngineer | `engineer` | Backend Engineer | API development, database design, payment integration, server-side logic. Python/FastAPI, Node.js, or Go. | CTO |
+| FrontendEngineer | `engineer` | Frontend Engineer | UI implementation, responsive design, component libraries, client-side state. React/TypeScript, Tailwind. | CTO |
+| FullstackEngineer | `engineer` | Fullstack Engineer | End-to-end feature development across frontend and backend. For smaller teams that don't need separate FE/BE. | CTO |
+| InfraEngineer | `devops` | Infrastructure Engineer | Docker, Kubernetes, Terraform, CI/CD pipelines, monitoring, cloud infrastructure. | CTO |
+| MLEngineer | `engineer` | ML Engineer | Machine learning pipelines, model training/serving, AI integrations, data preprocessing. | CTO |
+| DataEngineer | `engineer` | Data Engineer | ETL pipelines, data warehousing, analytics infrastructure, data quality. | CTO |
+| MobileEngineer | `engineer` | Mobile Engineer | iOS/Android development, React Native, mobile-specific UX patterns. | CTO |
+| SoftwareArchitect | `engineer` | Software Architect | System design, API contracts, technical decision records, cross-team technical alignment. | CTO |
+
+### Quality & Testing
+
+| Name | Role | Title | Description | Reports to |
+|------|------|-------|-------------|------------|
+| QAEngineer | `qa` | QA Engineer | Test planning, automated testing, regression testing, bug reporting, test coverage. | CTO |
+| UXTester | `qa` | UX Tester | User flow testing, accessibility audits, usability evaluation, browser/device testing. | CTO |
+| SecurityEngineer | `engineer` | Security Engineer | Security audits, vulnerability scanning, penetration testing, compliance, secret management. | CTO |
+
+### Design & Creative
+
+| Name | Role | Title | Description | Reports to |
+|------|------|-------|-------------|------------|
+| UIDesigner | `designer` | UI Designer | Visual design, component design, design system maintenance, mockups, prototypes. | CTO or CMO |
+| UXDesigner | `designer` | UX Designer | User research, wireframing, information architecture, interaction design, usability testing. | CTO or CMO |
+| ChiefDesigner | `designer` | Chief Designer | Design leadership, brand visual identity, design system strategy, cross-team design consistency. | CEO or CTO |
+| GraphicDesigner | `designer` | Graphic Designer | Marketing visuals, social media graphics, presentation decks, print materials. | CMO |
+
+### Marketing & Content
+
+| Name | Role | Title | Description | Reports to |
+|------|------|-------|-------------|------------|
+| ContentCreator | `general` | Content Creator | Blog posts, product descriptions, email copy, social media posts, SEO content. | CMO |
+| MarketingSpecialist | `general` | Marketing Specialist | Campaign execution, analytics, A/B testing, paid ads, conversion optimization. | CMO |
+| SocialMediaManager | `general` | Social Media Manager | Daily social media management, community engagement, influencer outreach, trend monitoring. | CMO |
+| SEOSpecialist | `researcher` | SEO Specialist | Keyword research, on-page optimization, link building, technical SEO, search analytics. | CMO |
+
+### Sales & Support
+
+| Name | Role | Title | Description | Reports to |
+|------|------|-------|-------------|------------|
+| SalesRepresentative | `general` | Sales Representative | Lead qualification, outreach, demos, proposal writing, CRM management, B2B sales. | CEO or CMO |
+| CustomerSupport | `general` | Customer Support | Ticket handling, customer inquiries, FAQ maintenance, escalation, satisfaction tracking. | COO or CEO |
+| AccountManager | `general` | Account Manager | Existing client relationships, upselling, renewals, client success, feedback collection. | CEO or CMO |
+
+### Operations & Logistics
+
+| Name | Role | Title | Description | Reports to |
+|------|------|-------|-------------|------------|
+| HeadOfOperations | `general` | Head of Operations | Vendor management, fulfillment SOP, shipping logistics, quality assurance, cost optimization. | CEO |
+| WarehouseManager | `general` | Warehouse Manager | Inventory management, order fulfillment, packaging, shipping coordination, stock tracking. | COO |
+| SupplyChainManager | `general` | Supply Chain Manager | Supplier sourcing, procurement, lead time optimization, cost negotiation, vendor evaluation. | COO |
+
+### Research & Strategy
+
+| Name | Role | Title | Description | Reports to |
+|------|------|-------|-------------|------------|
+| ProductManager | `pm` | Product Manager | Product roadmap, feature prioritization, requirements, stakeholder alignment, user stories. | CEO or CTO |
+| MarketResearcher | `researcher` | Market Researcher | Competitive analysis, market sizing, customer surveys, trend reports, pricing research. | CEO or CMO |
+| DataAnalyst | `researcher` | Data Analyst | Business metrics, dashboards, reporting, data-driven insights, KPI tracking. | CEO or CFO |
+
+### Typical Org Patterns
+
+**Micro startup (3-4 agents):** CEO + CTO + FullstackEngineer (+ ContentCreator if marketing needed)
+
+**Small tech company (5-7 agents):** CEO + CTO + BackendEngineer + FrontendEngineer + QAEngineer (+ CMO + ContentCreator)
+
+**E-commerce company (8-10 agents):** CEO + CTO + BackendEngineer + FrontendEngineer + CMO + ContentCreator + HeadOfOperations + UIDesigner
+
+**Full-service agency (10-12 agents):** CEO + CTO + BackendEngineer + FrontendEngineer + CMO + ContentCreator + UIDesigner + QAEngineer + InfraEngineer + ProductManager + CustomerSupport
 
 ---
 
@@ -141,6 +230,16 @@ Claude Code resolves settings in layers: **user-level** (global) is the baseline
 ### Global Configuration (`global/`)
 
 Processed once at container startup by the Docker entrypoint (`scripts/docker-entrypoint.sh`). Affects all agents.
+
+**Important — Paperclip repo setup required:** The `global/` files are NOT imported via the company import API. They must be placed in the Paperclip repository and mounted into the Docker container. The plugin should instruct the user to:
+
+1. Copy `global/settings.json` and `global/plugins.json` into the Paperclip repo (e.g., `docker/init/claude/`)
+2. Add a volume mount in `docker/docker-compose.yml`:
+   ```yaml
+   volumes:
+     - ./init/claude:/docker-init/claude:ro
+   ```
+3. Rebuild/restart the container — the entrypoint will process these files at startup
 
 #### `global/settings.json`
 
@@ -245,6 +344,22 @@ Per-agent Claude Code settings. Overrides the global baseline for this agent onl
 - FrontendEngineer: `design-plugin: true`, `web-design-plugin: true`
 - BackendEngineer: `infra-plugin: true`, `design-plugin: false`
 - CEO: `documentation-plugin: true`, no engineering plugins
+
+**Available plugins from the marketplace** (https://github.com/lukaskellerstein/claude-my-marketplace):
+
+| Plugin | What it provides | MCP servers | Best for |
+|--------|-----------------|-------------|----------|
+| `dev-tools-plugin` | Git workflows, dead-code analysis, dependency updates, spec-driven dev, docs generation | — | All engineering roles |
+| `office-plugin` | Professional PPTX presentations, DOCX documents, XLSX spreadsheets | — | CEO, managers, content, operations |
+| `infra-plugin` | Kubernetes/GKE, Istio, Helm, Terraform, Traefik, auth (Keycloak, OAuth2-proxy) | — | CTO, DevOps, infra engineers |
+| `media-plugin` | AI image/video/music/speech generation, stock photos, SVG icons, charts, diagrams | media-mcp (Gemini), ElevenLabs, Mermaid Chart, Playwright | CMO, content creators, designers |
+| `design-plugin` | Creative direction, styleguides, aesthetic strategy, typography, color systems, design review | — | Designers, frontend engineers, CMO |
+| `web-design-plugin` | End-to-end website/webapp design and implementation, visual testing, anti-slop workflow. **Depends on:** design-plugin → media-plugin | Playwright | Frontend engineers, UX roles |
+| `company-plugin` | Shipping logistics (Zásilkovna, DHL), payment processing (Stripe) | DHL API Assistant, Stripe | Operations, e-commerce roles |
+
+Plugin names in `enabledPlugins` use the format `{name}@claude-my-marketplace` (e.g., `"media-plugin@claude-my-marketplace": true`).
+
+**Plugin dependencies:** `web-design-plugin` depends on `design-plugin`, which depends on `media-plugin` and `office-plugin`. If you enable `web-design-plugin`, also enable its dependencies.
 
 #### `runtime/mcp.json`
 
@@ -450,8 +565,6 @@ figurio/
 │           ├── settings.json           # enabledPlugins: infra-plugin
 │           └── agents/
 │               └── db-migration-checker.md
-├── teams/
-│   └── engineering/TEAM.md
 ├── projects/
 │   └── platform-launch/
 │       ├── PROJECT.md

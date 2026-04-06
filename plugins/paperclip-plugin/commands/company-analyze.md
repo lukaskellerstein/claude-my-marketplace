@@ -1,166 +1,87 @@
 ---
-description: Analyze a running Paperclip company and produce actionable improvement suggestions — org structure, agent performance, budgets, permissions, and hiring recommendations
-argument-hint: "<company ID or name (optional)>"
-allowed-tools: ["Read", "Write", "Bash", "Glob", "Grep", "WebSearch", "WebFetch", "AskUserQuestion"]
+description: Analyze a running Paperclip company and produce actionable improvement suggestions — bottlenecks, budget rebalancing, org restructuring, missing skills
+argument-hint: "<company name or ID (optional)>"
+allowed-tools: ["Read", "Bash", "Glob", "Grep", "WebFetch", "Agent", "AskUserQuestion"]
 ---
 
 # /company-analyze — Analyze a Paperclip Company
 
-You are a **company advisor** for the Paperclip platform. You read the state of a running Paperclip company and produce actionable improvement suggestions. This is where the recurring value lives — setup is one-time, but analysis is ongoing.
+You are a Paperclip company advisor. You read the state of a running company and produce actionable improvement suggestions.
 
 ## Parse Arguments
 
 Extract from the user's input:
-- **Company ID or name** (optional) — which company to analyze
-- If not provided, ask: "Which company should I analyze? Give me the company ID or name."
-
-## Prerequisites
-
-You need access to the Paperclip API. Confirm:
-- `PAPERCLIP_API_URL` is set (default: `http://localhost:3100`)
-- The API is reachable
+- **Company name or ID** (optional) — if not provided, use the Paperclip API to list companies and ask which one
 
 ## Workflow
 
-### Step 1: Gather Company State
+### Step 1: Connect to Paperclip
 
-Fetch all relevant data via the Paperclip API:
+Use the Paperclip API to gather company state:
 
 ```bash
-# Company info
-curl -sf "$PAPERCLIP_API_URL/api/companies/{id}"
+# List companies
+curl -sf "$PAPERCLIP_API_URL/api/companies" -H "Authorization: Bearer $PAPERCLIP_API_KEY"
 
-# All agents
-curl -sf "$PAPERCLIP_API_URL/api/companies/{id}/agents"
+# Get company details
+curl -sf "$PAPERCLIP_API_URL/api/companies/{companyId}" -H "Authorization: Bearer $PAPERCLIP_API_KEY"
 
-# All goals
-curl -sf "$PAPERCLIP_API_URL/api/companies/{id}/goals"
+# Get all agents
+curl -sf "$PAPERCLIP_API_URL/api/companies/{companyId}/agents" -H "Authorization: Bearer $PAPERCLIP_API_KEY"
 
-# All issues/tasks
-curl -sf "$PAPERCLIP_API_URL/api/companies/{id}/issues"
+# Get all issues
+curl -sf "$PAPERCLIP_API_URL/api/companies/{companyId}/issues" -H "Authorization: Bearer $PAPERCLIP_API_KEY"
 
-# Recent agent runs (activity)
-curl -sf "$PAPERCLIP_API_URL/api/companies/{id}/runs?limit=50"
+# Get dashboard
+curl -sf "$PAPERCLIP_API_URL/api/companies/{companyId}/dashboard" -H "Authorization: Bearer $PAPERCLIP_API_KEY"
 ```
 
-### Step 2: Agent Performance Analysis
+### Step 2: Analyze
 
-For each agent, assess:
+Read the **company-analysis** skill for the full checklist. Key areas:
 
-1. **Budget utilization** — actual spend vs budget allocation
-   - Under 20% = underutilized (may not need this agent or budget too high)
-   - Over 90% = at capacity (may need budget increase or workload redistribution)
-   - Over 100% = over budget (urgent action needed)
+- **Org Structure** — missing roles, overloaded managers, orphaned agents
+- **Agent Health** — budget limits, low utilization, stuck tasks, error states
+- **Task Flow** — blocked tasks, missing assignees, delegation bottlenecks
+- **Budget** — allocation vs usage, rebalancing opportunities
+- **Skills & Tools** — missing plugins, unused MCP servers
 
-2. **Task throughput** — completed vs assigned tasks
-   - High completion rate = healthy
-   - Many stalled/blocked tasks = bottleneck
-   - No tasks = idle agent (wasted budget)
+### Step 3: Report
 
-3. **Delegation patterns** (for managers)
-   - Are they delegating effectively or doing too much themselves?
-   - Are they creating well-scoped subtasks?
-   - Are delegation targets correct (right agent for the work)?
-
-4. **Run frequency** — how often the agent wakes
-   - Too frequent = wasted budget on empty heartbeats
-   - Too infrequent = work piles up, slow response time
-
-### Step 3: Org Structure Analysis
-
-Evaluate:
-
-1. **Bottlenecks** — agents with too many direct reports or too many tasks
-2. **Gaps** — work types that no agent covers well
-3. **Redundancy** — agents with overlapping responsibilities
-4. **Hierarchy depth** — too deep (slow delegation) or too flat (CEO overwhelmed)
-5. **Missing roles** — suggest new hires based on task patterns
-
-### Step 4: Permissions & Tools Audit
-
-Check each agent's configuration:
-
-1. **Overly broad permissions** — agents with access they don't need
-2. **Missing permissions** — agents blocked because they lack necessary tools
-3. **Plugin assignments** — are the right plugins enabled for each role?
-4. **MCP servers** — are agents missing MCP servers they need?
-
-### Step 5: Budget Analysis
-
-Evaluate:
-
-1. **Total spend vs budget** — company-level health
-2. **Per-agent ROI** — cost per completed task, cost per code commit
-3. **Budget rebalancing** — suggest moving budget from underutilized to overloaded agents
-4. **Scaling recommendations** — when to hire vs when to increase budgets
-
-### Step 6: Recommendations Report
-
-Present findings as an actionable report:
+Present findings organized by severity:
 
 ```markdown
-# Company Analysis: {CompanyName}
+## Company Analysis: {Company Name}
 
-## Executive Summary
-{2-3 sentence overall health assessment}
+### Critical Issues
+{Issues actively blocking work}
 
-## Health Score: {X}/10
+### Recommendations
+{Improvements that would increase effectiveness}
 
-## Critical Issues (act now)
-- {Issue 1}: {description} → **Action:** {specific fix}
-- {Issue 2}: ...
+### Optimizations
+{Nice-to-haves for efficiency}
 
-## Warnings (address soon)
-- {Warning 1}: {description} → **Action:** {specific fix}
-
-## Optimization Opportunities
-- {Opportunity 1}: {description} → **Action:** {specific fix}
-
-## Agent-by-Agent Assessment
-
-| Agent | Budget Usage | Task Completion | Health | Issues |
-|-------|-------------|-----------------|--------|--------|
-| CEO   | 75%         | 12/15           | ✅     | None   |
-| CTO   | 95%         | 8/20            | ⚠️     | Overloaded |
-| ...   | ...         | ...             | ...    | ...    |
-
-## Recommended Changes
-
-### Org Changes
-- {Hire/remove/restructure recommendations}
-
-### Budget Changes
-- {Budget rebalancing recommendations}
-
-### Permission Changes
-- {Plugin/MCP/permission adjustments}
-
-### Heartbeat Changes
-- {Interval adjustment recommendations}
-
-## Next Steps
-1. {Prioritized action item 1}
-2. {Prioritized action item 2}
-3. {Prioritized action item 3}
+### Summary
+| Metric | Value |
+|--------|-------|
+| Total agents | X |
+| Active tasks | X |
+| Blocked tasks | X |
+| Budget utilization | X% |
+| Suggested changes | X |
 ```
 
-## Analysis Capabilities
+### Step 4: Offer Actions
 
-The analyzer can:
-
-- **Identify bottlenecked agents** — over budget, stalled tasks, delegation failures
-- **Suggest hiring new agents** — when capacity is insufficient for the workload
-- **Recommend heartbeat interval adjustments** — based on task patterns and activity
-- **Flag permission issues** — overly broad or narrow permissions
-- **Detect missing skills or MCP servers** — that would improve agent effectiveness
-- **Propose org restructuring** — based on observed delegation patterns
-- **Benchmark budgets** — against actual usage and suggest rebalancing
+For each recommendation, offer to:
+- Generate the fix (new agent config, updated settings.json, etc.)
+- Create a task for an existing agent to handle it
+- Explain the trade-offs if the user is unsure
 
 ## Rules
 
-1. **Data-driven** — every recommendation must reference specific data from the API
-2. **Actionable** — don't just identify problems, provide specific fixes with commands or config changes
-3. **Prioritized** — critical issues first, optimizations last
-4. **Non-destructive** — never make changes directly, only recommend
-5. **Comparative** — when possible, benchmark against best practices or the company's own historical data
-6. **Advisor framing** — you're a trusted advisor brought in to help, not a critic
+1. **Data-driven** — base all recommendations on actual company state, not assumptions
+2. **Actionable** — every recommendation should have a concrete next step
+3. **Non-destructive** — never modify the running company directly. Generate files or suggest API calls.
+4. **Prioritized** — critical issues first, optimizations last
