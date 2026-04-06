@@ -42,6 +42,10 @@ Web: https://agentcompanies.io/specification
 
 ### COMPANY.md
 
+**Goals are mandatory (2-5).** Each must be specific and measurable. Never omit goals.
+
+Goals are the top of the Paperclip work hierarchy: **Goal → Projects → Issues**. On import, each goal string becomes a `company`-level goal object with status `active`. Projects link to goals, and issues inherit `goalId` from their project — so all work traces back to these objectives.
+
 ```yaml
 name: Company Name
 description: What this company does
@@ -62,12 +66,13 @@ name: CEO
 title: Chief Executive Officer
 reportsTo: null
 skills:
-  - paperclip
+  - strategy-review
+  - delegation-playbook
 ```
 
 Body contains the agent's instructions.
 
-**Skill resolution rule:** Every skill shortname in `skills:` must have a matching `skills/<shortname>/SKILL.md` in the package. Exception: `paperclip` is a Paperclip built-in — do not create a file for it. Without the SKILL.md file, the import warns and the skill won't be assigned.
+**Skill resolution rule:** Every skill in `skills:` must have a matching `skills/<shortname>/SKILL.md` in the package. Do NOT list Paperclip built-in skills (`paperclip`, `paperclip-create-agent`, `para-memory-files`) — they are available automatically at runtime and listing them causes import warnings.
 
 ### PROJECT.md
 

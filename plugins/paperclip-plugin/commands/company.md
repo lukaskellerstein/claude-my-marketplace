@@ -34,9 +34,10 @@ Follow the phased workflow defined in the **company-creation** skill:
 
 1. **Discovery interview** — understand the business (ask 2-3 focused questions per round, not 10)
 2. **Org design** — propose agent hierarchy with roles, budgets, and plugin assignments
-3. **Goal, project & task definition** — company goals (2-5 specific, measurable) + projects with starter tasks + CEO strategic tasks
-4. **Package generation** — generate ALL files following the spec
-5. **Summary & next steps** — list what was created and what the user needs to do
+3. **Goals** — draft 2-5 specific, measurable company goals. Goals are the top of the work hierarchy (Goal → Projects → Issues) — all work traces back to them. **Confirm with the user before proceeding.** Never skip this step.
+4. **Project & task definition** — projects with starter tasks + CEO strategic tasks
+5. **Package generation** — generate ALL files following the spec
+6. **Summary & next steps** — list what was created and what the user needs to do
 
 ## Output Structure
 
@@ -92,6 +93,8 @@ After generation, instruct the user on the two import paths:
 
 1. **Be thorough** — generate ALL files, not stubs. Every AGENTS.md, SOUL.md, HEARTBEAT.md should be complete and specific to the business.
 2. **Be specific** — no generic boilerplate. Every agent's persona, responsibilities, and tech stack should reflect the actual company.
-3. **Ask before generating** — confirm org structure, goals, and tasks before writing files.
-4. **Follow the spec** — output must be a valid `agentcompanies/v1` package.
-5. **Working import** — the package must be importable via Paperclip's company import system.
+3. **Goals are mandatory** — every company must have 2-5 specific, measurable goals in COMPANY.md frontmatter. Never generate a company without goals. Present goals to the user and confirm before generating files.
+4. **Tasks belong to projects** — every non-strategic task must live under `projects/{slug}/tasks/` with `project` frontmatter.
+5. **Ask before generating** — confirm org structure, goals, projects, and tasks before writing files.
+6. **Follow the spec** — output must be a valid `agentcompanies/v1` package.
+7. **Working import** — the package must be importable via Paperclip's company import system.

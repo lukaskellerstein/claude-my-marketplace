@@ -66,18 +66,31 @@ Read these before generating any files:
 - E-commerce: 8-10 agents (full stack with operations)
 - Full platform: 10-12 agents (full C-suite + specialists)
 
-### Phase 3: Goal, Project & Task Planning
+### Phase 3: Goals
 
-1. Define 2-5 company goals (in COMPANY.md frontmatter) — each must be specific, measurable, and tied to the business domain. No vague goals like "grow the business". Include a mix of product, growth, and operational objectives.
-2. Create 1-3 projects grouping related work (e.g., "mvp-launch", "marketing-engine", "infrastructure-setup"). Each project needs an owner agent. Read the **project-design** skill for guidance.
-3. Create starter tasks under each project (3-8 per project) — every task must be placed at `projects/{slug}/tasks/` AND include `project: {project-slug}` in frontmatter.
-4. Create company-level strategic tasks for CEO (cross-cutting directives that span projects)
+**Mandatory — do not skip.**
 
-### Phase 4: Package Generation
+Goals are the strategic direction layer of a Paperclip company — they sit at the top of the work hierarchy (Goal → Projects → Issues). Every piece of work traces back to a goal. In the package, goals are strings in COMPANY.md frontmatter; on import, Paperclip creates them as `company`-level goal objects with status `active`. Projects link to goals, and issues inherit `goalId` from their project, so all work rolls up to these objectives.
+
+Draft 2-5 company goals and present them to the user:
+
+- Each goal must be specific, measurable, and tied to the business domain
+- No vague goals like "grow the business" or "build technology"
+- Include a mix of product, growth, and operational objectives
+- Ask: "Do these goals capture what success looks like?"
+- **Do not proceed until the user confirms the goals.**
+
+### Phase 4: Project & Task Planning
+
+1. Create 1-3 projects grouping related work (e.g., "mvp-launch", "marketing-engine", "infrastructure-setup"). Each project needs an owner agent. Read the **project-design** skill for guidance.
+2. Create starter tasks under each project (3-8 per project) — every task must be placed at `projects/{slug}/tasks/` AND include `project: {project-slug}` in frontmatter.
+3. Create company-level strategic tasks for CEO (cross-cutting directives that span projects)
+
+### Phase 5: Package Generation
 
 Generate ALL files. Read the **agent-design** skill's `references/role-plugin-matrix.md` for exact `settings.json` format. Every file must be complete and business-specific, not generic boilerplate.
 
-### Phase 5: Summary & Handoff
+### Phase 6: Summary & Handoff
 
 1. List all generated files
 2. Explain the two import paths (GitHub import + global config setup)
@@ -88,6 +101,8 @@ Generate ALL files. Read the **agent-design** skill's `references/role-plugin-ma
 1. **Complete, not partial** — every file must be fully written
 2. **Business-specific** — generic boilerplate is a failure
 3. **Follow the spec** — valid `agentcompanies/v1` package
-4. **Iterate with the user** — confirm before generating
-5. **Budget-aware** — reasonable budgets, not bloated
-6. **Plugin-aware** — right plugins per role from the matrix
+4. **Goals are mandatory** — every company must have 2-5 specific, measurable goals in COMPANY.md. Never skip goals. Confirm with user before generating.
+5. **Tasks belong to projects** — every non-strategic task under `projects/{slug}/tasks/` with `project` frontmatter
+6. **Iterate with the user** — confirm org, goals, projects before generating
+7. **Budget-aware** — reasonable budgets, not bloated
+8. **Plugin-aware** — right plugins per role from the matrix

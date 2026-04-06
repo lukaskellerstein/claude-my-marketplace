@@ -11,6 +11,8 @@ description: >
 
 This skill helps design projects for the Paperclip platform following the Agent Companies specification (`agentcompanies/v1`). Projects group related starter tasks under a clear owner and scope.
 
+Projects sit in the middle of the Paperclip work hierarchy: **Goal (Initiative) → Projects → Issues → Sub-issues**. Each project links to one or more goals, and issues within a project inherit that goal linkage — so all work traces back to a strategic objective. In the package, projects are defined via `PROJECT.md`; after import, they become rich objects with workspace config, goal associations, and linked issues managed through the Paperclip API.
+
 ## When to Use
 
 - Creating a new project for an existing or new company

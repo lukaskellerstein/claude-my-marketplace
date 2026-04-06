@@ -88,8 +88,8 @@ name: {Agent Name}
 title: {Job Title}
 reportsTo: {manager-slug or null}
 skills:
-  - {skill-1}
-  - {skill-2}
+  - {custom-skill-1}
+  - {custom-skill-2}
 ---
 
 You are the {Role} at {Company}. {One-sentence job description}.
@@ -126,15 +126,67 @@ Company-wide artifacts live in the project root, outside your personal directory
 - `$AGENT_HOME/TOOLS.md` -- tools reference
 ```
 
-**Skill file generation rule:** Every skill shortname listed in the `skills:` frontmatter MUST have a corresponding `skills/<shortname>/SKILL.md` file in the company package. Without it, the Paperclip import warns about missing skills and they won't be assigned to the agent.
+**Skill assignment rules:**
 
-- For each skill in the `skills:` array, create `skills/<shortname>/SKILL.md` with a name, description, and instructions relevant to the company's domain
-- **Exception:** `paperclip` is a built-in Paperclip skill — do NOT create a file for it. It is automatically available to all agents at runtime.
-- Skills shared across multiple agents only need one `skills/<shortname>/SKILL.md` file — all agents reference the same shortname
+Each agent should have multiple relevant skills — not just `paperclip`. Skills make agents effective at their specific responsibilities.
 
-Example — if an agent has `skills: [paperclip, code-review]`:
-- `paperclip` — skip (built-in)
-- `code-review` — create `skills/code-review/SKILL.md`
+**Built-in Paperclip skills — do NOT list these in `skills:` frontmatter:**
+
+The following skills are managed by Paperclip's runtime and are automatically available to agents. Do NOT include them in the AGENTS.md `skills:` array — they are not part of the company package and listing them causes import warnings.
+
+| Skill | Purpose | Available to |
+|-------|---------|-------------|
+| `paperclip` | API coordination, heartbeat protocol, task management | All agents automatically |
+| `paperclip-create-agent` | Governance-aware hiring of new agents | Managers automatically |
+| `para-memory-files` | Persistent PARA-method memory across sessions | All agents automatically |
+
+**Only list custom, company-specific skills in `skills:` frontmatter.** These MUST have a matching `skills/<shortname>/SKILL.md` file in the package.
+
+**Custom skills per role** (MUST create `skills/<shortname>/SKILL.md` for each):
+
+Generate these skills tailored to the company's domain. The skill names and content should be specific to the business, not generic.
+
+| Role | Recommended custom skills | What the SKILL.md should contain |
+|------|--------------------------|----------------------------------|
+| CEO | `strategy-review`, `delegation-playbook` | How to evaluate strategy proposals, delegation routing rules, board communication format |
+| CTO | `architecture-review`, `tech-decisions` | Architecture review checklist, ADR format, build-vs-buy evaluation criteria |
+| CMO | `campaign-planning`, `brand-voice` | Campaign planning framework, brand tone/voice guide, channel strategy |
+| CFO | `financial-analysis`, `pricing-model` | Financial reporting templates, pricing strategy framework, budget review process |
+| Backend Engineer | `api-design`, `database-patterns` | API design conventions, database schema patterns, error handling standards for this company's stack |
+| Frontend Engineer | `component-patterns`, `accessibility` | Component architecture, design system usage, a11y checklist for the company's UI framework |
+| Fullstack Engineer | `api-design`, `component-patterns` | Combined backend + frontend conventions |
+| Infrastructure Engineer | `deployment-runbook`, `incident-response` | Deployment procedures, rollback steps, incident response playbook |
+| QA Engineer | `test-strategy`, `bug-report-format` | Test planning approach, coverage goals, bug report template with reproduction steps |
+| UX Tester | `usability-checklist`, `accessibility` | Usability heuristics, a11y audit process, device/browser test matrix |
+| Designer | `design-system`, `design-review` | Design system principles, component guidelines, review criteria |
+| Content Creator | `content-style-guide`, `seo-checklist` | Writing style, tone, SEO rules, content calendar approach |
+| Product Manager | `prd-template`, `feature-prioritization` | PRD format, prioritization framework (RICE/ICE), user story format |
+| Head of Operations | `vendor-evaluation`, `fulfillment-sop` | Vendor assessment criteria, fulfillment step-by-step, QA checklist |
+| Sales Representative | `sales-playbook`, `objection-handling` | Sales process stages, qualification criteria, common objections and responses |
+| Customer Support | `support-playbook`, `escalation-rules` | Ticket handling procedures, escalation paths, FAQ maintenance process |
+
+**Example AGENTS.md frontmatter for a Backend Engineer at an e-commerce company:**
+
+```yaml
+name: BackendEngineer
+title: Backend Engineer
+reportsTo: cto
+skills:
+  - api-design
+  - database-patterns
+```
+
+This requires two custom skill files in the package:
+- `skills/api-design/SKILL.md` — REST API conventions, endpoint naming, pagination, error responses specific to the e-commerce platform
+- `skills/database-patterns/SKILL.md` — Schema patterns for products, orders, customers; migration conventions; indexing strategy
+
+Note: `paperclip` and `para-memory-files` are NOT listed — they're built-in and available automatically.
+
+**Skill file generation rule:**
+- Every skill in `skills:` MUST have a `skills/<shortname>/SKILL.md` in the package
+- Do NOT list `paperclip`, `paperclip-create-agent`, or `para-memory-files` in `skills:` — they're Paperclip built-ins managed by the runtime, and listing them causes import warnings
+- Skills shared across multiple agents need only ONE `skills/<shortname>/SKILL.md`
+- Skill content must be specific to the company's domain, tech stack, and conventions — not generic boilerplate
 
 ### Step 5: Write HEARTBEAT.md
 
