@@ -5,6 +5,7 @@ A company package follows the Agent Companies specification (`agentcompanies/v1`
 ```
 {company-slug}/
 ├── COMPANY.md                          # Company definition (name, goals, metadata)
+├── GOALS.md                            # Rich goal hierarchy (optional, overrides COMPANY.md goals)
 ├── agents/
 │   └── {agent-slug}/
 │       ├── AGENTS.md                   # Agent identity, role, instructions (mandatory)
@@ -58,6 +59,46 @@ goals:
   - Establish automated CI/CD pipeline with test coverage above 80%
   - Build content marketing engine producing 2+ blog posts per week
 ```
+
+### GOALS.md (optional)
+
+When present, GOALS.md provides a rich goal hierarchy with subgoals, ownership, and project linkage. It overrides the simple `goals: string[]` in COMPANY.md.
+
+```yaml
+goals:
+  - slug: launch-mvp
+    title: Launch MVP product with core features
+    description: Ship authentication, onboarding, and core workflow
+    level: company
+    status: active
+    ownerAgentSlug: cto
+    projectSlugs: [mvp-backend, mvp-frontend]
+    subgoals:
+      - slug: build-auth
+        title: Build authentication system
+        level: team
+        ownerAgentSlug: backend-lead
+        projectSlugs: [mvp-backend]
+      - slug: build-onboarding
+        title: Build user onboarding flow
+        level: team
+        ownerAgentSlug: frontend-lead
+  - slug: acquire-customers
+    title: Acquire first 50 paying customers
+    level: company
+    status: active
+    ownerAgentSlug: head-of-growth
+```
+
+**Field rules:**
+- `slug` — required, unique within the package
+- `title` — required
+- `description` — optional
+- `level` — optional, auto-assigned by depth: company → team → agent → task
+- `status` — optional, defaults to "active"
+- `ownerAgentSlug` — optional, references an agent slug from the package
+- `projectSlugs` — optional, references project slugs from the package
+- `subgoals` — optional, recursive nesting (max 4 levels)
 
 ### AGENTS.md
 

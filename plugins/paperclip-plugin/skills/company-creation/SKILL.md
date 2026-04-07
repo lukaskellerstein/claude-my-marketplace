@@ -72,7 +72,11 @@ In Paperclip, goals are first-class objects with:
 - **Hierarchy** — goals can have parent goals, forming a tree
 - **Ownership** — goals can be owned by a specific agent
 
-In the company package, goals are defined as strings in COMPANY.md frontmatter. On import, Paperclip creates them as `company`-level goals with status `active`. After import, agents and managers can break them into sub-goals (team/agent level) through the API.
+In the company package, goals can be defined in two ways:
+1. **Simple:** as strings in COMPANY.md frontmatter (creates flat company-level goals)
+2. **Rich (recommended):** in a separate GOALS.md file with full hierarchy, ownership, and project linkage
+
+When generating a company package, prefer creating a GOALS.md file with nested subgoals, agent ownership (`ownerAgentSlug`), and project linkage (`projectSlugs`). Keep simple goal strings in COMPANY.md as well for backward compatibility.
 
 **Why goals matter:**
 - They define what success looks like for the company
@@ -89,7 +93,65 @@ Draft 2-5 company goals and present them to the user for confirmation before pro
 - Include a mix of product, growth, and operational goals
 - 2 goals minimum, 5 maximum — fewer is better if they're precise
 
-**Example goals for a SaaS company:**
+**Building the goal hierarchy:**
+
+After the user confirms the top-level goals, break each company goal into subgoals and connect them to agents and projects:
+
+1. **Subgoals** — each company goal should have 1-3 team-level subgoals that represent the concrete workstreams needed to achieve it. Subgoals can nest further (team → agent → task), but keep it practical — 2 levels of nesting is usually enough.
+2. **Ownership (`ownerAgentSlug`)** — assign each goal to the agent most responsible for driving it. Company goals typically belong to C-level agents (CEO, CTO, CMO). Subgoals belong to the team leads or ICs doing the work. Use the agent slug from the `agents/` directory.
+3. **Project linkage (`projectSlugs`)** — connect each goal (or subgoal) to the projects that deliver on it. Use the project slug from the `projects/` directory. A goal can link to multiple projects, and a project can be linked from multiple goals.
+
+**Example GOALS.md for a SaaS company:**
+```yaml
+goals:
+  - slug: launch-mvp
+    title: Launch MVP web application with user authentication and core workflow
+    description: Ship a functional product that users can sign up for and use daily
+    level: company
+    status: active
+    ownerAgentSlug: cto
+    projectSlugs: [mvp-backend, mvp-frontend]
+    subgoals:
+      - slug: build-auth-system
+        title: Build authentication and user management
+        level: team
+        ownerAgentSlug: backend-engineer
+        projectSlugs: [mvp-backend]
+      - slug: build-core-ui
+        title: Build core UI and onboarding flow
+        level: team
+        ownerAgentSlug: frontend-engineer
+        projectSlugs: [mvp-frontend]
+  - slug: acquire-beta-users
+    title: Acquire first 100 beta users through content marketing and direct outreach
+    level: company
+    status: active
+    ownerAgentSlug: cmo
+    projectSlugs: [growth-marketing]
+    subgoals:
+      - slug: launch-blog
+        title: Launch company blog with 5 seed articles
+        level: team
+        ownerAgentSlug: content-writer
+        projectSlugs: [growth-marketing]
+      - slug: run-outreach
+        title: Run direct outreach campaign to 500 prospects
+        level: team
+        ownerAgentSlug: cmo
+  - slug: establish-cicd
+    title: Establish CI/CD pipeline with automated testing achieving 80%+ code coverage
+    level: company
+    status: active
+    ownerAgentSlug: devops-engineer
+    projectSlugs: [infrastructure]
+  - slug: first-revenue
+    title: Generate first revenue through a paid tier within 90 days of launch
+    level: company
+    status: active
+    ownerAgentSlug: ceo
+```
+
+Also keep simple goal strings in COMPANY.md for backward compatibility:
 ```yaml
 goals:
   - Launch MVP web application with user authentication and core workflow
@@ -98,7 +160,7 @@ goals:
   - Generate first revenue through a paid tier within 90 days of launch
 ```
 
-Ask: "Do these goals capture what success looks like for your company?"
+Ask: "Do these goals capture what success looks like for your company? I'll also break them into subgoals with ownership and project connections."
 
 **Do not proceed to Phase 4 until the user has confirmed or adjusted the goals.**
 
