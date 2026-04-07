@@ -6,45 +6,46 @@
 
 > A curated collection of [Claude Code](https://docs.anthropic.com/en/docs/claude-code) plugins for design, development, documentation, media generation, and infrastructure management.
 
-This marketplace bundles **8 plugins** with **35+ skills**, **10+ specialized agents**, and multiple MCP server integrations — giving Claude Code capabilities spanning the full software development lifecycle from design to deployment, plus autonomous AI company creation.
+This marketplace bundles **8 plugins** with **45+ skills**, **16 specialized agents**, and multiple MCP server integrations — giving Claude Code capabilities spanning the full software development lifecycle from design to deployment, plus autonomous AI company creation.
 
 ## Plugins
 
-### [company-plugin](plugins/company-plugin) `v1.0.0`
+### [company-plugin](plugins/company-plugin) `v1.1.0`
 
-Business operations toolkit — shipping logistics via Zásilkovna (Czech) and DHL (worldwide), and payment processing via Stripe.
+Business operations toolkit — shipping logistics via Zásilkovna (Czech) and payment processing via Stripe.
 
-- **Skills:** zasilkovna, dhl, stripe
-- **MCP:** DHL API Assistant, Stripe
+- **Skills:** zasilkovna, stripe
+- **MCP:** Stripe
 
-### [dev-tools-plugin](plugins/dev-tools-plugin) `v1.2.0`
+### [dev-tools-plugin](plugins/dev-tools-plugin) `v1.2.1`
 
 General developer tooling — git workflows, code hygiene, dependency management, spec-driven development, and project documentation generation.
 
 - **Skills:** git-pr, dead-code, update-dependencies, sync-spec-kit, update-docs, update-feature-docs, update-readme
 - **Agents:** dead-code-analyzer, sync-spec-kit-agent
 
-### [office-plugin](plugins/office-plugin) `v5.0.0`
+### [office-plugin](plugins/office-plugin) `v5.0.1`
 
 Office document generation — professional PowerPoint presentations, Word documents, and Excel spreadsheets.
 
 - **Skills:** pptx, docx, xlsx
 
-### [infra-plugin](plugins/infra-plugin) `v1.0.0`
+### [infra-plugin](plugins/infra-plugin) `v1.0.1`
 
 Infrastructure management for Kubernetes/GKE, Istio, Helm, Terraform, Traefik, and authentication (Keycloak, OAuth2-proxy).
 
 - **Skills:** auth, helm, istio, kubernetes, terraform, traefik
 
-### [media-plugin](plugins/media-plugin) `v1.5.0`
+### [media-plugin](plugins/media-plugin) `v1.5.1`
 
 AI-powered media generation — images, videos/GIFs, music, text-to-speech, and data visualizations (charts, graphs, diagrams, maps) via Google Gemini, ElevenLabs, D3.js, and Mermaid. Also supports sourcing stock photos and fetching pre-made SVG icons.
 
 - **Skills:** image-generation, image-sourcing, video-generation, music-generation, speech-generation, icon-library, graph-generation, svg-mastery
 - **Agents:** media-director
+- **Commands:** /media-generate, /media-assets
 - **MCP:** media-mcp (Gemini), ElevenLabs, Mermaid Chart, Playwright
 
-### [design-plugin](plugins/design-plugin) `v1.1.0`
+### [design-plugin](plugins/design-plugin) `v1.1.1`
 
 Design direction and creative guidance — the "taste layer" that makes AI-assisted design intentional rather than generic. Styleguides, aesthetic strategy, typography pairings, color mood systems, media prompt crafting, and design review.
 
@@ -52,7 +53,7 @@ Design direction and creative guidance — the "taste layer" that makes AI-assis
 - **Agents:** design-director
 - **Commands:** /design
 
-### [web-design-plugin](plugins/web-design-plugin) `v1.5.9`
+### [web-design-plugin](plugins/web-design-plugin) `v1.5.10`
 
 End-to-end website/webapp design and implementation — from brief to working React/Vite code. Orchestrates design direction, content architecture, media generation, parallel per-page implementation, and visual testing with an opinionated anti-slop workflow.
 
@@ -61,13 +62,13 @@ End-to-end website/webapp design and implementation — from brief to working Re
 - **Commands:** /web-design
 - **MCP:** Playwright
 
-### [paperclip-plugin](plugins/paperclip-plugin) `v1.0.0`
+### [paperclip-plugin](plugins/paperclip-plugin) `v2.0.3`
 
-Autonomous AI company advisor for the [Paperclip](https://paperclip.ing) platform — create, design, and manage AI-powered companies with proper agent hierarchies, infrastructure, and runtime configurations following the Agent Companies spec.
+Autonomous AI company advisor for the [Paperclip](https://paperclip.ing) platform — create, design, analyze, and manage AI-powered companies with proper agent hierarchies, runtime configurations, and infrastructure following the Agent Companies spec.
 
-- **Skills:** company-creation, agent-design, infrastructure-planning
+- **Skills:** company-creation, agent-design, project-design, company-analysis, infrastructure-planning
 - **Agents:** company-builder
-- **Commands:** /company, /brainstorming
+- **Commands:** /company, /company-analyze, /brainstorming
 
 ## Architecture
 
@@ -99,6 +100,18 @@ graph TD
 - **office-plugin** is used by design-plugin for PPTX image dimension references
 - **dev-tools-plugin**, **infra-plugin**, **company-plugin**, and **paperclip-plugin** are standalone with no cross-plugin dependencies
 
+### Commands
+
+| Plugin | Command | Purpose |
+|--------|---------|---------|
+| design-plugin | `/design` | Design direction workflow |
+| media-plugin | `/media-generate` | Generate a media asset with guided prompts |
+| media-plugin | `/media-assets` | List and manage generated media assets |
+| paperclip-plugin | `/company` | Create an AI company |
+| paperclip-plugin | `/company-analyze` | Analyze an existing AI company |
+| paperclip-plugin | `/brainstorming` | Brainstorm AI company ideas |
+| web-design-plugin | `/web-design` | End-to-end website design workflow |
+
 ### MCP Server Integrations
 
 | Plugin | MCP Server | Purpose |
@@ -108,7 +121,6 @@ graph TD
 | media-plugin | Mermaid Chart (HTTP) | Diagram generation |
 | media-plugin | Playwright (npx) | D3.js chart rendering |
 | web-design-plugin | Playwright (npx) | Visual testing of built websites |
-| company-plugin | DHL API Assistant (HTTP) | DHL shipment tracking, parcel shipping, returns |
 | company-plugin | `@stripe/mcp` (npx) | Stripe payments, subscriptions, invoicing |
 
 ## Installation
@@ -166,7 +178,6 @@ The **media-plugin** and **company-plugin** require environment variables. All o
 
 | Variable | Required | Description |
 |---|---|---|
-| `DHL_API_KEY` | **Yes** | DHL API key for the DHL API Assistant MCP server. Get one at [developer.dhl.com](https://developer.dhl.com). |
 | `STRIPE_SECRET_KEY` | **Yes** | Stripe secret API key for the Stripe MCP server. Use `sk_test_...` keys for development. Get one at [dashboard.stripe.com](https://dashboard.stripe.com). |
 | `ZASILKOVNA_API_KEY` | **Yes** | Zásilkovna (Packeta) API password for shipment operations. Get one from the Zásilkovna client section. |
 
@@ -180,7 +191,6 @@ Add to your `~/.bashrc`, `~/.bash_profile`, or `~/.zshrc`:
 export GEMINI_API_KEY="your-gemini-api-key"
 export ELEVENLABS_API_KEY="your-elevenlabs-api-key"
 export MEDIA_OUTPUT_DIR="/path/to/media/output"
-export DHL_API_KEY="your-dhl-api-key"
 export STRIPE_SECRET_KEY="sk_test_your-stripe-secret-key"
 export ZASILKOVNA_API_KEY="your-zasilkovna-api-key"
 ```
@@ -199,7 +209,6 @@ Set permanently for your user via PowerShell:
 [System.Environment]::SetEnvironmentVariable("GEMINI_API_KEY", "your-gemini-api-key", "User")
 [System.Environment]::SetEnvironmentVariable("ELEVENLABS_API_KEY", "your-elevenlabs-api-key", "User")
 [System.Environment]::SetEnvironmentVariable("MEDIA_OUTPUT_DIR", "C:\path\to\media\output", "User")
-[System.Environment]::SetEnvironmentVariable("DHL_API_KEY", "your-dhl-api-key", "User")
 [System.Environment]::SetEnvironmentVariable("STRIPE_SECRET_KEY", "sk_test_your-stripe-secret-key", "User")
 [System.Environment]::SetEnvironmentVariable("ZASILKOVNA_API_KEY", "your-zasilkovna-api-key", "User")
 ```
@@ -214,7 +223,6 @@ Set permanently via `setx`:
 setx GEMINI_API_KEY "your-gemini-api-key"
 setx ELEVENLABS_API_KEY "your-elevenlabs-api-key"
 setx MEDIA_OUTPUT_DIR "C:\path\to\media\output"
-setx DHL_API_KEY "your-dhl-api-key"
 setx STRIPE_SECRET_KEY "sk_test_your-stripe-secret-key"
 setx ZASILKOVNA_API_KEY "your-zasilkovna-api-key"
 ```
