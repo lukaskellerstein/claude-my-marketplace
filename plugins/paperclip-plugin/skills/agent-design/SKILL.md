@@ -27,7 +27,7 @@ agents/{agent-slug}/
 ├── AGENTS.md                   # Agent identity, role, instructions (mandatory)
 ├── HEARTBEAT.md                # Heartbeat execution protocol
 ├── SOUL.md                     # Personality and voice
-├── TOOLS.md                    # Agent's personal tool notes (starts empty)
+├── TOOLS.md                    # Agent tool reference — plugins, MCP servers, usage guidelines
 └── runtime/                    # Per-agent Claude Code runtime config
     ├── settings.json           # Permissions, enabledPlugins, env vars
     ├── mcp.json                # MCP server definitions
@@ -187,6 +187,7 @@ Note: `paperclip` and `para-memory-files` are NOT listed — they're built-in an
 - Do NOT list `paperclip`, `paperclip-create-agent`, or `para-memory-files` in `skills:` — they're Paperclip built-ins managed by the runtime, and listing them causes import warnings
 - Skills shared across multiple agents need only ONE `skills/<shortname>/SKILL.md`
 - Skill content must be specific to the company's domain, tech stack, and conventions — not generic boilerplate
+- **Every SKILL.md MUST have YAML frontmatter** with at least `name` and `description`. See the **skill-creator** skill for the full format, structure, and examples.
 
 ### Step 5: Write HEARTBEAT.md
 
@@ -261,15 +262,53 @@ Two sections only — keep it tight:
 
 ### Step 7: Write TOOLS.md
 
-A minimal scaffold — the agent populates it as it discovers and uses tools:
+Pre-fill TOOLS.md with the agent's assigned plugins, MCP servers, and role-specific usage guidelines. Use the same plugin assignments you will configure in Step 8 — refer to `references/role-plugin-matrix.md` for the mapping.
+
+**Template:**
 
 ```markdown
-# Tools
+# Tools — {Role}
 
-(Your tools will go here. Add notes about them as you acquire and use them.)
+## Plugins
+
+| Plugin | Capabilities |
+|--------|-------------|
+| `{plugin-name}` | {one-line description from role-plugin-matrix} |
+
+## MCP Servers
+
+(Only if the agent has MCP servers assigned)
+
+| Server | Permission | What it does |
+|--------|-----------|-------------|
+| {server} | `{permission-string}` | {brief description} |
+
+## Google Workspace
+
+(Only if the agent is GWS-eligible per role-plugin-matrix)
+
+Available via the `gws` CLI. Email configured via `AGENT_EMAIL` env var.
+
+**Services:** {list relevant GWS services for this role}.
+
+Run `gws --help` or `gws <service> --help` for CLI documentation.
+
+## Usage Guidelines
+
+- {Role-specific guideline 1}
+- {Role-specific guideline 2}
+- {Role-specific guideline 3}
+
+---
+*Add personal tool notes below as you discover and use tools.*
 ```
 
-This file is **not pre-filled by the company author**. The agent maintains it over time.
+**Rules:**
+- List every plugin from the agent's `runtime/settings.json` with its capabilities
+- Include MCP servers section only if the agent has MCP permissions
+- Include Google Workspace section only if the agent is GWS-eligible
+- Usage guidelines should be role-specific (3-5 bullets) — e.g., a CEO delegates technical tools, an engineer uses them directly
+- Keep it concise — one line per plugin, not a full manual
 
 ### Step 8: Configure runtime/settings.json
 

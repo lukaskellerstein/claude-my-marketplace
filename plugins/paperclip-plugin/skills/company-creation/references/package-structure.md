@@ -11,7 +11,7 @@ A company package follows the Agent Companies specification (`agentcompanies/v1`
 │       ├── AGENTS.md                   # Agent identity, role, instructions (mandatory)
 │       ├── HEARTBEAT.md                # Heartbeat execution protocol
 │       ├── SOUL.md                     # Personality and voice
-│       ├── TOOLS.md                    # Agent's personal tool notes (starts empty)
+│       ├── TOOLS.md                    # Agent tool reference — plugins, MCP servers, usage guidelines
 │       └── runtime/                    # Per-agent Claude Code runtime config
 │           ├── settings.json           # Permissions, enabledPlugins, env vars
 │           ├── mcp.json                # MCP server definitions
@@ -26,6 +26,8 @@ A company package follows the Agent Companies specification (`agentcompanies/v1`
 │   └── {task-slug}/TASK.md             # Company-level starter tasks
 ├── skills/
 │   └── {skill-slug}/SKILL.md           # Shared skills (one per skill referenced in any AGENTS.md)
+├── scripts/
+│   └── setup-secrets.sh                # Post-import script to create company secrets via API
 ├── global/                             # Shared runtime config (all agents)
 │   ├── settings.json                   # Global Claude Code settings (baseline)
 │   └── plugins.json                    # Marketplace and plugin installation
@@ -76,11 +78,13 @@ goals:
     subgoals:
       - slug: build-auth
         title: Build authentication system
+        description: Implement email/password and OAuth login, session management, and RBAC
         level: team
         ownerAgentSlug: backend-lead
         projectSlugs: [mvp-backend]
       - slug: build-onboarding
         title: Build user onboarding flow
+        description: Create step-by-step onboarding wizard with profile setup and feature tour
         level: team
         ownerAgentSlug: frontend-lead
   - slug: acquire-customers
@@ -93,9 +97,9 @@ goals:
 **Field rules:**
 - `slug` — required, unique within the package
 - `title` — required
-- `description` — optional
-- `level` — optional, auto-assigned by depth: company → team → agent → task
-- `status` — optional, defaults to "active"
+- `description` — recommended for all goals and subgoals (concrete deliverables or success criteria)
+- `level` — one of: `company`, `team`, `agent`, `task`. Optional, auto-assigned by depth if omitted (root = company, depth 1 = team, depth 2 = agent, depth 3+ = task)
+- `status` — one of: `planned`, `active`, `achieved`, `cancelled`. Optional, defaults to `active`
 - `ownerAgentSlug` — optional, references an agent slug from the package
 - `projectSlugs` — optional, references project slugs from the package
 - `subgoals` — optional, recursive nesting (max 4 levels)
@@ -150,10 +154,5 @@ Where `<workspace>` is `/paperclip/instances/default/workspaces/{agentId}/`.
 
 The `global/` files are NOT imported via the company import API. They must be placed in the Paperclip repo and mounted into the Docker container:
 
-1. Copy `global/settings.json` and `global/plugins.json` into the Paperclip repo (e.g., `docker/init/claude/`)
-2. Add a volume mount in `docker/docker-compose.yml`:
-   ```yaml
-   volumes:
-     - ./init/claude:/docker-init/claude:ro
-   ```
-3. Rebuild/restart the container
+1. Copy `global/settings.json` and `global/plugins.json` into `.company/claude/` in the Paperclip repo root
+2. Rebuild/restart the container (the volume mount is already configured in docker-compose.yml)

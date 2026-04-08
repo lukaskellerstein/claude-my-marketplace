@@ -85,8 +85,7 @@ After generation, instruct the user on the two import paths:
 - The import also deploys `runtime/` files (settings.json, mcp.json, subagents) to agent workspaces
 
 **2. Global config (requires manual setup):**
-- Copy `global/settings.json` and `global/plugins.json` into the Paperclip repo at `docker/init/claude/`
-- Add volume mount to `docker/docker-compose.yml`: `- ./init/claude:/docker-init/claude:ro`
+- Copy `global/settings.json` and `global/plugins.json` into `.company/claude/` in the Paperclip repo root
 - Rebuild/restart the container
 
 ## Rules

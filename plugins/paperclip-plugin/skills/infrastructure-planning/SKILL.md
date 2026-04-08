@@ -123,6 +123,14 @@ This skill helps plan and document all the infrastructure, external services, an
 | Drive | Document storage and collaboration |
 | Docs/Sheets | Business documents, spreadsheets |
 
+**Agent access via `gws` CLI:**
+- `gws` CLI is pre-installed in the Paperclip container
+- GWS skills (gmail, drive, calendar, sheets, etc.) are pre-installed globally at `/paperclip/.claude/skills/gws-*` — all agents can use them
+- Each company needs a GWS service account JSON key (see the [GWS setup guide](https://github.com/googleworkspace/cli/blob/main/README.md))
+- Place the key at `.company/gws/<company-slug>.json` in the Paperclip repo root
+- It is mounted into the container at `/paperclip/.gws/<company-slug>.json`
+- Agents that need GWS access set `GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE=/paperclip/.gws/<company-slug>.json` in their `runtime/settings.json` env
+
 ### 7. Payments
 
 **Stripe** (recommended for prepaid/subscription models):
@@ -199,6 +207,27 @@ Agent writes code
 | AI/ML APIs | Test keys | Test keys | Prod keys |
 | Domain | localhost | staging.{domain} | {domain} |
 
+## Infrastructure → Environment Variables Mapping
+
+Each infrastructure category requires specific environment variables to be configured as company secrets in Paperclip. Use this mapping when generating `scripts/setup-secrets.sh` for a company.
+
+| Infrastructure Category | Env Var | Kind | Description |
+|------------------------|---------|------|-------------|
+| Source Code (GitHub) | `GH_TOKEN` | secret | GitHub personal access token for `gh` CLI |
+| Container Registry (Docker Hub) | `DOCKER_HUB_USERNAME` | secret | Docker Hub username |
+| Container Registry (Docker Hub) | `DOCKER_HUB_TOKEN` | secret | Docker Hub access token |
+| Payments (Stripe) | `STRIPE_SECRET_KEY` | secret | Stripe secret API key |
+| Payments (Stripe) | `STRIPE_WEBHOOK_SECRET` | secret | Stripe webhook signing secret |
+| Database (PostgreSQL) | `DATABASE_URL` | secret | PostgreSQL connection string |
+| AI Media (Gemini) | `GEMINI_API_KEY` | secret | Google Gemini API key |
+| AI Media (ElevenLabs) | `ELEVENLABS_API_KEY` | secret | ElevenLabs TTS API key |
+| Media Output | `MEDIA_OUTPUT_DIR` | plain | Output directory for generated media |
+| Monitoring (Sentry) | `SENTRY_DSN` | plain | Sentry error tracking DSN |
+| Communication (Slack) | `SLACK_WEBHOOK_URL` | plain | Slack webhook for automated notifications |
+| Productivity (Google Workspace) | `GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE` | plain | Path to GWS service account JSON for `gws` CLI (e.g. `/paperclip/.gws/<company>.json`) |
+
+Only include env vars for infrastructure the company actually uses. For example, a company without Stripe integration does not need `STRIPE_SECRET_KEY`.
+
 ## Infrastructure Document Template
 
 When generating `infrastructure.md` for a company, include:
@@ -226,3 +255,4 @@ Agents run inside the Paperclip Docker container and have access to:
 | `uv` | Python package manager |
 | `node` | Node.js runtime |
 | `npm` | Node.js package manager |
+| `gws` | Google Workspace CLI (Gmail, Calendar, Drive, Sheets, Docs) |

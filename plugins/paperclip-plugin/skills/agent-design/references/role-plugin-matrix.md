@@ -58,6 +58,135 @@ When a plugin with MCP servers is enabled, the agent's `settings.json` must also
 | company-plugin | DHL API Assistant | `mcp__plugin_company-plugin_dhl-api-assistant` |
 | company-plugin | Stripe | `mcp__plugin_company-plugin_stripe` |
 
+## Environment Variables by Plugin
+
+Each plugin's MCP servers require specific OS-level environment variables. These must be present in the agent's process environment at runtime. In Paperclip, they are injected via company secrets + `adapterConfig.env`.
+
+### Plugin → Required Env Vars
+
+| Plugin | Env Var | Kind | Required | Description |
+|--------|---------|------|----------|-------------|
+| media-plugin | `GEMINI_API_KEY` | secret | yes | Google Gemini API key for image, video, and music generation |
+| media-plugin | `ELEVENLABS_API_KEY` | secret | no | ElevenLabs API key for text-to-speech |
+| media-plugin | `MEDIA_OUTPUT_DIR` | plain | no | Output directory for generated media files |
+| company-plugin | `STRIPE_SECRET_KEY` | secret | yes | Stripe secret API key (`sk_test_...` for dev, `sk_live_...` for production) |
+
+Plugins without MCP env vars: `dev-tools-plugin`, `office-plugin`, `infra-plugin`, `design-plugin`, `web-design-plugin`.
+
+### Role → Required Env Vars
+
+Derived from role×plugin assignments above. Only roles that use plugins with env vars are listed.
+
+| Role | Env Vars Needed (via plugin) |
+|------|------------------------------|
+| CEO | `GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE` |
+| CMO | `GEMINI_API_KEY`, `ELEVENLABS_API_KEY`, `MEDIA_OUTPUT_DIR`, `GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE` |
+| COO | `STRIPE_SECRET_KEY`, `GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE` |
+| HeadOfOperations | `STRIPE_SECRET_KEY`, `GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE` |
+| UI Designer | `GEMINI_API_KEY`, `ELEVENLABS_API_KEY`, `MEDIA_OUTPUT_DIR` |
+| Designer | `GEMINI_API_KEY`, `ELEVENLABS_API_KEY`, `MEDIA_OUTPUT_DIR` |
+| Content Creator | `GEMINI_API_KEY`, `ELEVENLABS_API_KEY`, `MEDIA_OUTPUT_DIR`, `GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE` |
+| Marketing Specialist | `GEMINI_API_KEY`, `ELEVENLABS_API_KEY`, `MEDIA_OUTPUT_DIR`, `GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE` |
+| Product Manager | `GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE` |
+| Customer Support | `GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE` |
+| Warehouse Manager | `STRIPE_SECRET_KEY` |
+| Supply Chain Manager | `STRIPE_SECRET_KEY` |
+
+### Infrastructure-Level Env Vars
+
+These are not plugin-specific but are needed by agents that interact with external infrastructure. They are set as company-wide secrets:
+
+| Env Var | Kind | Description |
+|---------|------|-------------|
+| `GH_TOKEN` | secret | GitHub personal access token for `gh` CLI |
+| `DOCKER_HUB_USERNAME` | secret | Docker Hub username for image push/pull |
+| `DOCKER_HUB_TOKEN` | secret | Docker Hub access token |
+| `STRIPE_WEBHOOK_SECRET` | secret | Stripe webhook signing secret |
+| `DATABASE_URL` | secret | PostgreSQL connection string |
+| `SENTRY_DSN` | plain | Sentry error tracking DSN |
+| `GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE` | plain | Path to GWS service account JSON (per-company, e.g. `/paperclip/.gws/<company>.json`) |
+
+## Google Workspace Skills
+
+The `gws` CLI is pre-installed in the Paperclip container via npm. The individual GWS skills (`gws-gmail`, `gws-calendar`, `persona-exec-assistant`, etc.) come from the [Google Workspace CLI repo](https://github.com/googleworkspace/cli) and are imported into each company's `skills/` directory during generation via the import script at `paperclip-plugin/skills/gws-cli/scripts/import-gws-skills.sh`.
+
+The `gws-cli` skill in the paperclip-plugin is a **reference only** — it documents all available GWS tools and hosts the import script. It is NOT copied into generated companies. Agents list the individual GWS skills in their frontmatter instead.
+
+### GWS-Eligible Roles
+
+Only these roles get GWS access (env vars + GWS skills in frontmatter):
+
+CEO, CMO, COO, HeadOfOperations, Content Creator, Marketing Specialist, Product Manager, Customer Support
+
+### Role → GWS Skills Mapping
+
+Each GWS-eligible role needs specific GWS skills listed in their AGENTS.md `skills:` frontmatter. Select from the skills imported by the script based on what the role needs:
+
+| Role | GWS Skills (add to `skills:` frontmatter) |
+|------|------------------------------------------|
+| CEO | `gws-gmail`, `gws-gmail-send`, `gws-gmail-read`, `gws-gmail-reply`, `gws-gmail-triage`, `gws-calendar`, `gws-calendar-agenda`, `gws-calendar-insert`, `gws-drive`, `gws-docs`, `gws-tasks`, `gws-meet`, `gws-shared`, `persona-exec-assistant`, `gws-workflow-meeting-prep`, `gws-workflow-standup-report`, `gws-workflow-weekly-digest` |
+| CMO | `gws-gmail`, `gws-gmail-send`, `gws-gmail-read`, `gws-gmail-reply`, `gws-gmail-triage`, `gws-calendar`, `gws-calendar-agenda`, `gws-drive`, `gws-docs`, `gws-sheets`, `gws-forms`, `gws-shared`, `persona-content-creator`, `persona-sales-ops` |
+| COO | `gws-gmail`, `gws-gmail-send`, `gws-gmail-read`, `gws-gmail-reply`, `gws-gmail-triage`, `gws-calendar`, `gws-calendar-agenda`, `gws-drive`, `gws-docs`, `gws-sheets`, `gws-tasks`, `gws-shared`, `persona-project-manager` |
+| HeadOfOperations | `gws-gmail`, `gws-gmail-send`, `gws-gmail-read`, `gws-gmail-reply`, `gws-gmail-triage`, `gws-calendar`, `gws-calendar-agenda`, `gws-drive`, `gws-docs`, `gws-sheets`, `gws-tasks`, `gws-shared`, `persona-project-manager` |
+| Content Creator | `gws-gmail`, `gws-gmail-send`, `gws-gmail-read`, `gws-gmail-reply`, `gws-calendar`, `gws-calendar-agenda`, `gws-drive`, `gws-drive-upload`, `gws-docs`, `gws-docs-write`, `gws-sheets`, `gws-shared`, `persona-content-creator` |
+| Marketing Specialist | `gws-gmail`, `gws-gmail-send`, `gws-gmail-read`, `gws-gmail-reply`, `gws-gmail-triage`, `gws-calendar`, `gws-calendar-agenda`, `gws-drive`, `gws-sheets`, `gws-sheets-append`, `gws-forms`, `gws-shared`, `persona-sales-ops` |
+| Product Manager | `gws-gmail`, `gws-gmail-send`, `gws-gmail-read`, `gws-gmail-reply`, `gws-gmail-triage`, `gws-calendar`, `gws-calendar-agenda`, `gws-calendar-insert`, `gws-drive`, `gws-docs`, `gws-sheets`, `gws-tasks`, `gws-shared`, `persona-project-manager`, `gws-workflow-meeting-prep` |
+| Customer Support | `gws-gmail`, `gws-gmail-send`, `gws-gmail-read`, `gws-gmail-reply`, `gws-gmail-reply-all`, `gws-gmail-forward`, `gws-gmail-triage`, `gws-calendar`, `gws-calendar-agenda`, `gws-docs`, `gws-sheets`, `gws-shared`, `persona-customer-support`, `gws-workflow-email-to-task` |
+
+### Agent Setup for GWS
+
+For each GWS-eligible agent:
+
+1. **Frontmatter:** add the role's GWS skills from the table above to the `skills:` array
+2. **Env vars:** set `AGENT_EMAIL`, `COMPANY_DOMAIN`, and `GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE` in `runtime/settings.json` (all three as a bundle)
+3. **Body:** add a "Google Workspace" section in AGENTS.md describing available tools
+
+Example AGENTS.md for a CEO:
+```yaml
+---
+name: CEO
+title: Chief Executive Officer
+reportsTo: null
+skills:
+  - strategy-review
+  - delegation-playbook
+  - gws-gmail
+  - gws-gmail-send
+  - gws-gmail-read
+  - gws-gmail-reply
+  - gws-gmail-triage
+  - gws-calendar
+  - gws-calendar-agenda
+  - gws-calendar-insert
+  - gws-drive
+  - gws-docs
+  - gws-tasks
+  - gws-meet
+  - gws-shared
+  - persona-exec-assistant
+  - gws-workflow-meeting-prep
+  - gws-workflow-standup-report
+  - gws-workflow-weekly-digest
+---
+```
+
+```markdown
+## Google Workspace
+
+You have full access to Google Workspace via the `gws` CLI. Your email is configured via the `AGENT_EMAIL` environment variable.
+
+**Available tools:** Gmail (send, read, reply, triage), Calendar (events, agenda, create), Drive (files, folders), Docs, Sheets, Tasks, Meet.
+
+Run `gws --help` or `gws <service> --help` for CLI documentation.
+
+**Common skills:**
+- `/gws-gmail-triage` — inbox summary
+- `/gws-calendar-agenda` — upcoming events
+- `/persona-exec-assistant` — combined inbox + calendar + tasks workflows
+- `/gws-workflow-meeting-prep` — prepare for next meeting
+- `/gws-workflow-standup-report` — daily standup summary
+```
+
 ## Agent-Level MCP Servers
 
 Some agents need MCP servers defined in their own `mcp.json` (not from plugins):

@@ -37,9 +37,13 @@ Use AskUserQuestion. Ask 2-3 focused questions per round:
 - Company purpose and domain
 - What agents they need (propose a hiring plan, don't ask open-ended)
 - Tech stack preferences (default: React/TS frontend, Python/FastAPI backend, Docker/K8s)
-- Required software (Slack, Google Workspace, Stripe?)
+- Required software (Slack, Google Workspace, Stripe?) — if Google Workspace, ask for the company domain used for GWS (e.g. `figurio.cellarwood.org`)
 - Infrastructure (existing or from scratch?)
 - Logistics (physical products?)
+- Agent-specific settings — ask about per-agent configuration values such as:
+  - Email addresses **only for GWS-eligible roles** (CEO, CMO, COO, HeadOfOperations, Content Creator, Marketing Specialist, Product Manager, Customer Support — see `role-plugin-matrix.md`). Engineers, designers, QA, and other technical roles do NOT need email addresses.
+  - Company domain for GWS agent communication
+  - Any role-specific settings (e.g., Slack channels, notification preferences)
 
 **From repo:**
 - Confirm the agents you plan to create
@@ -97,9 +101,11 @@ Draft 2-5 company goals and present them to the user for confirmation before pro
 
 After the user confirms the top-level goals, break each company goal into subgoals and connect them to agents and projects:
 
-1. **Subgoals** — each company goal should have 1-3 team-level subgoals that represent the concrete workstreams needed to achieve it. Subgoals can nest further (team → agent → task), but keep it practical — 2 levels of nesting is usually enough.
-2. **Ownership (`ownerAgentSlug`)** — assign each goal to the agent most responsible for driving it. Company goals typically belong to C-level agents (CEO, CTO, CMO). Subgoals belong to the team leads or ICs doing the work. Use the agent slug from the `agents/` directory.
-3. **Project linkage (`projectSlugs`)** — connect each goal (or subgoal) to the projects that deliver on it. Use the project slug from the `projects/` directory. A goal can link to multiple projects, and a project can be linked from multiple goals.
+1. **Subgoals** — each company goal should have 1-3 team-level subgoals that represent the concrete workstreams needed to achieve it. Subgoals can nest further (team → agent → task), but keep it practical — 2 levels of nesting is usually enough. Every subgoal must include a `description` field explaining the concrete deliverables or success criteria, just like top-level goals.
+2. **Level (`level`)** — set the scope of each goal. Values: `company` (strategic objectives), `team` (team-level workstreams), `agent` (individual agent responsibilities), `task` (specific deliverables). If omitted, auto-assigned by nesting depth.
+3. **Status (`status`)** — set the current state of each goal. Values: `planned` (not yet started), `active` (in progress), `achieved` (completed successfully), `cancelled` (no longer relevant). Defaults to `active` if omitted.
+4. **Ownership (`ownerAgentSlug`)** — assign each goal to the agent most responsible for driving it. Company goals typically belong to C-level agents (CEO, CTO, CMO). Subgoals belong to the team leads or ICs doing the work. Use the agent slug from the `agents/` directory.
+5. **Project linkage (`projectSlugs`)** — connect each goal (or subgoal) to the projects that deliver on it. Use the project slug from the `projects/` directory. A goal can link to multiple projects, and a project can be linked from multiple goals.
 
 **Example GOALS.md for a SaaS company:**
 ```yaml
@@ -114,16 +120,19 @@ goals:
     subgoals:
       - slug: build-auth-system
         title: Build authentication and user management
+        description: Implement email/password and OAuth sign-up, session management, and role-based access control
         level: team
         ownerAgentSlug: backend-engineer
         projectSlugs: [mvp-backend]
       - slug: build-core-ui
         title: Build core UI and onboarding flow
+        description: Build the main dashboard, onboarding wizard, and core workflow screens with responsive design
         level: team
         ownerAgentSlug: frontend-engineer
         projectSlugs: [mvp-frontend]
   - slug: acquire-beta-users
     title: Acquire first 100 beta users through content marketing and direct outreach
+    description: Drive sign-ups through SEO-optimized blog content, targeted outreach, and community engagement
     level: company
     status: active
     ownerAgentSlug: cmo
@@ -131,11 +140,13 @@ goals:
     subgoals:
       - slug: launch-blog
         title: Launch company blog with 5 seed articles
+        description: Publish 5 high-quality articles targeting key pain points, with SEO optimization and social sharing
         level: team
         ownerAgentSlug: content-writer
         projectSlugs: [growth-marketing]
       - slug: run-outreach
         title: Run direct outreach campaign to 500 prospects
+        description: Identify 500 ideal-profile prospects, craft personalized sequences, and track conversion to sign-ups
         level: team
         ownerAgentSlug: cmo
   - slug: establish-cicd
@@ -179,15 +190,66 @@ Propose:
 - `references/package-structure.md` — the full folder structure and deployment paths
 - `references/standard-roles.md` — role catalog for inspiration
 - `references/runtime-config.md` — global vs per-agent config, MCP, subagents
+- The **skill-creator** skill — follow it when generating any `SKILL.md` files (required frontmatter, structure, content guidelines)
 
 Generate all files following the structure in `references/package-structure.md`.
+
+**Environment variable setup:**
+
+Copy `references/setup-secrets-template.sh` to `scripts/setup-secrets.sh` in the generated package. Then customize it:
+1. Remove secret variables the company doesn't need (e.g., remove `STRIPE_SECRET_KEY` if no Stripe integration)
+2. Keep only the secrets required by the company's plugins and infrastructure — use the **"Environment Variables by Plugin"** section in `references/role-plugin-matrix.md` (in the agent-design skill) to determine which secrets are needed
+3. The user fills in `COMPANY_ID`, `AUTH_TOKEN`, and actual secret values after import, then runs the script
+
+**Per-agent env configuration:**
+
+For each agent, include an `env` section in `runtime/settings.json` with agent-specific plain values collected during Phase 1. These are deployed at import time — no API call needed.
+
+**Google Workspace env vars (`AGENT_EMAIL`, `COMPANY_DOMAIN`, `GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE`) are a bundle — set ALL THREE together, and ONLY for GWS-eligible roles** (CEO, CMO, COO, HeadOfOperations, Content Creator, Marketing Specialist, Product Manager, Customer Support). See `role-plugin-matrix.md` for the authoritative list. Agents that are NOT in this list (engineers, designers, QA, etc.) must NOT have any of these three env vars.
+
+Example `runtime/settings.json` for a GWS-eligible agent:
+```json
+{
+  "enabledPlugins": {
+    "dev-tools-plugin@claude-my-marketplace": true
+  },
+  "env": {
+    "AGENT_EMAIL": "cto@figurio.com",
+    "COMPANY_DOMAIN": "figurio.cellarwood.org",
+    "GOOGLE_WORKSPACE_CLI_CREDENTIALS_FILE": "/paperclip/.gws/figurio.json"
+  }
+}
+```
+
+Example `runtime/settings.json` for a non-GWS agent (e.g., engineer):
+```json
+{
+  "enabledPlugins": {
+    "dev-tools-plugin@claude-my-marketplace": true
+  }
+}
+```
+
+**Google Workspace setup (if the company uses GWS):**
+
+Two things are needed for GWS-eligible agents:
+
+1. **Import GWS skills** — during package generation, run the import script to populate the company's `skills/` directory with all individual GWS skills:
+   ```bash
+   bash paperclip-plugin/skills/gws-cli/scripts/import-gws-skills.sh <company-root>
+   ```
+   This imports all GWS skills (`gws-gmail`, `gws-calendar`, `persona-exec-assistant`, etc.) from the [GWS CLI repo](https://github.com/googleworkspace/cli) into the company's `skills/` directory.
+
+2. **Agent frontmatter** — add the role-specific GWS skills to each GWS-eligible agent's `skills:` array. See the **"Role → GWS Skills Mapping"** table in `role-plugin-matrix.md` for which skills each role needs.
+
+3. **Agent instructions** — add a "Google Workspace" section in each GWS-eligible agent's AGENTS.md body. See `role-plugin-matrix.md` for the example.
 
 **Quality bar:**
 - `COMPANY.md` — proper YAML frontmatter with `schema: agentcompanies/v1`, version, goals (2-5 specific, measurable)
 - `AGENTS.md` — specific to the business, not generic. Mentions actual systems and domains.
 - `HEARTBEAT.md` — follows standard Paperclip heartbeat procedure with role-specific additions
 - `SOUL.md` — two sections: strategic posture + voice and tone. Unique per agent.
-- `TOOLS.md` — minimal scaffold, NOT pre-filled
+- `TOOLS.md` — pre-filled with plugin capabilities, MCP servers, and role-specific usage guidelines
 - `PROJECT.md` — proper YAML frontmatter with name, description, slug, owner. At least one project per company.
 - Tasks under projects — every non-strategic task lives at `projects/{slug}/tasks/{slug}/TASK.md` with `project` and `assignee` frontmatter. See the **project-design** skill for detailed guidance.
 - `runtime/settings.json` — follows exact `enabledPlugins` object format from role-plugin-matrix
@@ -205,21 +267,41 @@ Generate all files following the structure in `references/package-structure.md`.
 
 Present:
 1. Files created with brief descriptions
-2. Import instructions (GitHub import + global config setup)
-3. Manual steps needed (credentials, domain, Docker compose)
+2. Step-by-step deployment instructions (see "Importing Into Paperclip" below)
 
 ## Importing Into Paperclip
 
-The generated package imports via two paths:
+The generated README.md must present these steps **in this exact order**:
 
-**Spec-compliant files (via Paperclip import):**
-- Push to GitHub, then import via UI or `POST /companies/import` with `source.type: "github"`
-- Handles: COMPANY.md, agents (AGENTS.md + instruction bundles + runtime/ files), projects, tasks, skills, .paperclip.yaml
+### Before `docker compose up`
 
-**Global config (manual setup):**
-- Copy `global/` files into the Paperclip repo at `docker/init/claude/`
-- Add to `docker/docker-compose.yml`: `- ./init/claude:/docker-init/claude:ro`
-- Rebuild/restart container
+**Step 1: Global Config**
+- Copy `global/settings.json` to `.company/claude/settings.json` in the Paperclip repo root
+- Copy `global/plugins.json` to `.company/claude/plugins.json` in the Paperclip repo root
+
+**Step 2: Google Workspace credentials** (if the company uses GWS)
+- Place the service account JSON at `.company/gws/<company-slug>.json` in the Paperclip repo root
+
+**Step 3: Start Paperclip**
+```bash
+cd docker && docker compose up -d
+```
+
+### After Paperclip is running
+
+**Step 4: Company Import**
+- Push the company package to GitHub
+- Import via Paperclip UI or API:
+  ```bash
+  curl -X POST http://localhost:3100/api/companies/import \
+    -H "Authorization: Bearer $AUTH_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{"source": {"type": "github", "url": "https://github.com/<org>/<company-slug>"}, "target": {"mode": "new_company"}}'
+  ```
+
+**Step 5: Secrets**
+- Fill in `COMPANY_ID`, `AUTH_TOKEN`, and secret values in `scripts/setup-secrets.sh`
+- Run: `bash scripts/setup-secrets.sh`
 
 ## Rules
 
