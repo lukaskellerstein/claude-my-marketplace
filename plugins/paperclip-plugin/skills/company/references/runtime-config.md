@@ -66,7 +66,7 @@ Controls which globally-installed plugins are active for this agent.
   "permissions": {
     "allow": [
       "mcp__plugin_web-design-plugin_webdesign-playwright",
-      "mcp__chrome"
+      "mcp__chrome-devtools"
     ]
   },
   "env": {
@@ -75,7 +75,7 @@ Controls which globally-installed plugins are active for this agent.
 }
 ```
 
-See `role-plugin-matrix.md` in the agent-design skill for exact assignments per role.
+See `role-plugin-matrix.md` in the company command references for exact assignments per role.
 
 ### `runtime/mcp.json`
 

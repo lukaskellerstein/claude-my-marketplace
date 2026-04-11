@@ -5,7 +5,11 @@ A company package follows the Agent Companies specification (`agentcompanies/v1`
 ```
 {company-slug}/
 ├── COMPANY.md                          # Company definition (name, goals, metadata)
-├── GOALS.md                            # Rich goal hierarchy (optional, overrides COMPANY.md goals)
+├── goals/                              # Rich goal hierarchy (optional, overrides COMPANY.md goals)
+│   └── {goal-slug}/
+│       ├── GOAL.md                     # Goal definition (frontmatter + description body)
+│       └── {subgoal-slug}/
+│           └── GOAL.md                 # Subgoal (nested folder = child goal)
 ├── agents/
 │   └── {agent-slug}/
 │       ├── AGENTS.md                   # Agent identity, role, instructions (mandatory)
@@ -21,9 +25,9 @@ A company package follows the Agent Companies specification (`agentcompanies/v1`
 │   └── {project-slug}/
 │       ├── PROJECT.md                  # Project definition
 │       └── tasks/
-│           └── {task-slug}/TASK.md     # Starter task
+│           └── {NN-task-slug}/TASK.md  # Starter task (NN = 01, 02, ... for ordering)
 ├── tasks/
-│   └── {task-slug}/TASK.md             # Company-level starter tasks
+│   └── {NN-task-slug}/TASK.md          # Company-level starter tasks (NN prefix for ordering)
 ├── skills/
 │   └── {skill-slug}/SKILL.md           # Shared skills (one per skill referenced in any AGENTS.md)
 ├── scripts/
@@ -62,47 +66,59 @@ goals:
   - Build content marketing engine producing 2+ blog posts per week
 ```
 
-### GOALS.md (optional)
+### goals/ directory (optional)
 
-When present, GOALS.md provides a rich goal hierarchy with subgoals, ownership, and project linkage. It overrides the simple `goals: string[]` in COMPANY.md.
+When present, the `goals/` directory provides a rich goal hierarchy with subgoals, ownership, and project linkage. It overrides the simple `goals: string[]` in COMPANY.md.
 
-```yaml
-goals:
-  - slug: launch-mvp
-    title: Launch MVP product with core features
-    description: Ship authentication, onboarding, and core workflow
-    level: company
-    status: active
-    ownerAgentSlug: cto
-    projectSlugs: [mvp-backend, mvp-frontend]
-    subgoals:
-      - slug: build-auth
-        title: Build authentication system
-        description: Implement email/password and OAuth login, session management, and RBAC
-        level: team
-        ownerAgentSlug: backend-lead
-        projectSlugs: [mvp-backend]
-      - slug: build-onboarding
-        title: Build user onboarding flow
-        description: Create step-by-step onboarding wizard with profile setup and feature tour
-        level: team
-        ownerAgentSlug: frontend-lead
-  - slug: acquire-customers
-    title: Acquire first 50 paying customers
-    level: company
-    status: active
-    ownerAgentSlug: head-of-growth
+Each goal is a folder containing a `GOAL.md` file. Subgoals are nested subfolders within their parent goal's folder. This mirrors the pattern used by agents, projects, and tasks.
+
+**Example structure:**
+```
+goals/
+├── launch-mvp/
+│   ├── GOAL.md
+│   ├── build-auth/
+│   │   └── GOAL.md
+│   └── build-onboarding/
+│       └── GOAL.md
+└── acquire-customers/
+    └── GOAL.md
+```
+
+**GOAL.md format:**
+```markdown
+---
+title: Launch MVP product with core features
+level: company
+status: active
+ownerAgentSlug: cto
+projectSlugs: [mvp-backend, mvp-frontend]
+---
+
+Ship authentication, onboarding, and core workflow. Success criteria: a functional product that users can sign up for and use daily.
+```
+
+**Subgoal GOAL.md** (at `goals/launch-mvp/build-auth/GOAL.md`):
+```markdown
+---
+title: Build authentication system
+level: team
+ownerAgentSlug: backend-lead
+projectSlugs: [mvp-backend]
+---
+
+Implement email/password and OAuth login, session management, and RBAC.
 ```
 
 **Field rules:**
-- `slug` — required, unique within the package
+- Slug is derived from the folder name (not in frontmatter)
 - `title` — required
-- `description` — recommended for all goals and subgoals (concrete deliverables or success criteria)
-- `level` — one of: `company`, `team`, `agent`, `task`. Optional, auto-assigned by depth if omitted (root = company, depth 1 = team, depth 2 = agent, depth 3+ = task)
+- `level` — one of: `company`, `team`, `agent`, `task`. Optional, auto-assigned by folder depth (root = company, depth 1 = team, depth 2 = agent, depth 3+ = task)
 - `status` — one of: `planned`, `active`, `achieved`, `cancelled`. Optional, defaults to `active`
 - `ownerAgentSlug` — optional, references an agent slug from the package
 - `projectSlugs` — optional, references project slugs from the package
-- `subgoals` — optional, recursive nesting (max 4 levels)
+- Body contains the goal description (rich markdown allowed)
+- Subgoals are subfolders, max 4 levels of nesting
 
 ### AGENTS.md
 

@@ -108,7 +108,7 @@ These are not plugin-specific but are needed by agents that interact with extern
 
 ## Google Workspace Skills
 
-The `gws` CLI is pre-installed in the Paperclip container via npm. The individual GWS skills (`gws-gmail`, `gws-calendar`, `persona-exec-assistant`, etc.) come from the [Google Workspace CLI repo](https://github.com/googleworkspace/cli) and are imported into each company's `skills/` directory during generation via the import script at `paperclip-plugin/skills/gws-cli/scripts/import-gws-skills.sh`.
+The `gws` CLI is pre-installed in the Paperclip container via npm. The individual GWS skills (`gws-gmail`, `gws-calendar`, `persona-exec-assistant`, etc.) come from the [Google Workspace CLI repo](https://github.com/googleworkspace/cli) and are imported into each company's `skills/` directory during generation via `paperclip-plugin/scripts/import-gws-skills.sh` (called automatically by `pre-generate.sh`).
 
 The `gws-cli` skill in the paperclip-plugin is a **reference only** — it documents all available GWS tools and hosts the import script. It is NOT copied into generated companies. Agents list the individual GWS skills in their frontmatter instead.
 
@@ -193,7 +193,7 @@ Some agents need MCP servers defined in their own `mcp.json` (not from plugins):
 
 | MCP Server | Permission | Which Agents |
 |-----------|------------|-------------|
-| chrome (Chrome DevTools) | `mcp__chrome` | Frontend Engineer, QA Engineer, UX Tester |
+| chrome-devtools (Chrome DevTools) | `mcp__chrome-devtools` | Frontend Engineer, QA Engineer, UX Tester |
 
 ## settings.json Examples
 
@@ -277,7 +277,7 @@ Some agents need MCP servers defined in their own `mcp.json` (not from plugins):
   "permissions": {
     "allow": [
       "mcp__plugin_web-design-plugin_webdesign-playwright",
-      "mcp__chrome"
+      "mcp__chrome-devtools"
     ]
   }
 }
@@ -312,7 +312,7 @@ Some agents need MCP servers defined in their own `mcp.json` (not from plugins):
   },
   "permissions": {
     "allow": [
-      "mcp__chrome"
+      "mcp__chrome-devtools"
     ]
   }
 }

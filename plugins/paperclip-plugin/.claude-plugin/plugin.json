@@ -1,7 +1,7 @@
 {
   "name": "paperclip-plugin",
-  "version": "2.1.6",
-  "description": "Autonomous AI company advisor for the Paperclip platform — create, design, analyze, and manage AI-powered companies with proper agent hierarchies, runtime configurations, and infrastructure following the Agent Companies spec (agentcompanies/v1).",
+  "version": "3.0.6",
+  "description": "Autonomous AI company advisor for the Paperclip platform — create, design, and manage AI-powered companies with proper agent hierarchies, runtime configurations, and infrastructure following the Agent Companies spec (agentcompanies/v1).",
   "author": {
     "name": "Lukas Kellerstein"
   },
@@ -15,7 +15,6 @@
     "kubernetes",
     "docker",
     "github",
-    "brainstorming",
     "agentcompanies",
     "heartbeat",
     "delegation",
@@ -24,10 +23,8 @@
     "runtime"
   ],
   "skills": [
-    "./skills/company-creation",
-    "./skills/agent-design",
-    "./skills/project-design",
-    "./skills/company-analysis",
+    "./skills/company",
+    "./skills/work-planning",
     "./skills/infrastructure-planning"
   ]
 }
