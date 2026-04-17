@@ -1,0 +1,17 @@
+{
+  "description": "media-plugin hooks: auto-run drawio edge-routing postprocessor after every .drawio Write",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/postprocess-drawio.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

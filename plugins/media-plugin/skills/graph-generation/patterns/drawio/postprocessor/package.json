@@ -1,0 +1,13 @@
+{
+  "name": "drawio-postprocessor",
+  "version": "0.1.0",
+  "description": "Post-processor for draw.io XML: fixes edge-vertex collisions, simplifies edges, aligns shapes",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test-harness.js",
+    "postprocess": "node postprocess.js"
+  },
+  "dependencies": {
+    "@xmldom/xmldom": "^0.9.8"
+  }
+}

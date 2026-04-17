@@ -1,7 +1,7 @@
 {
   "name": "media-plugin",
-  "version": "1.5.1",
-  "description": "Media generation and manipulation for Claude Code — images, videos/GIFs, music, text-to-speech, and data visualizations (charts, graphs, diagrams, maps) using Google Gemini, D3.js, and Mermaid.",
+  "version": "1.8.0",
+  "description": "Media generation and manipulation for Claude Code — images, videos/GIFs, music, text-to-speech, and data visualizations (charts, graphs, diagrams, maps) using Google Gemini, D3.js, Mermaid, and Draw.io.",
   "author": {
     "name": "Lukas Kellerstein"
   },
@@ -28,7 +28,10 @@
     "visualization",
     "maps",
     "mermaid",
-    "diagrams"
+    "diagrams",
+    "drawio",
+    "draw.io",
+    "architecture-diagrams"
   ],
   "skills": [
     "./skills/image-generation",
@@ -68,6 +71,15 @@
       "url": "https://mcp.mermaidchart.com/mcp",
       "type": "http",
       "description": "Mermaid diagram generation for architecture and documentation"
+    },
+    "drawio": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@drawio/mcp"
+      ],
+      "description": "Draw.io diagram generation — opens XML, CSV, or Mermaid diagrams in the draw.io editor for interactive viewing/editing"
     },
     "media-playwright": {
       "command": "npx",
