@@ -7,6 +7,12 @@ description: "This skill should be activated when the user asks to make a presen
 
 Create professional PowerPoint presentations using **PptxGenJS** for all slide generation and **media-plugin** for sourcing/generating images at correct dimensions.
 
+## Before you start: plan the visuals
+
+If you are deciding the deck's visuals yourself (a pitch/sales deck that "should look good"), run the **visual-planning** skill (media-plugin) FIRST. It decides which concepts deserve a visual, picks the right technique for each, and binds them to one style — then routes each to the correct engine. Skipping it is the main cause of ugly decks.
+
+**Routing rule (no exceptions):** diagrams, charts, architecture, flows, and data viz go to the **graph-generation** skill (D3 / Mermaid / Draw.io) and are embedded as PNG. They are **never** produced via AI `generate_image`, which mangles labels and layout. AI image generation is only for photos, illustrations, backgrounds, and mockups.
+
 ## Quick Reference
 
 | Task | Go To |
@@ -52,13 +58,16 @@ Before choosing colors and fonts individually, **select a design template** from
 
 Available templates: Pitch Deck, Corporate Quarterly, Tech/Product, Educational/Workshop, Creative/Portfolio, Minimalist Executive, Bold Marketing.
 
-### Step 3: Content + Image Plan
+### Step 3: Content + Visual Plan
 
 For each slide in the structure, define:
 
 1. **Text content** — title, subtitle, bullet points, quotes, data points
 2. **Layout type** — pick from the layout catalog (see [references/layouts.md](${CLAUDE_PLUGIN_ROOT}/skills/pptx/references/layouts.md))
-3. **Image plan** — which slides need images and at what aspect ratio (see [Image Sizing Rules](#image-sizing-rules))
+3. **Visual plan** — which slides need a visual, and **what kind**:
+   - Data, processes, or system structure → a chart/diagram via **graph-generation** (D3/Mermaid/Draw.io), embedded as PNG
+   - Photos, illustrations, backgrounds → **image-sourcing** (real) or **image-generation** (custom)
+   - At what aspect ratio (see [Image Sizing Rules](#image-sizing-rules))
 4. **Colors + Fonts** — use the design template's recommendations, or customize from [references/design.md](${CLAUDE_PLUGIN_ROOT}/skills/pptx/references/design.md)
 
 Vary slide layouts. Monotonous decks with the same layout repeated are the most common failure. Use at least 3 different layout types across a deck.
@@ -80,11 +89,16 @@ Read [references/design.md](${CLAUDE_PLUGIN_ROOT}/skills/pptx/references/design.
 
 **Gather all planned images BEFORE writing any code.** This avoids mid-script interruptions.
 
-For each image in the plan:
+For each **photo/illustration** in the plan:
 
 1. **Try Unsplash first** — use the `image-sourcing` skill to search for a real photo. Specify the target aspect ratio (e.g., 16:9 for full-bleed backgrounds, 9:10 for split-image layouts).
 2. **Fall back to AI generation** — if no suitable stock photo exists, use the `image-generation` skill. Include the target aspect ratio in the generation parameters.
 3. **Save with descriptive names** — e.g., `title-bg-cityscape.jpg`, `split-solar-farm.jpg`
+
+For each **chart/diagram** in the plan:
+
+1. **Use the `graph-generation` skill** — D3 for data charts, Mermaid for flows, Draw.io for architecture with vendor icons. Render to high-DPI PNG, theme-matched to the deck's palette.
+2. **Never** AI-generate a chart or diagram via `generate_image` — it produces fake labels and broken layout.
 
 Always match the image aspect ratio to its placement dimensions. See [Image Sizing Rules](#image-sizing-rules).
 

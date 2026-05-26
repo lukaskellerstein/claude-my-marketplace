@@ -1,6 +1,6 @@
 {
   "name": "media-plugin",
-  "version": "1.8.0",
+  "version": "1.9.2",
   "description": "Media generation and manipulation for Claude Code — images, videos/GIFs, music, text-to-speech, and data visualizations (charts, graphs, diagrams, maps) using Google Gemini, D3.js, Mermaid, and Draw.io.",
   "author": {
     "name": "Lukas Kellerstein"
@@ -34,6 +34,7 @@
     "architecture-diagrams"
   ],
   "skills": [
+    "./skills/visual-planning",
     "./skills/image-generation",
     "./skills/image-sourcing",
     "./skills/video-generation",
@@ -68,7 +69,7 @@
       "description": "Text-to-speech, voice cloning, and audio tools via ElevenLabs"
     },
     "mermaid": {
-      "url": "https://mcp.mermaidchart.com/mcp",
+      "url": "https://mcp.mermaid.ai/mcp",
       "type": "http",
       "description": "Mermaid diagram generation for architecture and documentation"
     },

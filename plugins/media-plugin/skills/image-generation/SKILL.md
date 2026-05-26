@@ -7,6 +7,24 @@ description: Generate and work with images using the media-mcp server's generate
 
 Use the `mcp__media-mcp__generate_image` tool to create images via Google Gemini.
 
+## STOP — is this actually a diagram or chart?
+
+AI image generation is **only** for photographs, illustrations, textures, backgrounds, and product mockups — visuals with no structured information to get wrong. It produces **ugly, garbled output** for anything with boxes, arrows, axes, labels, nodes, or data, because the model fakes text and mangles layout.
+
+**Never use `generate_image` for:** architecture diagrams, flowcharts, charts/graphs, infographics with labels, system maps, network/topology diagrams, sequence/state/ER diagrams, dashboards, or any "diagram of X". Those go to the **graph-generation** skill (D3 / Mermaid / Draw.io), which renders crisp, professional, vendor-icon-accurate output.
+
+If you're producing visuals for a document/deck/sales asset and deciding what to show yourself, start with the **visual-planning** skill — it plans the whole set and routes each visual to the right engine.
+
+### Do not generate abstract "AI tech slop" to explain a product
+
+A polished render can still be the wrong visual. If a visual's job is to **explain** something about a product — how it works, its structure, a concept/model, a before→after, a data or access flow — it must be a **diagram** (`graph-generation`), never an abstract image. The following genres are **banned as explanatory product visuals** because they look expensive but convey nothing:
+
+- glowing orbs / swirls / energy cores; glowing network-node spheres, cubes, or lattices
+- holographic globes / continent maps with light arcs; circuit-board cities; abstract "data highways"
+- shattered glass, floating documents, particle streams; generic navy-blue-with-gold-glow tech abstracts
+
+If your prompt reads like *"glowing holographic [concept], dark background, blue and gold, futuristic, abstract"*, stop — that concept is a **diagram** (or, for pure tone-setting only, a **real photo** via image-sourcing).
+
 ## When to Use
 
 - User asks to "create an image", "generate a picture", "make a visual", "design a graphic"
@@ -28,7 +46,7 @@ Use the `mcp__media-mcp__generate_image` tool to create images via Google Gemini
 | `model` | string | Model variant (default varies) |
 | `aspect_ratio` | string | `"1:1"`, `"3:4"`, `"4:3"`, `"9:16"`, `"16:9"` |
 | `resolution` | string | From `"512"` up to `"4k"` |
-| `reference_images` | array | Paths to reference images for style/content guidance |
+| `reference_images` | array | Reference images for style/content guidance. Each entry may be a **file path** (preferred — e.g. a previously generated/sourced image), a `data:image/...;base64,...` data-URI, or a raw base64 string. **Prefer file paths** — passing megabytes of base64 inline bloats the conversation history. |
 | `thinking` | string | Thinking level for complex prompts |
 | `google_search` | boolean | Enable Google Search grounding for realistic/factual images |
 
@@ -69,13 +87,9 @@ centered card with email and password fields, gradient purple-blue
 background, modern sans-serif typography, UI design mockup style
 ```
 
-### Architecture diagram (visual)
-```
-Generate an image of a cloud architecture diagram showing
-microservices connected to a central API gateway, with databases
-and message queues, clean technical illustration style, white background,
-using blue and gray color scheme
-```
+### Architecture / diagrams / charts — DO NOT generate as images
+
+Diagrams and charts are **not** image-generation tasks. A "cloud architecture diagram" or "microservices chart" generated as an AI image will come out with fake labels, wonky boxes, and no real vendor icons. Use the **graph-generation** skill instead (Draw.io for architecture with real AWS/Azure/GCP/Cisco/K8s icons, D3 for data charts, Mermaid for flows). This rule has no exceptions.
 
 ### Icon set
 ```

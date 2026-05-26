@@ -7,6 +7,12 @@ description: "This skill should be activated when the user asks to create a Word
 
 Create professional Word documents using **docx** (docx-js npm package) for all document generation, **media-plugin** for sourcing/generating images, and **graph-generation** for charts and diagrams.
 
+## Before you start: plan the visuals
+
+If you are deciding the document's visuals yourself (a report/whitepaper/proposal that "should look good" or "needs diagrams"), run the **visual-planning** skill (media-plugin) FIRST. It decides which concepts deserve a visual, picks the right technique for each, and binds them to one style — then routes each to the correct engine. Skipping it is the main cause of ugly documents.
+
+**Routing rule (no exceptions):** diagrams, charts, architecture, flows, and data viz go to the **graph-generation** skill (D3 / Mermaid / Draw.io) and are embedded as PNG. They are **never** produced via AI `generate_image`, which mangles labels and layout. AI image generation is only for photos, illustrations, backgrounds, and mockups.
+
 ## Quick Reference
 
 | Task | Go To |
