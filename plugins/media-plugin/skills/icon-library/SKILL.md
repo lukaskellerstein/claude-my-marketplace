@@ -10,6 +10,8 @@ description: >
 
 # Icon Library
 
+> **Step 0 — plan first.** Before fetching, run the **visual-planning** skill: confirm the icon set/style to match (one library, one stroke weight), the concepts to represent, and the sizing — so icons stay consistent across the asset.
+
 Fetch production-quality SVG icons from open-source libraries instead of drawing them manually. These icons are professionally designed, consistent, and optimized for clean rendering in Figma and code.
 
 ## When to Use

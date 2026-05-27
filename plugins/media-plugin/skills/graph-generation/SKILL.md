@@ -5,6 +5,8 @@ description: ALWAYS use this skill when the user asks to create, draw, design, p
 
 # Graph Generation
 
+> **Step 0 — plan first.** Before rendering, run the **visual-planning** skill: clarify the ask (type, placement, dimensions), lock the palette/style, pin the single message the visual must convey, and confirm the real data.
+
 Generate any chart, graph, diagram, map, or visualization and save it as an image or editable file. This skill supports three rendering engines — **pick the right one first**, then read that engine's README and pattern file.
 
 ## How to use this skill
@@ -77,7 +79,7 @@ later editing by the user in a GUI?
 | Choropleth / location map | D3.js | |
 | Treemap / sankey / network graph | D3.js | |
 | Candlestick / OHLC financial | D3.js | |
-| Timeline / stat dashboard infographic | D3.js | |
+| Timeline / stat dashboard infographic | D3.js | For *infographics specifically* (stat panels, "how it works", comparisons), first consult **visual-planning**'s `references/infographic-design.md` for layout/hierarchy/labeling principles. |
 
 ## How each engine renders (1-liner)
 

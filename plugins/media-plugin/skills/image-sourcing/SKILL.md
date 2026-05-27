@@ -5,6 +5,8 @@ description: Find and download existing images from the web using stock photo se
 
 # Image Sourcing from the Web
 
+> **Step 0 — plan first.** Before searching, run the **visual-planning** skill: clarify the ask, lock the style, pin the message, decide what's IN/OUT, then draft the search query (via **media-prompt-craft**).
+
 Use `WebSearch` and `WebFetch` (or `curl` via Bash) to find and download existing images from stock photo services and the web.
 
 ## When to Use

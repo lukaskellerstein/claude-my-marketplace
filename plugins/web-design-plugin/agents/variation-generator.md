@@ -19,7 +19,7 @@ color: green
 skills:
   - design-plugin:styleguide
   - design-plugin:design-system
-  - design-plugin:media-prompt-craft
+  - media-plugin:media-prompt-craft
   - page-architecture
   - variation
 ---
@@ -73,7 +73,7 @@ For each variation, create a complete design document at `designs/{base}v{N}/doc
 2. **Styleguide** — new aesthetic profile, font pairing, color palette (use `design-plugin:styleguide` references)
 3. **Page architecture** — copied from base (identical structure and content)
 4. **Layout composition** — same layouts, updated to match new style
-5. **Media plan** — same content descriptions, NEW style prefix (use `design-plugin:media-prompt-craft`)
+5. **Media plan** — same content descriptions, NEW style prefix (use `media-plugin:media-prompt-craft`)
 6. **Animation plan** — adjusted intensity per variation identity
 7. **CSS architecture** — new tailwind.config, CSS variables, shadcn theme matching new palette
 

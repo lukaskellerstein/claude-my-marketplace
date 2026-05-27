@@ -17,7 +17,7 @@ description: >
 model: sonnet
 color: green
 skills:
-  - design-plugin:media-prompt-craft
+  - media-plugin:media-prompt-craft
   - media-plugin:graph-generation
 ---
 
@@ -39,7 +39,7 @@ Write to the specified output directory (e.g., `designs/1/docs/media-plan.md`).
 
 ### `media-plan.md`
 
-Use the `design-plugin:media-prompt-craft` skill for images/videos and the `media-plugin:graph-generation` skill for charts, graphs, infographics, and maps:
+Use the `media-plugin:media-prompt-craft` skill for images/videos and the `media-plugin:graph-generation` skill for charts, graphs, infographics, and maps:
 
 - **Style prefix** — reusable prompt prefix for visual consistency (derived from the styleguide's aesthetic profile)
 - **Shared media** — logo, product images, OG image, favicon (with generation prompts or stock search queries)

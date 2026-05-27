@@ -11,6 +11,8 @@ description: >
 
 # Media Prompt Craft
 
+> **Operates inside the brief.** This skill is the prompt/query craft used at **steps 5–6 of the visual-planning gate** (for image, video, and stock-photo assets). Run **visual-planning** first to clarify the ask, lock the style, and decide what's IN/OUT — then use the techniques here to turn that into a precise prompt.
+
 The bridge between design intent and media execution. Translates styleguide choices into specific, style-consistent prompts for image/video generation and stock photo search queries.
 
 ## When to Use

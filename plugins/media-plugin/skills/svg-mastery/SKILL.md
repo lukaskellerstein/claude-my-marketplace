@@ -15,6 +15,8 @@ description: >
 
 # SVG Mastery
 
+> **Step 0 — plan first.** When you're *authoring* a new vector/infographic asset, run the **visual-planning** skill first: clarify the ask, lock the style, pin the message, decide what's IN/OUT, then draft. (Skip it when you're just optimizing, animating, or fixing an existing SVG — no new creative intent.)
+
 Comprehensive reference for working with SVGs correctly — from optimization to animation to accessibility.
 
 ## When to Use

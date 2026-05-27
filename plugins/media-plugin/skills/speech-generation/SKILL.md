@@ -5,6 +5,8 @@ description: Generate text-to-speech audio using the ElevenLabs MCP server's tex
 
 # Speech Generation (Text-to-Speech)
 
+> **Step 0 — plan first.** Before generating, run the **visual-planning** skill (the pre-generation gate for all media, audio included): clarify the ask (voice, language, format, where it's used), pin the tone/pacing, confirm the exact script and pronunciations, then generate and verify.
+
 Use the `mcp__ElevenLabs__text_to_speech` tool to convert text to natural-sounding speech via ElevenLabs.
 
 ## Quick Reference

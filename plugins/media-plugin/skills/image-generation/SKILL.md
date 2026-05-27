@@ -5,13 +5,15 @@ description: Generate and work with images using the media-mcp server's generate
 
 # Image Generation
 
+> **Step 0 — plan first.** Before generating, run the **visual-planning** skill: clarify the ask, lock the style, pin the message, decide what's IN/OUT, then draft and review the prompt. It's the gate that prevents off-message, off-style, or garbled output.
+
 Use the `mcp__media-mcp__generate_image` tool to create images via Google Gemini.
 
 ## STOP — is this actually a diagram or chart?
 
 AI image generation is **only** for photographs, illustrations, textures, backgrounds, and product mockups — visuals with no structured information to get wrong. It produces **ugly, garbled output** for anything with boxes, arrows, axes, labels, nodes, or data, because the model fakes text and mangles layout.
 
-**Never use `generate_image` for:** architecture diagrams, flowcharts, charts/graphs, infographics with labels, system maps, network/topology diagrams, sequence/state/ER diagrams, dashboards, or any "diagram of X". Those go to the **graph-generation** skill (D3 / Mermaid / Draw.io), which renders crisp, professional, vendor-icon-accurate output.
+**Never use `generate_image` for:** architecture diagrams, flowcharts, charts/graphs, infographics with labels, system maps, network/topology diagrams, sequence/state/ER diagrams, dashboards, or any "diagram of X". Those go to the **graph-generation** skill (D3 / Mermaid / Draw.io), which renders crisp, professional, vendor-icon-accurate output. **Infographics** in particular: any infographic with real numbers/labels is composed in graph-generation — see **visual-planning**'s `references/infographic-design.md`, which classifies infographics and only allows `generate_image` for a purely *decorative* infographic-style hero with no legible text.
 
 If you're producing visuals for a document/deck/sales asset and deciding what to show yourself, start with the **visual-planning** skill — it plans the whole set and routes each visual to the right engine.
 

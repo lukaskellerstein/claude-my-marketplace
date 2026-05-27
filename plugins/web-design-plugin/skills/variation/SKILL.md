@@ -89,4 +89,4 @@ Each variation document starts with:
 ## Cross-Plugin Skills Used
 - `design-plugin:styleguide` — generate alternative aesthetic profiles, font pairings, color moods
 - `design-plugin:design-system` — validate new color palettes for accessibility (WCAG contrast)
-- `design-plugin:media-prompt-craft` — generate new style prefixes for media prompts
+- `media-plugin:media-prompt-craft` — generate new style prefixes for media prompts

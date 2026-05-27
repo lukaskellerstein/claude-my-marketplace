@@ -5,6 +5,8 @@ description: Generate music and instrumental audio using the media-mcp server's 
 
 # Music Generation
 
+> **Step 0 — plan first.** Before generating, run the **visual-planning** skill (the pre-generation gate for all media, audio included): clarify the ask (duration, loop, where it plays), pin the intended mood/genre/tempo, decide what's IN/OUT (instrumentation to use or avoid), then draft and review the prompt.
+
 Use the `mcp__media-mcp__generate_music` tool to create instrumental music via Google Gemini Lyria RealTime.
 
 ## When to Use

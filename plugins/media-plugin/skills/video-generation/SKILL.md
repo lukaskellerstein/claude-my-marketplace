@@ -5,6 +5,8 @@ description: Generate videos and GIFs using the media-mcp server's generate_vide
 
 # Video Generation
 
+> **Step 0 — plan first.** Before generating, run the **visual-planning** skill: clarify the ask (incl. duration & loop), lock the style, pin the message, decide what's IN/OUT, then draft and review the prompt.
+
 Use the `mcp__media-mcp__generate_video` tool to create videos via Google Gemini Veo models.
 
 ## When to Use

@@ -18,7 +18,7 @@ model: sonnet
 color: green
 skills:
   - design-plugin:frontend-aesthetics
-  - design-plugin:media-prompt-craft
+  - media-plugin:media-prompt-craft
   - page-architecture
   - animation-system
   - media-plugin:graph-generation
