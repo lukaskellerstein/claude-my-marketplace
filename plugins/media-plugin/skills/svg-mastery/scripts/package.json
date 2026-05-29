@@ -1,0 +1,17 @@
+{
+  "name": "svg-mastery-render-qa",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Render + validate harness for svg-mastery: xmllint well-formedness, rasterize to PNG (resvg, or headless Chrome for fonts/CSS), optional SVGO. Drives the render-and-inspect loop.",
+  "bin": {
+    "render-qa": "render-qa.mjs"
+  },
+  "scripts": {
+    "render-qa": "node render-qa.mjs"
+  },
+  "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "svgo": "^3.3.2"
+  }
+}

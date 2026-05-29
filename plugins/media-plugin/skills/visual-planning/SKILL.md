@@ -151,7 +151,7 @@ Gather all visuals **before** writing the document/deck generation code.
 - **image-sourcing** — real photos (preferred for people/places/products).
 - **image-generation** — custom illustrations, backgrounds, mockups (NEVER diagrams).
 - **icon-library** — pre-made SVG icons (don't generate these).
-- **svg-mastery** — hand-tuned / animated vector marks.
+- **svg-mastery** — hand-authored vector (illustration, isometric, logos/marks, patterns, type, custom layouts) and the QA layer that validates/renders any SVG before it ships.
 - **video-generation / music-generation / speech-generation** — motion and audio engines invoked at step 7.
 - **styleguide** (design-plugin) — derive the palette/mood when the product has no brand yet.
 - **pptx / docx** (office-plugin) — consume the gathered visuals; see their image-sizing tables.

@@ -1,5 +1,5 @@
 {
-  "description": "media-plugin hooks: auto-run drawio edge-routing postprocessor after every .drawio Write",
+  "description": "media-plugin hooks: auto-run drawio edge-routing postprocessor after every .drawio Write; sanity-check + render reminder after every .svg Write",
   "hooks": {
     "PostToolUse": [
       {
@@ -9,6 +9,11 @@
             "type": "command",
             "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/postprocess-drawio.sh",
             "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/check-svg.sh",
+            "timeout": 15
           }
         ]
       }

@@ -224,3 +224,10 @@ icon.resize(32, 32); // Scale to 32x32
 - Icon names use **kebab-case** in all three libraries
 - Most icons are **24x24** with **2px stroke** — resize after insertion if needed
 - When inserting icons into a Figma component, flatten the SVG group if needed: `figma.flatten([iconNode])`
+
+## After fetching: tune the icon
+
+This skill *sources* icons. To **optimize, recolor with `currentColor`, animate, build a sprite, or embed** a fetched icon, hand it to **svg-mastery**:
+- Clean and shrink it → `svg-mastery/references/optimization.md`.
+- Theme/animate/sprite it → `svg-mastery` SKILL.md (currentColor, sprites) + `references/animation-recipes.md`.
+- Need a *custom* mark no library has? → `svg-mastery/references/logos-marks.md` (never hand-draw standard UI icons here).

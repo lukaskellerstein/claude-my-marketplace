@@ -92,3 +92,10 @@ later editing by the user in a GUI?
 ## Universal quality rule
 
 Whatever engine you pick, the output must be **high-resolution** (at least 2x DPI for PNG) and **theme-matched** to the context where it will be displayed (light docs, dark websites, branded decks). All three engine READMEs cover their respective high-DPI / theming settings.
+
+## After generating: post-process & verify the SVG
+
+When the engine emits **SVG** (D3 or Draw.io export), hand it to **svg-mastery** to optimize, validate, animate, recolor, or embed it correctly:
+- Shrink and clean the output, namespacing IDs to avoid collisions when inlining → `svg-mastery/references/optimization.md`.
+- Confirm it's well-formed and *renders right* before shipping → `svg-mastery/references/validation-and-qa.md` (the render-and-inspect loop).
+- For a bespoke layout no D3 pattern covers, svg-mastery's `references/custom-layouts.md` hand-composes it.

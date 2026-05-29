@@ -103,7 +103,7 @@ Before rendering, state one line: **`Infographic: <message> | Path A (archetype:
 
 ## See also
 - **graph-generation** — composes Path A infographics (D3 `stat-dashboard`, `timeline`, `radial-gauge`, `pie-donut`; SVG for custom).
-- **svg-mastery** — hand-authored custom infographic layouts.
+- **svg-mastery** — hand-authored custom infographic layouts when no graph-generation pattern fits (`references/custom-layouts.md`); also validate/QA the finished SVG via its render-and-inspect loop (`references/validation-and-qa.md`).
 - **image-generation** — Path B decorative hero only (never for legible data).
 - **icon-library** — the one consistent icon set for Path A.
 - **media-prompt-craft** — turns the style prefix into the Path B prompt.

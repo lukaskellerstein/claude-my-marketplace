@@ -7,17 +7,57 @@ description: >
   "embed SVG in HTML", "inline SVG vs img tag", "animate SVG", "SVG stroke animation",
   "SVG morphing", "accessible SVG", "SVG viewBox", "responsive SVG", "SVG in React",
   "SVG sprite", "SVG gradient", "SVG filter", "clip-path", "SVG mask", "create SVG
-  programmatically", "SVG path commands", "SVGO", "currentColor SVG", or any question about
-  SVG best practices, techniques, or patterns. Complements icon-library (which sources SVGs)
-  and graph-generation (which produces SVGs) by providing deep knowledge on how to use,
-  optimize, and manipulate SVGs correctly.
+  programmatically", "SVG path commands", "SVGO", "currentColor SVG". Also covers hand-authored
+  vector work and SVG QA: "vector illustration", "draw SVG art", "isometric SVG", "SVG logo /
+  custom mark / badge", "SVG pattern / background", "SVG text on path", "validate SVG", "why is
+  my SVG broken / blank / clipped", "render SVG to PNG", "check SVG looks right", "fix SVG bug".
+  Or any question about SVG best practices, techniques, or patterns. Complements icon-library
+  (which sources icons) and graph-generation (which produces charts/diagrams/maps) by providing
+  deep knowledge on how to author, optimize, validate, and manipulate SVGs correctly.
 ---
 
 # SVG Mastery
 
 > **Step 0 — plan first.** When you're *authoring* a new vector/infographic asset, run the **visual-planning** skill first: clarify the ask, lock the style, pin the message, decide what's IN/OUT, then draft. (Skip it when you're just optimizing, animating, or fixing an existing SVG — no new creative intent.)
 
-Comprehensive reference for working with SVGs correctly — from optimization to animation to accessibility.
+Comprehensive reference for working with SVGs correctly — authoring hand-made vector, plus optimizing, validating, animating, and embedding any SVG.
+
+## HARD RULES for authoring/editing SVG (must follow, do not skip)
+
+These four rules are why authored SVGs come out beautiful instead of "basic." Skipping them produces the classic failures: flat tech-slop, off-message pictures, and clipped/garbled output. They apply whenever you **create or substantially edit** an SVG (not to a quick optimize/embed of an existing file).
+
+1. **Write a "done-when" brief first.** Before drawing, pin **Goal / Context / Constraints / Done-when acceptance criteria**. The Done-when list *becomes the rubric you score against* at the end. (This complements the **visual-planning** gate above — planning picks the style/message; this turns it into a checkable spec.)
+2. **Complex/structural scene → generate it scene-graph-first; don't hand-write coordinates.** If the asset has coordinate math (isometric/projection/arcs), repeated motifs, or **~30+ elements**, author a **JSON scene graph + a deterministic renderer** ([references/generative-svg.md](references/generative-svg.md)) — never eyeball raw polygon coordinates. Hand-written raw SVG is for small/standalone subjects only (icons, single marks, ≤~30 elements). For **data** charts/maps, don't even write a renderer — defer to **graph-generation** (D3 / Observable Plot / Vega-Lite).
+3. **Informative SVG must be accessible by construction.** Emit `role="img"` + `<title>` (+ `<desc>` when it conveys meaning) *as you author*, never as a cleanup afterthought. Decorative SVG gets `aria-hidden="true"`.
+4. **Never ship an unrendered SVG.** After authoring/editing, run the harness, `Read` the PNG, and **score it against the rubric** in [references/validation-and-qa.md](references/validation-and-qa.md):
+   ```bash
+   node ${CLAUDE_PLUGIN_ROOT}/skills/svg-mastery/scripts/render-qa.mjs <file.svg> --bg both
+   ```
+   Iterate up to **5 passes**; **accept a revision only if it strictly improves** the score; ship only when the rubric passes (no clipping/occlusion, clear focal point, no flat-SVG tells, a11y present). Generated SVG? Fix the **renderer/spec** and regenerate — never hand-patch the output.
+
+**Decision in one line:** small/standalone subject → hand-write raw SVG · complex/structural/repeated → scene-graph + renderer ([generative-svg.md](references/generative-svg.md)) · data chart/diagram/map → **graph-generation** · pre-made UI icon → **icon-library** · photographic/painterly → **image-generation / image-sourcing**.
+
+## Where svg-mastery sits
+
+svg-mastery is a **downstream engine** in the media toolkit. The **`visual-planning`** gate decides *what* each asset should be and routes it; svg-mastery handles two jobs once an asset lands on it:
+
+```
+visual-planning  (the gate — decides the JOB → engine)
+   ├─ explain / structure / data / numbers / map  → graph-generation (D3 · Mermaid · Draw.io)
+   ├─ pre-made UI icon                            → icon-library (Lucide · Heroicons · Tabler)
+   ├─ pure-tone raster decoration                 → image-generation / image-sourcing
+   └─ hand-tuned / animated / custom VECTOR,      → svg-mastery   ◄── (a) AUTHOR it
+        or a composed layout no pattern covers
+                                                       │
+   ANY SVG from any engine above ─────────────────────┘ ──► svg-mastery (b) OPTIMIZE · VALIDATE · ANIMATE · EMBED · QA
+```
+
+**svg-mastery never decides whether something should be a chart/diagram/icon** — that's the gate. It defers:
+- Charts, diagrams, flowcharts, maps, standard infographic archetypes → **graph-generation**.
+- Pre-made UI icons → **icon-library** (it can *tune/animate* a fetched icon, but never hand-draws standard ones).
+- Raster/photographic decoration → **image-generation / image-sourcing**.
+
+What it *owns*: hand-authored vector (illustration, isometric, logos/marks, patterns, typographic SVG, custom composed layouts) **and** the universal engineering/QA layer for every SVG, whoever produced it.
 
 ## When to Use
 
@@ -29,14 +69,53 @@ Comprehensive reference for working with SVGs correctly — from optimization to
 - User is integrating SVGs into React/Next.js/Vite components
 - User wants SVG filters, gradients, clip-paths, or masks
 - User needs to create or manipulate SVGs programmatically
-- User has SVGs from **icon-library** and needs to optimize/embed/animate them
-- User extracted SVGs from **graph-generation** and needs post-processing
+- User wants to **hand-author** vector art, an isometric scene, a custom logo/mark, a pattern/background, or typographic SVG
+- User needs to **validate, debug, or QA** an SVG ("why is it blank/clipped?", "render it to check it looks right")
+- User has SVGs from **icon-library** and needs to optimize/embed/animate/tune them
+- User extracted SVGs from **graph-generation** and needs post-processing or validation
 
 ## When NOT to Use
 
-- User wants pre-made icons → use **icon-library** skill
-- User wants to generate charts/diagrams → use **graph-generation** skill
-- User wants to generate raster images → use **image-generation** skill
+- User wants pre-made UI icons → use **icon-library** skill (don't hand-draw standard icons here)
+- User wants to generate charts, diagrams, flowcharts, maps, or standard infographic archetypes → use **graph-generation** skill
+- User wants to generate raster / photographic images → use **image-generation** / **image-sourcing**
+- User hasn't decided *what kind* of asset this should be → go through the **visual-planning** gate first
+
+---
+
+## Verify before you ship (the no-bugs rule)
+
+**An SVG is not done until you've rendered it and looked at it.** Markup can be perfectly well-formed and still be the wrong picture — off-canvas shapes, invisible white-on-white fills, ID collisions, broken clips. No schema catches that (SVG 2 has no schema at all; SVG 1.1's DTD can't check coordinates or path grammar). The only reliable guarantee is the **render-and-inspect loop**:
+
+```
+emit/edit  →  render-qa.mjs <file> --bg both   (xmllint + rasterize @2×; auto-uses Chrome for CSS/fonts)
+           →  Read the PNG and SCORE it against the rubric
+           →  fix (the renderer/spec, if generated), repeat — max 5 passes, accept only improvements
+```
+
+This is **HARD RULE 4** above. The harness bundles the mechanical steps:
+
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/skills/svg-mastery/scripts/render-qa.mjs <file.svg> --bg both [--svgo]
+```
+
+Run it whenever you author or substantially edit an SVG. Full pipeline, the scored rubric, and the loop contract: [references/validation-and-qa.md](references/validation-and-qa.md). Common bugs and their fixes: [references/bug-catalog.md](references/bug-catalog.md).
+
+## Authoring by visual type
+
+When you're *creating* a vector asset, open the matching playbook (each loads only when needed and states what to route elsewhere):
+
+| Asset | Playbook |
+|-------|----------|
+| **Complex scene — coord math, repeated motifs, ~30+ elements** (read FIRST) | [references/generative-svg.md](references/generative-svg.md) |
+| Flat / vector illustration, blobs, scenes, hero art | [references/art-illustration.md](references/art-illustration.md) |
+| Isometric / axonometric 3D-look scenes | [references/isometric.md](references/isometric.md) |
+| Custom logo-mark, wordmark, badge, animated mark | [references/logos-marks.md](references/logos-marks.md) |
+| Patterns, seamless tiles, gradient/mesh backgrounds, texture | [references/patterns-backgrounds.md](references/patterns-backgrounds.md) |
+| Display type, text on a path, knock-out/gradient text | [references/typography-text.md](references/typography-text.md) |
+| Composed layout *no graph-generation pattern covers* (stat panels, flows) | [references/custom-layouts.md](references/custom-layouts.md) |
+
+The engineering layer applies to *all* of them: [generative-svg](references/generative-svg.md) · [validation-and-qa](references/validation-and-qa.md) · [bug-catalog](references/bug-catalog.md) · [path-geometry](references/path-geometry.md) · [toolchain-scripts](references/toolchain-scripts.md) · [optimization](references/optimization.md) · [animation-recipes](references/animation-recipes.md) · [filters-and-effects](references/filters-and-effects.md) · [react-integration](references/react-integration.md).
 
 ---
 
@@ -465,3 +544,14 @@ const svgMarkup = document.querySelector('svg').outerHTML;
 - For icons, `viewBox="0 0 24 24"` with `stroke-width="2"` is the industry standard
 - Sanitize SVGs from untrusted sources — SVGs can contain `<script>`, `<foreignObject>`, and event handlers
 - Test SVGs in both light and dark contexts
+- **Render and inspect before shipping** — well-formed ≠ correct ([references/validation-and-qa.md](references/validation-and-qa.md))
+
+---
+
+## Related skills
+
+- **visual-planning** — the pre-generation gate; decides whether an asset is a vector (here), a chart/diagram (graph-generation), an icon (icon-library), or raster (image-generation). Start there for anything new.
+- **graph-generation** — charts (D3), diagrams/flowcharts (Mermaid/Draw.io), maps, standard infographic archetypes. Hand them back here to optimize/validate/animate/embed.
+- **icon-library** — sources pre-made UI icons; svg-mastery then optimizes/tunes/animates them.
+- **image-generation / image-sourcing** — raster/photographic decoration (not vector).
+- **visual-planning/references/infographic-design.md** — read before composing any infographic; svg-mastery's [custom-layouts.md](references/custom-layouts.md) is the fallback when no graph-generation pattern fits.
