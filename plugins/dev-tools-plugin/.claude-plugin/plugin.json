@@ -1,11 +1,12 @@
 {
   "name": "dev-tools-plugin",
-  "version": "1.2.2",
+  "version": "1.3.0",
   "description": "General developer tooling — git workflows, code hygiene, dependency management, and project documentation generation.",
   "author": {
     "name": "Lukas Kellerstein"
   },
   "keywords": [
+    "brainstorm",
     "git",
     "pr",
     "pull-request",
@@ -22,6 +23,7 @@
     "features"
   ],
   "skills": [
+    "./skills/brainstorm",
     "./skills/git-pr",
     "./skills/dead-code",
     "./skills/update-dependencies",
