@@ -62,14 +62,6 @@ End-to-end website/webapp design and implementation — from brief to working Re
 - **Commands:** /web-design
 - **MCP:** Playwright
 
-### [paperclip-plugin](plugins/paperclip-plugin) `v2.0.3`
-
-Autonomous AI company advisor for the [Paperclip](https://paperclip.ing) platform — create, design, analyze, and manage AI-powered companies with proper agent hierarchies, runtime configurations, and infrastructure following the Agent Companies spec.
-
-- **Skills:** company-creation, agent-design, project-design, company-analysis, infrastructure-planning
-- **Agents:** company-builder
-- **Commands:** /company, /company-analyze, /brainstorming
-
 ## Architecture
 
 ### Plugin Dependencies
@@ -82,7 +74,6 @@ graph TD
     dev[dev-tools-plugin]
     infra[infra-plugin]
     company[company-plugin]
-    paperclip[paperclip-plugin]
 
     style media fill:#4a9eff,color:#fff
     style design fill:#a855f7,color:#fff
@@ -91,14 +82,13 @@ graph TD
     style dev fill:#6b7280,color:#fff
     style infra fill:#6b7280,color:#fff
     style company fill:#ef4444,color:#fff
-    style paperclip fill:#f97316,color:#fff
 ```
 
 - **media-plugin** is foundational — used by design-plugin for image/video/music/speech generation, icon sourcing, and data visualizations
 - **design-plugin** provides creative direction — used by web-design-plugin for design system auditing and styleguides
 - **web-design-plugin** uses design-plugin skills for aesthetic direction, styleguides, and design review
 - **office-plugin** is used by design-plugin for PPTX image dimension references
-- **dev-tools-plugin**, **infra-plugin**, **company-plugin**, and **paperclip-plugin** are standalone with no cross-plugin dependencies
+- **dev-tools-plugin**, **infra-plugin**, and **company-plugin** are standalone with no cross-plugin dependencies
 
 ### Commands
 
@@ -107,9 +97,6 @@ graph TD
 | design-plugin | `/design` | Design direction workflow |
 | media-plugin | `/media-generate` | Generate a media asset with guided prompts |
 | media-plugin | `/media-assets` | List and manage generated media assets |
-| paperclip-plugin | `/company` | Create an AI company |
-| paperclip-plugin | `/company-analyze` | Analyze an existing AI company |
-| paperclip-plugin | `/brainstorming` | Brainstorm AI company ideas |
 | web-design-plugin | `/web-design` | End-to-end website design workflow |
 
 ### MCP Server Integrations
@@ -149,7 +136,6 @@ Once the marketplace is added, install individual plugins:
 /plugin install company-plugin@claude-my-marketplace
 /plugin install infra-plugin@claude-my-marketplace
 /plugin install media-plugin@claude-my-marketplace
-/plugin install paperclip-plugin@claude-my-marketplace
 /plugin install design-plugin@claude-my-marketplace
 /plugin install web-design-plugin@claude-my-marketplace
 ```
@@ -228,6 +214,15 @@ setx ZASILKOVNA_API_KEY "your-zasilkovna-api-key"
 ```
 
 Then restart your terminal for changes to take effect.
+
+## Archive
+
+`_archive/` holds retired plugins that are kept for reference but are **not** published by the marketplace — they are not listed in `.claude-plugin/marketplace.json` and cannot be installed.
+
+- `_archive/paperclip-plugin` — AI company advisor for the [Paperclip](https://paperclip.ing) platform (last published `v2.0.3`)
+- `_archive/company.md` — design spec for the above
+
+To bring one back, move it into `plugins/` and re-add its entry to `.claude-plugin/marketplace.json`.
 
 ## Author
 
