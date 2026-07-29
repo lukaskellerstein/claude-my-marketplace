@@ -1,0 +1,48 @@
+{
+  "description": "demo-video-plugin hooks. Each one prevents a specific expensive failure: clips are transcoded to constant-frame-rate mp4 and measured the moment recording stops; voiceover is measured as soon as it is generated; the storyboard and timeline are validated on every write; a session preflight reports missing tooling before a demo run starts (silent unless a demo/ directory exists).",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/preflight.mjs\"",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "mcp__demo-playwright__browser_stop_video",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/postprocess-clip.mjs\"",
+            "timeout": 300
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__demo-elevenlabs__text_to_speech",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/probe-audio.mjs\"",
+            "timeout": 60
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/validate-artifacts.mjs\"",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}
