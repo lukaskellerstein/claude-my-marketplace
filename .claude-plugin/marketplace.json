@@ -1,6 +1,6 @@
 {
   "name": "claude-my-marketplace",
-  "version": "1.6.0",
+  "version": "1.8.0",
   "description": "A marketplace for Claude Code plugins focused on ME",
   "owner": {
     "name": "Lukas Kellerstein",
@@ -34,6 +34,10 @@
     {
       "name": "web-design-plugin",
       "source": "./plugins/web-design-plugin"
+    },
+    {
+      "name": "demo-video-plugin",
+      "source": "./plugins/demo-video-plugin"
     }
   ]
 }

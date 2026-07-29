@@ -1,0 +1,54 @@
+{
+  "name": "demo-video-plugin",
+  "version": "1.0.1",
+  "description": "Turns a project repo into a narrated, edited demo video. Reads the codebase, writes a storyboard with real narrative value, prepares deterministic demo state, drives the UI with Playwright (web + Electron) recording one clip per section, generates ElevenLabs voiceover, reconciles measured durations into a timeline, and renders the final cut with Remotion.",
+  "author": {
+    "name": "Lukas Kellerstein"
+  },
+  "keywords": [
+    "demo",
+    "demo-video",
+    "screencast",
+    "product-demo",
+    "storyboard",
+    "voiceover",
+    "narration",
+    "elevenlabs",
+    "tts",
+    "playwright",
+    "screen-recording",
+    "electron",
+    "remotion",
+    "video-editing",
+    "ffmpeg",
+    "release-notes",
+    "walkthrough"
+  ],
+  "mcpServers": {
+    "demo-playwright": {
+      "command": "npx",
+      "args": [
+        "@playwright/mcp@latest",
+        "--caps=devtools,vision,network,storage,testing",
+        "--headless",
+        "--isolated",
+        "--viewport-size=1600x900",
+        "--output-dir=./demo/capture",
+        "--init-script=${CLAUDE_PLUGIN_ROOT}/assets/cursor-overlay.js"
+      ],
+      "description": "Drives the app UI and records one video clip per demo section. --caps=devtools is REQUIRED for the browser_start_video / browser_stop_video / browser_video_chapter tools; network/storage/testing enable route blocking, auth injection, and state verification."
+    },
+    "demo-elevenlabs": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "elevenlabs-mcp"
+      ],
+      "env": {
+        "ELEVENLABS_API_KEY": "${ELEVENLABS_API_KEY}",
+        "ELEVENLABS_MCP_OUTPUT_MODE": "files"
+      },
+      "description": "Voiceover generation, voice search, and optional music beds via ElevenLabs"
+    }
+  }
+}
