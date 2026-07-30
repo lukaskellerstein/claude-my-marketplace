@@ -1,0 +1,19 @@
+{
+  "name": "lsp-go",
+  "version": "1.0.0",
+  "description": "Go code intelligence for Claude Code via gopls — go to definition, find references, hover types. Opt-in per session with `claude --plugin-dir` so no LSP process runs unless a session asks for it.",
+  "author": {
+    "name": "Lukas Kellerstein"
+  },
+  "keywords": [
+    "lsp",
+    "go",
+    "golang",
+    "gopls",
+    "language-server",
+    "code-intelligence",
+    "navigation",
+    "go-to-definition",
+    "find-references"
+  ]
+}

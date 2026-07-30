@@ -1,0 +1,19 @@
+{
+  "name": "lsp-python",
+  "version": "1.0.0",
+  "description": "Python code intelligence for Claude Code via basedpyright — go to definition, find references, hover types. Opt-in per session with `claude --plugin-dir` so no LSP process runs unless a session asks for it.",
+  "author": {
+    "name": "Lukas Kellerstein"
+  },
+  "keywords": [
+    "lsp",
+    "python",
+    "basedpyright",
+    "pyright",
+    "language-server",
+    "code-intelligence",
+    "navigation",
+    "go-to-definition",
+    "find-references"
+  ]
+}
