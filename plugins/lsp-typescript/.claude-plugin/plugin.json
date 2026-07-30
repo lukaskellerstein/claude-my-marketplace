@@ -1,0 +1,20 @@
+{
+  "name": "lsp-typescript",
+  "version": "1.0.0",
+  "description": "TypeScript/JavaScript code intelligence for Claude Code via vtsls — go to definition, find references, hover types. Opt-in per session with `claude --plugin-dir` so the ~0.85 GB TypeScript server never starts unless a session asks for it.",
+  "author": {
+    "name": "Lukas Kellerstein"
+  },
+  "keywords": [
+    "lsp",
+    "typescript",
+    "javascript",
+    "vtsls",
+    "tsserver",
+    "language-server",
+    "code-intelligence",
+    "navigation",
+    "go-to-definition",
+    "find-references"
+  ]
+}
