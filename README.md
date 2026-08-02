@@ -14,7 +14,7 @@ This marketplace bundles **11 plugins** contributing **45 skills**, **19 agents*
 - **Design → code, end to end** — creative direction, styleguides and design systems (`design-plugin`) feeding a parallel per-page React/Vite build with visual testing (`web-design-plugin`)
 - **Media generation** — images, video, music, speech, icons, charts and diagrams behind a single visual-planning gate (`media-plugin`)
 - **Automated demo videos** — repo → storyboard → recorded UI take → voiceover → rendered cut (`demo-video-plugin`)
-- **Developer workflow** — autonomous multi-repo PR flow, dead-code sweeps, dependency upgrades, docs and README generation (`dev-tools-plugin`)
+- **Developer workflow** — read-only thinking and Q&A, autonomous multi-repo PR flow, dead-code sweeps, dependency upgrades, docs and README generation (`dev-tools-plugin`)
 - **Infrastructure** — Kubernetes/GKE, Istio, Helm, Terraform, Traefik and Keycloak/OAuth2-proxy auth (`infra-plugin`)
 - **Office documents** — PowerPoint, Word and Excel generation (`office-plugin`)
 - **Business operations** — Zásilkovna shipping and Stripe payments (`company-plugin`)
@@ -26,7 +26,7 @@ This marketplace bundles **11 plugins** contributing **45 skills**, **19 agents*
 |---|---|---|---|---|
 | [media-plugin](plugins/media-plugin) | `v1.15.0` | Image, video, music, speech, icon and data-viz generation | 10 | 1 |
 | [web-design-plugin](plugins/web-design-plugin) | `v1.5.11` | Brief → working React/Vite site | 4 | 11 |
-| [dev-tools-plugin](plugins/dev-tools-plugin) | `v1.3.0` | Git, code hygiene, deps, docs | 8 | 2 |
+| [dev-tools-plugin](plugins/dev-tools-plugin) | `v1.4.0` | Thinking/Q&A, git, code hygiene, deps, docs | 9 | 2 |
 | [demo-video-plugin](plugins/demo-video-plugin) | `v1.0.1` | Repo → narrated demo video | 8 | 4 |
 | [infra-plugin](plugins/infra-plugin) | `v1.1.0` | K8s, Istio, Helm, Terraform, auth | 6 | — |
 | [design-plugin](plugins/design-plugin) | `v1.2.0` | Creative direction and design review | 4 | 1 |
@@ -54,12 +54,15 @@ End-to-end website/webapp design and implementation — from brief to working Re
 - **Commands:** `/web-design`
 - **MCP:** Playwright
 
-### [dev-tools-plugin](plugins/dev-tools-plugin) `v1.3.0`
+### [dev-tools-plugin](plugins/dev-tools-plugin) `v1.4.0`
 
 General developer tooling — git workflows, code hygiene, dependency management, spec-kit synchronization and project documentation generation. `git-pr` runs the whole commit → PR → squash-merge → back-to-main round trip across every repo in a folder, autonomously.
 
-- **Skills:** brainstorm, git-pr, dead-code, update-dependencies, sync-spec-kit, update-docs, update-feature-docs, update-readme
+Two read-only skills sit apart from the rest and are **invoked by you only** — never auto-selected, so they cost no tokens until you type them. `/brainstorm` is for when there's a decision to make: options, trade-offs, a recommendation. `/question` is for when there's a fact to find: it investigates the current state and answers with citations, and it never writes anything.
+
+- **Skills:** brainstorm, question, git-pr, dead-code, update-dependencies, sync-spec-kit, update-docs, update-feature-docs, update-readme
 - **Agents:** dead-code-analyzer, sync-spec-kit-agent
+- **Commands:** `/brainstorm`, `/question` (user-invoked skills)
 
 ### [demo-video-plugin](plugins/demo-video-plugin) `v1.0.1`
 
