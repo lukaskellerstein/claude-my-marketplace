@@ -1,6 +1,7 @@
 ---
 name: dead-code
 description: Identify unused code (functions, imports, exports, variables, types, classes) and propose cleanup. Use this skill when the user says "find dead code", "unused code", "clean up unused", "code hygiene", "find unused imports", "what can I delete", or any variation of wanting to identify and remove code that is no longer referenced.
+disable-model-invocation: true
 ---
 
 # dead-code Skill

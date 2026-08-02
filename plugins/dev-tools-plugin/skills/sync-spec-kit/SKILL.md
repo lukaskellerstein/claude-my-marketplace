@@ -1,6 +1,7 @@
 ---
 name: sync-spec-kit
 description: Synchronize the spec folder with the current state of implementation on a feature branch. Use this skill when the user says "sync spec", "update spec", "spec is outdated", "reflect changes in spec", "update the plan", "sync specification", "keep spec up to date", "spec drift", or any variation of wanting to reconcile implementation changes back into the spec-kit specification files (spec.md, plan.md, tasks.md, research.md, etc.).
+disable-model-invocation: true
 ---
 
 # sync-spec-kit Skill

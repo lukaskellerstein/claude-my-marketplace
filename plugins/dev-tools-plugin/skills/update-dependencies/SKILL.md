@@ -1,6 +1,7 @@
 ---
 name: update-dependencies
 description: Update project dependencies to their latest versions, verify nothing breaks, and report what changed. Use this skill when the user says "update dependencies", "upgrade packages", "latest versions", "update deps", "outdated packages", "bump dependencies", or any variation of wanting to bring project dependencies up to date.
+disable-model-invocation: true
 ---
 
 # update-dependencies Skill

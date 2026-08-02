@@ -27,6 +27,7 @@ description: >
   Context: User specifies a base branch
   user: "/update-feature-docs develop"
   </example>
+disable-model-invocation: true
 ---
 
 # Update Feature Documentation

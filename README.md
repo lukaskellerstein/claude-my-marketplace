@@ -2,12 +2,12 @@
 
 [![GitHub](https://img.shields.io/github/stars/lukaskellerstein/claude-my-marketplace?style=flat&logo=github)](https://github.com/lukaskellerstein/claude-my-marketplace)
 [![Plugins](https://img.shields.io/badge/plugins-11-blue?logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0id2hpdGUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE0IiBoZWlnaHQ9IjE0IiByeD0iMiIvPjwvc3ZnPg==)](plugins/)
-[![Skills](https://img.shields.io/badge/skills-45-8a2be2)](plugins/)
+[![Skills](https://img.shields.io/badge/skills-46-8a2be2)](plugins/)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-orange?logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0id2hpdGUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMTAiIGN5PSIxMCIgcj0iOCIvPjwvc3ZnPg==)](https://code.claude.com/docs)
 
 > A curated collection of [Claude Code](https://code.claude.com/docs) plugins for design, development, documentation, media generation, video production, and infrastructure management.
 
-This marketplace bundles **11 plugins** contributing **45 skills**, **19 agents**, **4 commands**, **9 MCP servers**, and **3 LSP servers** — capabilities spanning the software development lifecycle from design direction through implementation, documentation, deployment, and demo video production.
+This marketplace bundles **11 plugins** contributing **46 skills**, **19 agents**, **4 commands**, **9 MCP servers**, and **3 LSP servers** — capabilities spanning the software development lifecycle from design direction through implementation, documentation, deployment, and demo video production.
 
 ## Features
 
@@ -26,7 +26,7 @@ This marketplace bundles **11 plugins** contributing **45 skills**, **19 agents*
 |---|---|---|---|---|
 | [media-plugin](plugins/media-plugin) | `v1.15.0` | Image, video, music, speech, icon and data-viz generation | 10 | 1 |
 | [web-design-plugin](plugins/web-design-plugin) | `v1.5.11` | Brief → working React/Vite site | 4 | 11 |
-| [dev-tools-plugin](plugins/dev-tools-plugin) | `v1.4.0` | Thinking/Q&A, git, code hygiene, deps, docs | 9 | 2 |
+| [dev-tools-plugin](plugins/dev-tools-plugin) | `v1.5.0` | Thinking/Q&A, git, code hygiene, deps, docs — all user-invoked | 9 | 2 |
 | [demo-video-plugin](plugins/demo-video-plugin) | `v1.0.1` | Repo → narrated demo video | 8 | 4 |
 | [infra-plugin](plugins/infra-plugin) | `v1.1.0` | K8s, Istio, Helm, Terraform, auth | 6 | — |
 | [design-plugin](plugins/design-plugin) | `v1.2.0` | Creative direction and design review | 4 | 1 |
@@ -54,15 +54,14 @@ End-to-end website/webapp design and implementation — from brief to working Re
 - **Commands:** `/web-design`
 - **MCP:** Playwright
 
-### [dev-tools-plugin](plugins/dev-tools-plugin) `v1.4.0`
+### [dev-tools-plugin](plugins/dev-tools-plugin) `v1.5.0`
 
 General developer tooling — git workflows, code hygiene, dependency management, spec-kit synchronization and project documentation generation. `git-pr` runs the whole commit → PR → squash-merge → back-to-main round trip across every repo in a folder, autonomously.
 
-Two read-only skills sit apart from the rest and are **invoked by you only** — never auto-selected, so they cost no tokens until you type them. `/brainstorm` is for when there's a decision to make: options, trade-offs, a recommendation. `/question` is for when there's a fact to find: it investigates the current state and answers with citations, and it never writes anything.
+Every skill here is **invoked by you only** — none is ever auto-selected, so none costs context until you type it. That is deliberate: these skills commit and merge, rewrite lockfiles, and regenerate whole doc trees, and when that happens should be your call, not an inference. `/brainstorm` is for when there's a decision to make: options, trade-offs, a recommendation. `/question` is for when there's a fact to find: it investigates the current state, answers with citations, and never writes anything.
 
-- **Skills:** brainstorm, question, git-pr, dead-code, update-dependencies, sync-spec-kit, update-docs, update-feature-docs, update-readme
+- **Skills (all user-invoked):** brainstorm, question, git-pr, dead-code, update-dependencies, sync-spec-kit, update-docs, update-feature-docs, update-readme
 - **Agents:** dead-code-analyzer, sync-spec-kit-agent
-- **Commands:** `/brainstorm`, `/question` (user-invoked skills)
 
 ### [demo-video-plugin](plugins/demo-video-plugin) `v1.0.1`
 
@@ -153,7 +152,9 @@ graph TD
 | media-plugin | `/media-assets` | List and manage generated media assets |
 | web-design-plugin | `/web-design` | End-to-end website design workflow |
 
-Every skill is also directly invocable as `/<skill-name>` — e.g. `/git-pr`, `/styleguide`, `/demo-video`.
+Every skill is also directly invocable as `/<skill-name>` — e.g. `/styleguide`, `/demo-video`.
+
+The nine `dev-tools-plugin` skills are invocable **only** that way. They set `disable-model-invocation: true`, so Claude never selects them on its own and their descriptions cost no context: `/git-pr` merges when you say so, not when your work looks finished.
 
 ### MCP server integrations
 
