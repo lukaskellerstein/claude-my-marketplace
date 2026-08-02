@@ -30,6 +30,7 @@ description: >
   Context: User wants comprehensive documentation
   user: "document this entire codebase"
   </example>
+disable-model-invocation: true
 ---
 
 # Create or Update Project Documentation

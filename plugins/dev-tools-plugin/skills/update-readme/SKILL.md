@@ -1,6 +1,7 @@
 ---
 name: update-readme
 description: Create or update a professional root-level README.md for a repository. Use when creating a README, updating a README, generating a README, improving a README, making a professional README, crafting an open-source README, or adding badges, diagrams, and quick-start sections to a project's main README file.
+disable-model-invocation: true
 ---
 
 # README Generation & Maintenance
@@ -15,9 +16,11 @@ Guide for creating and maintaining professional, comprehensive root-level `READM
 
 ## When NOT to Use
 
-- For `docs/` folder structure and internal documentation → use `update-docs`
-- For feature-specific documentation → use `update-docs`
-- For architecture decision records → use `update-docs`
+- For `docs/` folder structure and internal documentation → tell the user to run `/update-docs`
+- For feature-specific documentation → tell the user to run `/update-feature-docs`
+- For architecture decision records → tell the user to run `/update-docs`
+
+Those are user-invoked skills: you cannot load them yourself, so point the user at the command rather than attempting the work here.
 
 ## Workflow
 

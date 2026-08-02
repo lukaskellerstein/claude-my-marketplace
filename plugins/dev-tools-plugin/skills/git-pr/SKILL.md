@@ -1,6 +1,7 @@
 ---
 name: git-pr
 description: For every git repo in the current folder, create and merge a PR for feature-branch work, then return to the default branch and pull. With no arguments this runs fully autonomously across ALL sub-repos — commit → push → PR → squash-merge → checkout main → pull. Use whenever the user asks to commit, ship, push, open/merge a PR, "update all repos", "get back to main", or any variant of saving work to a PR and bringing branches up to date — even if they mention only one part of the flow.
+disable-model-invocation: true
 ---
 
 # git-pr Skill

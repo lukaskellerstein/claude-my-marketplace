@@ -3,7 +3,8 @@ name: question
 description: Answer a question about how things are right now — this codebase, its history, its behavior, a library, an error. Investigates and answers with evidence. Changes nothing, ever.
 disable-model-invocation: true
 argument-hint: "<what you want to know>"
-allowed-tools: ["Read", "Grep", "Glob", "WebSearch", "WebFetch", "Agent", "AskUserQuestion", "Bash(git status:*)", "Bash(git log:*)", "Bash(git diff:*)", "Bash(git show:*)", "Bash(git blame:*)", "Bash(git branch:*)", "Bash(rg:*)", "Bash(ls:*)", "Bash(cat:*)", "Bash(head:*)", "Bash(tail:*)", "Bash(find:*)", "Bash(wc:*)"]
+disallowed-tools: ["Write", "Edit", "NotebookEdit"]
+allowed-tools: ["Read", "Grep", "Glob", "WebSearch", "WebFetch", "Agent", "AskUserQuestion", "Bash(git status:*)", "Bash(git log:*)", "Bash(git diff:*)", "Bash(git show:*)", "Bash(git blame:*)", "Bash(git branch --show-current)", "Bash(rg:*)", "Bash(ls:*)", "Bash(wc:*)"]
 ---
 
 # question Skill
@@ -23,7 +24,9 @@ Unlike `/brainstorm`, this skill has **no escape hatch**. There is no phrasing, 
 
 **If the user asks you to save the answer to a file:** answer the question first, then say you don't write files inside `/question`, and ask whether they want it written. Wait. If they confirm, the write is ordinary work that happens *after* the answer is delivered — name the exact path back to them before doing it. Never write on the strength of the original request alone.
 
-Subagents inherit this rule. Read-only agent types (`Explore`) only.
+`Write`, `Edit` and `NotebookEdit` are removed from your tool pool by this skill's `disallowed-tools`, so the rule holds mechanically, not just on trust.
+
+Subagents are the one place it does not. A subagent does not read this file and does not inherit the tool restriction — the agent *type* is the enforcement. Spawn read-only types (`Explore`) only, never `general-purpose`.
 
 ## How to answer
 

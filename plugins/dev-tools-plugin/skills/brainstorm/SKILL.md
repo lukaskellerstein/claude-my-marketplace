@@ -3,7 +3,7 @@ name: brainstorm
 description: Think a decision through — explore an idea, compare approaches, sketch a design, plan a change, research feasibility or prior art. A read-only thinking partner that ends in a recommendation, not an edit.
 disable-model-invocation: true
 argument-hint: "<idea, problem, or decision to think through>"
-allowed-tools: ["Read", "Grep", "Glob", "WebSearch", "WebFetch", "Agent", "AskUserQuestion", "Write", "Edit", "Bash(git status:*)", "Bash(git log:*)", "Bash(git diff:*)", "Bash(git show:*)", "Bash(git blame:*)", "Bash(git branch:*)", "Bash(rg:*)", "Bash(ls:*)", "Bash(cat:*)", "Bash(head:*)", "Bash(tail:*)", "Bash(find:*)", "Bash(wc:*)"]
+allowed-tools: ["Read", "Grep", "Glob", "WebSearch", "WebFetch", "Agent", "AskUserQuestion", "Bash(git status:*)", "Bash(git log:*)", "Bash(git diff:*)", "Bash(git show:*)", "Bash(git blame:*)", "Bash(git branch --show-current)", "Bash(rg:*)", "Bash(ls:*)", "Bash(wc:*)"]
 ---
 
 # brainstorm Skill
@@ -33,6 +33,8 @@ Before writing, in the same message:
 3. Ask, and wait for an explicit yes.
 
 Then write only that file, only the content the brainstorm produced. No scope creep, no other files, no "while I was in there."
+
+`Write` and `Edit` are deliberately kept out of this skill's `allowed-tools`, so a write also surfaces a permission prompt. That prompt is a feature — do not treat it as friction to route around, and do not add those tools to the grant list.
 
 Two things this never covers:
 
