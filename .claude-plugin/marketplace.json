@@ -1,6 +1,6 @@
 {
   "name": "claude-my-marketplace",
-  "version": "1.11.0",
+  "version": "1.12.0",
   "description": "A marketplace for Claude Code plugins focused on ME",
   "owner": {
     "name": "Lukas Kellerstein",
@@ -41,15 +41,76 @@
     },
     {
       "name": "lsp-python",
-      "source": "./plugins/lsp-python"
+      "description": "Python code intelligence via basedpyright, pointing at the machine-wide binary",
+      "version": "1.0.0",
+      "source": "./plugins/lsp-python",
+      "category": "development",
+      "strict": false,
+      "lspServers": {
+        "basedpyright": {
+          "command": "basedpyright-langserver",
+          "args": ["--stdio"],
+          "extensionToLanguage": {
+            ".py": "python",
+            ".pyi": "python"
+          }
+        }
+      }
     },
     {
       "name": "lsp-typescript",
-      "source": "./plugins/lsp-typescript"
+      "description": "TypeScript/JavaScript code intelligence via vtsls, pointing at the machine-wide binary",
+      "version": "1.0.0",
+      "source": "./plugins/lsp-typescript",
+      "category": "development",
+      "strict": false,
+      "lspServers": {
+        "vtsls": {
+          "command": "vtsls",
+          "args": ["--stdio"],
+          "extensionToLanguage": {
+            ".ts": "typescript",
+            ".tsx": "typescriptreact",
+            ".js": "javascript",
+            ".jsx": "javascriptreact"
+          }
+        }
+      }
     },
     {
       "name": "lsp-go",
-      "source": "./plugins/lsp-go"
+      "description": "Go code intelligence via gopls, pointing at the machine-wide binary",
+      "version": "1.0.0",
+      "source": "./plugins/lsp-go",
+      "category": "development",
+      "strict": false,
+      "lspServers": {
+        "gopls": {
+          "command": "gopls",
+          "extensionToLanguage": {
+            ".go": "go"
+          }
+        }
+      }
+    },
+    {
+      "name": "lsp-bash",
+      "description": "Shell script code intelligence via bash-language-server, pointing at the machine-wide binary",
+      "version": "1.0.0",
+      "source": "./plugins/lsp-bash",
+      "category": "development",
+      "strict": false,
+      "lspServers": {
+        "bash-language-server": {
+          "command": "bash-language-server",
+          "args": ["start"],
+          "extensionToLanguage": {
+            ".sh": "shellscript",
+            ".bash": "shellscript",
+            ".zsh": "shellscript"
+          }
+        }
+      }
     }
   ]
 }

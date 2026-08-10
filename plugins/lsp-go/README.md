@@ -51,3 +51,4 @@ automatically, so the manifest carries metadata only.
 
 - `lsp-python` — basedpyright, for `.py`/`.pyi`
 - `lsp-typescript` — vtsls, for `.ts`/`.tsx`/`.js`/`.jsx`
+- `lsp-bash` — bash-language-server, for `.sh`/`.bash`/`.zsh`
