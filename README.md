@@ -1,13 +1,13 @@
 # claude-my-marketplace
 
 [![GitHub](https://img.shields.io/github/stars/lukaskellerstein/claude-my-marketplace?style=flat&logo=github)](https://github.com/lukaskellerstein/claude-my-marketplace)
-[![Plugins](https://img.shields.io/badge/plugins-11-blue?logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0id2hpdGUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE0IiBoZWlnaHQ9IjE0IiByeD0iMiIvPjwvc3ZnPg==)](plugins/)
+[![Plugins](https://img.shields.io/badge/plugins-12-blue?logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0id2hpdGUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE0IiBoZWlnaHQ9IjE0IiByeD0iMiIvPjwvc3ZnPg==)](plugins/)
 [![Skills](https://img.shields.io/badge/skills-46-8a2be2)](plugins/)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-orange?logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0id2hpdGUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMTAiIGN5PSIxMCIgcj0iOCIvPjwvc3ZnPg==)](https://code.claude.com/docs)
 
 > A curated collection of [Claude Code](https://code.claude.com/docs) plugins for design, development, documentation, media generation, video production, and infrastructure management.
 
-This marketplace bundles **11 plugins** contributing **46 skills**, **19 agents**, **4 commands**, **9 MCP servers**, and **3 LSP servers** — capabilities spanning the software development lifecycle from design direction through implementation, documentation, deployment, and demo video production.
+This marketplace bundles **12 plugins** contributing **46 skills**, **19 agents**, **4 commands**, **9 MCP servers**, and **4 LSP servers** — capabilities spanning the software development lifecycle from design direction through implementation, documentation, deployment, and demo video production.
 
 ## Features
 
@@ -18,7 +18,7 @@ This marketplace bundles **11 plugins** contributing **46 skills**, **19 agents*
 - **Infrastructure** — Kubernetes/GKE, Istio, Helm, Terraform, Traefik and Keycloak/OAuth2-proxy auth (`infra-plugin`)
 - **Office documents** — PowerPoint, Word and Excel generation (`office-plugin`)
 - **Business operations** — Zásilkovna shipping and Stripe payments (`company-plugin`)
-- **Opt-in code intelligence** — per-language LSP navigation loaded per session, never globally (`lsp-python`, `lsp-typescript`, `lsp-go`)
+- **Opt-in code intelligence** — per-language LSP navigation loaded per session, never globally (`lsp-python`, `lsp-typescript`, `lsp-go`, `lsp-bash`)
 
 ## Plugins
 
@@ -35,6 +35,7 @@ This marketplace bundles **11 plugins** contributing **46 skills**, **19 agents*
 | [lsp-python](plugins/lsp-python) | `v1.0.0` | Python navigation via basedpyright | — | — |
 | [lsp-typescript](plugins/lsp-typescript) | `v1.0.0` | TS/JS navigation via vtsls | — | — |
 | [lsp-go](plugins/lsp-go) | `v1.0.0` | Go navigation via gopls | — | — |
+| [lsp-bash](plugins/lsp-bash) | `v1.0.0` | Shell navigation via bash-language-server | — | — |
 
 ### [media-plugin](plugins/media-plugin) `v1.15.0`
 
@@ -101,13 +102,16 @@ Business operations toolkit — shipping logistics via Zásilkovna (Packeta) and
 
 ### LSP plugins
 
-[lsp-python](plugins/lsp-python), [lsp-typescript](plugins/lsp-typescript), [lsp-go](plugins/lsp-go) — all `v1.0.0`. Manifest-only plugins giving Claude real code navigation — go to definition, find references, hover types — one plugin per language.
+[lsp-python](plugins/lsp-python), [lsp-typescript](plugins/lsp-typescript), [lsp-go](plugins/lsp-go), [lsp-bash](plugins/lsp-bash) — all `v1.0.0`. Manifest-only plugins giving Claude real code navigation — go to definition, find references, hover types — one plugin per language.
 
 | Plugin | Server | Extensions | Requires on `PATH` |
 |---|---|---|---|
 | lsp-python | basedpyright | `.py`, `.pyi` | `uv tool install basedpyright` |
 | lsp-typescript | vtsls | `.ts`, `.tsx`, `.js`, `.jsx` | `npm i -g @vtsls/language-server` |
 | lsp-go | gopls | `.go` | `go install golang.org/x/tools/gopls@latest` |
+| lsp-bash | bash-language-server | `.sh`, `.bash`, `.zsh` | `npm i -g bash-language-server` |
+
+`lsp-bash` backs **five** of the nine LSP operations, not nine — `goToDefinition`, `findReferences`, `hover`, `documentSymbol`, `workspaceSymbol` (measured from bash-language-server v5.6.0's `initialize` response). It advertises no `implementationProvider` or `callHierarchyProvider`, so `goToImplementation` and the call-hierarchy calls return empty. It pays off navigating large shell trees where functions are `source`d across files, not as a bug-catcher — shellcheck diagnostics are unreachable through the LSP tool.
 
 > [!IMPORTANT]
 > **Do not `/plugin install` these.** They are meant to be loaded **per session**, not enabled globally — see [Using the LSP plugins](#using-the-lsp-plugins).
@@ -125,7 +129,7 @@ graph TD
     demo[demo-video-plugin]
     infra[infra-plugin]
     company[company-plugin]
-    lsp["lsp-python · lsp-typescript · lsp-go"]
+    lsp["lsp-python · lsp-typescript · lsp-go · lsp-bash"]
 
     style media fill:#4a9eff,color:#fff
     style design fill:#a855f7,color:#fff
@@ -177,6 +181,7 @@ The nine `dev-tools-plugin` skills are invocable **only** that way. They set `di
 | lsp-python | `basedpyright-langserver --stdio` | [`.lsp.json`](plugins/lsp-python/.lsp.json) |
 | lsp-typescript | `vtsls --stdio` | [`.lsp.json`](plugins/lsp-typescript/.lsp.json) |
 | lsp-go | `gopls` | [`.lsp.json`](plugins/lsp-go/.lsp.json) |
+| lsp-bash | `bash-language-server start` | [`.lsp.json`](plugins/lsp-bash/.lsp.json) |
 
 ## Quick Start
 
@@ -207,7 +212,7 @@ claude plugin marketplace add lukaskellerstein/claude-my-marketplace
 /plugin install company-plugin@claude-my-marketplace
 ```
 
-The three `lsp-*` plugins are deliberately **not** in this list — see below.
+The four `lsp-*` plugins are deliberately **not** in this list — see below.
 
 ### 3. Update
 

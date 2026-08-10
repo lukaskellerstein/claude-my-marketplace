@@ -1,0 +1,23 @@
+{
+  "name": "lsp-bash",
+  "version": "1.0.0",
+  "description": "Shell script code intelligence for Claude Code via bash-language-server — go to definition for functions and sourced files, find references, plus shellcheck diagnostics. Opt-in per session with `claude --plugin-dir` so no LSP process runs unless a session asks for it.",
+  "author": {
+    "name": "Lukas Kellerstein"
+  },
+  "keywords": [
+    "lsp",
+    "bash",
+    "shell",
+    "shellscript",
+    "zsh",
+    "bash-language-server",
+    "shellcheck",
+    "shfmt",
+    "language-server",
+    "code-intelligence",
+    "navigation",
+    "go-to-definition",
+    "find-references"
+  ]
+}

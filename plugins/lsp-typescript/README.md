@@ -50,3 +50,4 @@ automatically, so the manifest carries metadata only.
 
 - `lsp-python` — basedpyright, for `.py`/`.pyi`
 - `lsp-go` — gopls, for `.go`
+- `lsp-bash` — bash-language-server, for `.sh`/`.bash`/`.zsh`

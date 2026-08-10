@@ -49,3 +49,4 @@ automatically, so the manifest carries metadata only.
 
 - `lsp-typescript` — vtsls, for `.ts`/`.tsx`/`.js`/`.jsx`
 - `lsp-go` — gopls, for `.go`
+- `lsp-bash` — bash-language-server, for `.sh`/`.bash`/`.zsh`
