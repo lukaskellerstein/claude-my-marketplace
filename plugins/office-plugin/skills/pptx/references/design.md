@@ -203,7 +203,7 @@ A motif is a single visual element that repeats across your deck to create cohes
 
 ### Full-Bleed Photo Backgrounds with Dark Overlay
 
-The single most impactful technique. Use a relevant stock photo (sourced from Unsplash via the `image-sourcing` skill) as a full-bleed background, then overlay a semi-transparent dark RECTANGLE so text remains readable.
+The single most impactful technique. Use a relevant stock photo as a full-bleed background, then overlay a semi-transparent dark RECTANGLE so text remains readable.
 
 ```javascript
 const photoData = fs.readFileSync("photo.jpg");
@@ -261,7 +261,7 @@ Instead of flat solid backgrounds, layer subtle elements:
 
 PptxGenJS doesn't support native gradient fills. Two approaches:
 
-**Approach 1: Source or generate a gradient image** — use the `image-generation` skill to create a gradient background at 1920x1080, then set as slide background.
+**Approach 1: Use a gradient image** — generate or source a gradient background at 1920x1080 (see the Visuals section of SKILL.md), then set as slide background.
 
 **Approach 2: Layered OVALs** — one large, faint OVAL creates a subtle color shift:
 
@@ -306,7 +306,7 @@ slide.background = { color: "F5F5F5" };
 3. **Weak size contrast** — if your title and body look similar in size, increase the title to 36-48pt.
 4. **Defaulting to blue** — choose colors that reflect the specific topic.
 5. **Inconsistent spacing** — pick a standard gap and stick with it.
-6. **Text-only slides** — every slide should have a visual element. Source real photos from Unsplash first via `image-sourcing`; only AI-generate when no suitable stock photo is available.
+6. **Text-only slides** — every slide should have a visual element. Use real photos first; only AI-generate when no suitable photo is available. With no photos, make a stat, chart, or shape motif the visual.
 7. **Too many bullet points** — if a slide has more than 5 bullets, split it.
 8. **Low-contrast text** — test that text is legible against its background.
 9. **Accent lines under titles** — hallmark of AI-generated slides. Use white space or background color changes instead.

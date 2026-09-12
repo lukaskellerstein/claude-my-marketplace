@@ -74,8 +74,6 @@ Always include at least one mermaid diagram showing the system architecture.
 ```markdown
 ## Architecture
 
-<!-- Use graph-generation skill for complex visualizations -->
-
 ```mermaid
 graph TD
     A[Client] --> B[API Gateway]
@@ -90,7 +88,7 @@ Common README diagrams:
 - **Data flow** — how data moves through the system
 - **Deployment overview** — infrastructure and deployment topology
 
-Use the `graph-generation` skill for complex or multi-diagram visualizations.
+Split a complex visualization into several small mermaid diagrams rather than one dense one.
 
 ### 5. Quick Start / Getting Started
 

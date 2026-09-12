@@ -1,6 +1,6 @@
 {
   "name": "office-plugin",
-  "version": "5.0.2",
+  "version": "5.1.0",
   "description": "Office document generation — professional PowerPoint presentations, polished Word documents, and Excel spreadsheets.",
   "author": {
     "name": "Lukas Kellerstein"
