@@ -56,6 +56,9 @@ or on a phone.
 - Check for responsive breakpoints at the capture size. 1600px may collapse a sidebar you
   wanted on screen.
 - Never resize mid-recording.
+- **With OBS**, make the window's content exactly the canvas size, so every pixel is the
+  app's own. On a Retina display the window captures at 2× — use that as the canvas and
+  zooms in the edit stay sharp. Details in `obs.md`.
 
 ## Camera moves in the edit
 

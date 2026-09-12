@@ -98,6 +98,33 @@ idempotent and fast — under a few seconds, since it runs between every re-reco
 
 Resetting by clicking "undo" in the UI is not a reset; it is another recording of the app.
 
+## Desktop apps recorded by attaching
+
+When the capture attaches to a running app (`meta.capture.driver: "attach"`), the app's
+launch is part of prep, and it is where most accidental leaks happen: a developer's desktop
+app points at their real data by default.
+
+- **Isolate every piece of state.** Most desktop apps read their database, data directory
+  and cache locations from environment variables or flags. Point all of them into
+  `demo/prep/state/live/` (`demo/prep/state/` is gitignored by `init-demo.sh`). A demo
+  recorded against someone's real database shows their real work.
+- **Copy the documents, never the originals.** Any section that lets the app write — an
+  editor, an agent, an import — writes into a copy under `demo/prep/state/live/`. Leave out
+  `.env` files and other secrets from the copy; they appear in file trees on camera.
+- **One start script**, `demo/prep/start-app.sh`: isolated env, a fixed debugging port,
+  the document or workspace to open, and the window size. Record the port in
+  `meta.capture.attach`.
+- **Prove the port is the demo instance** before attaching. A developer's own copy of the
+  app may already hold the default port; driving it drives their window.
+- **Golden state.** Seed once — create the realistic history by using the app, not by
+  writing rows by hand — then copy `demo/prep/state/live/` to `demo/prep/state/golden/`.
+  `reset.sh` stops the app, restores `live/` from `golden/`, and starts it again;
+  `capture-attached.mjs` reconnects after it.
+- **Window placement.** Tiling window managers resize and move new windows. Float the demo
+  window, and check `obs.mjs setup-scene` reports `pixelExact: true`.
+- **Secrets typed into the app** (API keys in a settings screen) are entered off camera,
+  before the golden copy is taken — never in a recorded section.
+
 ## Hiding what should not be on camera
 
 - Dev-only banners, environment badges, feature-flag panels, debug overlays.

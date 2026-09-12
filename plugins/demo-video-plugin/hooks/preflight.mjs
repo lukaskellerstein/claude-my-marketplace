@@ -16,9 +16,12 @@ const dDir = join(root, 'demo');
 
 if (!existsSync(dDir)) silent();
 
-const count = (dir, ext) => {
+/** Entries in demo/<dir> (or an absolute dir) ending in `ext`, optionally starting with `prefix`. */
+const count = (dir, ext, prefix = '') => {
   try {
-    return readdirSync(join(dDir, dir)).filter((f) => f.toLowerCase().endsWith(ext)).length;
+    return readdirSync(dir.startsWith('/') ? dir : join(dDir, dir)).filter(
+      (f) => f.toLowerCase().endsWith(ext) && f.startsWith(prefix)
+    ).length;
   } catch {
     return 0;
   }
@@ -69,9 +72,26 @@ if (has('storyboard.json')) {
     const total = (sb.sections || []).length;
     const captured = count('capture', '.mp4');
     const voiced = count('audio', '.mp3');
+    const capture = sb.meta?.capture ?? {};
     detail =
       ` "${sb.meta?.title ?? 'untitled'}" — ${total} sections, ` +
-      `${captured} clip(s) captured, ${voiced} narration file(s), target ${sb.meta?.targetSeconds ?? '?'}s.`;
+      `${captured} clip(s) captured, ${voiced} narration file(s), target ${sb.meta?.targetSeconds ?? '?'}s.` +
+      (capture.driver || capture.recorder
+        ? ` Capture: driver ${capture.driver ?? 'default'}, recorder ${capture.recorder ?? 'playwright'}.`
+        : '') +
+      (has('out/demo.fcpxml') ? ' A Final Cut Pro project is exported at demo/out/demo.fcpxml.' : '');
+
+    // Optional tools, checked only when this demo declares them.
+    if (capture.recorder === 'obs') {
+      if (!existsSync('/Applications/OBS.app')) missing.push('OBS (meta.capture.recorder is "obs")');
+      if (!process.env.OBS_WEBSOCKET_PASSWORD) {
+        missing.push('OBS_WEBSOCKET_PASSWORD in the environment (OBS → Tools → WebSocket Server Settings)');
+      }
+      if (Number(process.versions.node.split('.')[0]) < 22) missing.push('Node 22+ for the OBS WebSocket client');
+    }
+    if (sb.meta?.fcp && !count('/Applications', '.app', 'Final Cut Pro')) {
+      missing.push('Final Cut Pro (meta.fcp is set)');
+    }
   } catch {
     detail = ' (storyboard.json is present but does not parse — fix it before continuing.)';
   }

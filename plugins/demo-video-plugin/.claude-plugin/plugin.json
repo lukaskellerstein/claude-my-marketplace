@@ -1,7 +1,7 @@
 {
   "name": "demo-video-plugin",
-  "version": "1.0.1",
-  "description": "Turns a project repo into a narrated, edited demo video. Reads the codebase, writes a storyboard with real narrative value, prepares deterministic demo state, drives the UI with Playwright (web + Electron) recording one clip per section, generates ElevenLabs voiceover, reconciles measured durations into a timeline, and renders the final cut with Remotion.",
+  "version": "1.1.0",
+  "description": "Turns a project repo into a narrated, edited demo video. Reads the codebase, writes a storyboard with real narrative value, prepares deterministic demo state, drives the UI with Playwright (web, launched Electron, or an attached running app) recording one clip per section with Playwright video or OBS over obs-websocket, generates ElevenLabs voiceover, reconciles measured durations into a timeline, and renders the final cut with Remotion or exports it as a Final Cut Pro project.",
   "author": {
     "name": "Lukas Kellerstein"
   },
@@ -19,6 +19,10 @@
     "screen-recording",
     "electron",
     "remotion",
+    "obs",
+    "obs-websocket",
+    "final-cut-pro",
+    "fcpxml",
     "video-editing",
     "ffmpeg",
     "release-notes",

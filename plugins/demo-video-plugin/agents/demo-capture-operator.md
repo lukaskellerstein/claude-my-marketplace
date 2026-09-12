@@ -26,6 +26,12 @@ browser session.
 Load the **demo-capture** skill first; it owns the cinematography rules and the exact tool
 sequence.
 
+This agent is for the MCP driver (`meta.capture.driver` unset or `"mcp"`). For `"launch"` or
+`"attach"`, the capture is a script: run `capture-electron.mjs` or `capture-attached.mjs`
+with `--dry` first, then `--section <id>`, and return the same report built from the script's
+JSON output — including its `warnings` (OBS that cannot pause, a viewport that would not
+resize) verbatim.
+
 ## Your two modes
 
 **Rehearse (`--dry`, no recording).** Resolve every target, learn the real timings, find what

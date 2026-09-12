@@ -1,12 +1,21 @@
 // demo-video-plugin — synthetic cursor overlay.
 //
-// Playwright's video recording captures NO mouse cursor. Without a visible pointer the
-// recording looks like an automated test, not a demo: things click themselves.
+// Playwright's video recording captures NO mouse cursor, and OBS is told to hide the OS
+// cursor because CDP input never moves it. Without a visible pointer the recording looks
+// like an automated test, not a demo: things click themselves.
 // This script draws a cursor that eases toward the real pointer position, plus a click
 // ripple and a keystroke badge for keyboard shortcuts.
 //
 // Injected via `--init-script` on the demo-playwright MCP server, so it runs in every
-// page/frame before app scripts, and survives navigation.
+// page/frame before app scripts, and survives navigation. The attached and Electron
+// capture scripts inject it with page.evaluate.
+//
+// Two ways to drive it:
+//   - real pointer events (the MCP path): it follows mousemove / mousedown / keydown;
+//   - window.__demoCursor (the script path): moveTo / click / drag / keys, for pages where
+//     real input does not reach the document, or reaches it only inside an iframe.
+// The first call to window.__demoCursor switches the overlay to explicit mode for good,
+// so the two sources never fight over the pointer.
 //
 // It also freezes non-deterministic clock output when DEMO_FREEZE_CLOCK is set on the
 // window by the capture script (see skills/demo-app-prep).
@@ -25,6 +34,8 @@
   let targetX = -100, targetY = -100;
   let renderX = -100, renderY = -100;
   let keyBadgeTimer = null;
+  let explicit = false; // set by the first window.__demoCursor call
+  let glide = null; // { fromX, fromY, toX, toY, t0, ms } while an explicit move runs
 
   const install = () => {
     if (!document.body || root) return;
@@ -54,6 +65,8 @@
         width: 14px; height: 14px; margin: -7px 0 0 -7px;
         border: 2px solid rgba(255,255,255,.95);
         background: rgba(255,255,255,.22);
+        /* the dark ring keeps the ripple visible on light UIs, where white alone vanishes */
+        box-shadow: 0 0 0 1px rgba(0,0,0,.45), inset 0 0 0 1px rgba(0,0,0,.25);
         animation: rip 520ms cubic-bezier(.22,.61,.36,1) forwards;
       }
       @keyframes rip {
@@ -103,47 +116,67 @@
     requestAnimationFrame(tick);
   };
 
-  const tick = () => {
-    renderX += (targetX - renderX) * EASE;
-    renderY += (targetY - renderY) * EASE;
+  // easeInOutCubic — a hand accelerates, travels, then settles on the target.
+  const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
+
+  const tick = (now) => {
+    if (glide) {
+      const t = Math.min(1, (now - glide.t0) / glide.ms);
+      const k = ease(t);
+      renderX = glide.fromX + (glide.toX - glide.fromX) * k;
+      renderY = glide.fromY + (glide.toY - glide.fromY) * k;
+      if (t >= 1) glide = null;
+    } else {
+      renderX += (targetX - renderX) * EASE;
+      renderY += (targetY - renderY) * EASE;
+    }
     if (cursor) {
       cursor.style.transform = `translate(${renderX.toFixed(2)}px, ${renderY.toFixed(2)}px)`;
     }
     requestAnimationFrame(tick);
   };
 
-  addEventListener(
-    'mousemove',
-    (e) => {
-      targetX = e.clientX;
-      targetY = e.clientY;
-    },
-    { capture: true, passive: true }
-  );
+  const ripple = (x, y) => {
+    if (!ripples) return;
+    const r = document.createElement('div');
+    r.className = 'ripple';
+    r.style.left = `${x}px`;
+    r.style.top = `${y}px`;
+    ripples.appendChild(r);
+    setTimeout(() => r.remove(), 600);
+    // Snap closer on click so the pointer never lags behind its own ripple.
+    renderX = x - (x - renderX) * 0.25;
+    renderY = y - (y - renderY) * 0.25;
+  };
 
-  addEventListener(
-    'mousedown',
-    (e) => {
-      if (!ripples) return;
-      const r = document.createElement('div');
-      r.className = 'ripple';
-      r.style.left = `${e.clientX}px`;
-      r.style.top = `${e.clientY}px`;
-      ripples.appendChild(r);
-      setTimeout(() => r.remove(), 600);
-      // Snap closer on click so the pointer never lags behind its own ripple.
-      renderX = e.clientX - (e.clientX - renderX) * 0.25;
-      renderY = e.clientY - (e.clientY - renderY) * 0.25;
-    },
-    { capture: true, passive: true }
-  );
+  const showKeys = (parts) => {
+    if (!keyBadge || !parts.length) return;
+    keyBadge.innerHTML = parts.map((p) => `<kbd>${p}</kbd>`).join('');
+    keyBadge.classList.add('on');
+    clearTimeout(keyBadgeTimer);
+    keyBadgeTimer = setTimeout(() => keyBadge.classList.remove('on'), 1100);
+  };
+
+  // Real pointer events, from this document or from a same-origin iframe (dx/dy is the
+  // frame's content-box offset in this document).
+  const onMove = (e, dx = 0, dy = 0) => {
+    if (explicit) return;
+    targetX = e.clientX + dx;
+    targetY = e.clientY + dy;
+  };
+  const onDown = (e, dx = 0, dy = 0) => {
+    if (!explicit) ripple(e.clientX + dx, e.clientY + dy);
+  };
+
+  addEventListener('mousemove', (e) => onMove(e), { capture: true, passive: true });
+  addEventListener('mousedown', (e) => onDown(e), { capture: true, passive: true });
 
   // Show a badge for shortcuts only (Cmd/Ctrl/Alt/Meta or named keys) — not for typing,
   // which is already visible in the input the demo is filling.
   addEventListener(
     'keydown',
     (e) => {
-      if (!keyBadge) return;
+      if (explicit) return;
       const mods = [];
       if (e.metaKey) mods.push('⌘');
       if (e.ctrlKey) mods.push('Ctrl');
@@ -152,25 +185,99 @@
       const named = e.key.length > 1 ? e.key : null;
       if (!mods.length && !named) return;
       if (named === 'Shift' || named === 'Meta' || named === 'Control' || named === 'Alt') return;
-
-      const parts = [...mods, named || e.key.toUpperCase()];
-      keyBadge.innerHTML = parts.map((p) => `<kbd>${p}</kbd>`).join('');
-      keyBadge.classList.add('on');
-      clearTimeout(keyBadgeTimer);
-      keyBadgeTimer = setTimeout(() => keyBadge.classList.remove('on'), 1100);
+      showKeys([...mods, named || e.key.toUpperCase()]);
     },
     { capture: true, passive: true }
   );
 
+  // Events inside an iframe never reach this window. Listen in the frame and translate.
+  // Only same-origin frames can be watched; a cross-origin one throws and is skipped.
+  const watchedFrames = new WeakSet();
+  const frameOffset = (frame) => {
+    const r = frame.getBoundingClientRect();
+    return [r.left + frame.clientLeft, r.top + frame.clientTop];
+  };
+  const attachFrame = (frame) => {
+    if (!frame || watchedFrames.has(frame)) return false;
+    let win;
+    try {
+      win = frame.contentWindow;
+      void win.document; // throws for a cross-origin frame
+    } catch {
+      return false;
+    }
+    if (!win) return false;
+    watchedFrames.add(frame);
+    const opts = { capture: true, passive: true };
+    const bind = (w) => {
+      w.addEventListener('mousemove', (e) => onMove(e, ...frameOffset(frame)), opts);
+      w.addEventListener('mousedown', (e) => onDown(e, ...frameOffset(frame)), opts);
+    };
+    bind(win);
+    // A navigation inside the frame replaces its window; bind the new one.
+    frame.addEventListener('load', () => {
+      try {
+        bind(frame.contentWindow);
+      } catch {
+        /* became cross-origin */
+      }
+    });
+    return true;
+  };
+  const attachFramesIn = (node) => {
+    if (node?.querySelectorAll) node.querySelectorAll('iframe').forEach(attachFrame);
+  };
+
+  window.__demoCursor = {
+    /** Glide to (x, y) in top-document CSS pixels over `ms`. */
+    moveTo(x, y, ms = 450) {
+      explicit = true;
+      targetX = x;
+      targetY = y;
+      glide = { fromX: renderX, fromY: renderY, toX: x, toY: y, t0: performance.now(), ms: Math.max(1, ms) };
+    },
+    /** Ripple at (x, y), or at the pointer when omitted. */
+    click(x = targetX, y = targetY) {
+      explicit = true;
+      ripple(x, y);
+    },
+    /** Press at (x1, y1) and glide to (x2, y2) — what a text selection looks like. */
+    drag(x1, y1, x2, y2, ms = 700) {
+      explicit = true;
+      renderX = x1;
+      renderY = y1;
+      ripple(x1, y1);
+      this.moveTo(x2, y2, ms);
+    },
+    /** Show the shortcut badge, e.g. keys(['⌘', 'Enter']). */
+    keys(parts) {
+      explicit = true;
+      showKeys(parts);
+    },
+    /** Watch an iframe the MutationObserver cannot see, e.g. one inside a shadow root. */
+    attachFrame,
+    get position() {
+      return { x: renderX, y: renderY };
+    },
+  };
+
   if (document.body) install();
   else addEventListener('DOMContentLoaded', install, { once: true });
 
-  // Re-attach if the app wipes the DOM (SPA hard re-render, hydration mismatch).
-  new MutationObserver(() => {
+  // Re-attach if the app wipes the DOM (SPA hard re-render, hydration mismatch), and watch
+  // iframes as they appear in the light DOM.
+  new MutationObserver((records) => {
     if (root && !document.documentElement.contains(root)) {
       document.documentElement.appendChild(root);
     }
-  }).observe(document.documentElement, { childList: true });
+    for (const r of records) {
+      r.addedNodes.forEach((n) => {
+        if (n.tagName === 'IFRAME') attachFrame(n);
+        else attachFramesIn(n);
+      });
+    }
+  }).observe(document.documentElement, { childList: true, subtree: true });
+  attachFramesIn(document);
 
   // ── Determinism helpers ────────────────────────────────────────────────────
   // Opt-in: the capture script sets these before navigating.

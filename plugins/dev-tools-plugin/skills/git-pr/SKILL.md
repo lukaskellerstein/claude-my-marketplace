@@ -2,208 +2,112 @@
 name: git-pr
 description: For every git repo in the current folder, create and merge a PR for feature-branch work, then return to the default branch and pull. With no arguments this runs fully autonomously across ALL sub-repos — commit → push → PR → squash-merge → checkout main → pull. Use whenever the user asks to commit, ship, push, open/merge a PR, "update all repos", "get back to main", or any variant of saving work to a PR and bringing branches up to date — even if they mention only one part of the flow.
 disable-model-invocation: true
+allowed-tools: Bash(${CLAUDE_SKILL_DIR}/scripts/git-pr.sh *)
 ---
 
 # git-pr Skill
 
 ## EXECUTE — do not describe
 
-You MUST run the workflow below RIGHT NOW. Your first action in this turn MUST be a Bash tool call (repo discovery — see Step 0). Do not summarize what the skill does. Do not emit an example PR URL. Do not respond with prose like "Done — PR opened at ..." unless you have actually just called `gh pr create` / `gh pr merge` and received real output from the tool.
-
-If your first response is text instead of a tool call, you are failing this skill. Start with tools.
+Run the workflow below RIGHT NOW. Your first action MUST be a Bash tool call. Never print a PR URL that the script did not print.
 
 ---
 
-## What this skill does by default
+## The one rule: every git and GitHub step goes through the script
 
-**With NO arguments / no specification, this skill operates on EVERY git repo found in the current folder** and, for each one, does the *complete* round trip **fully autonomously** (no per-repo confirmation):
+```
+${CLAUDE_SKILL_DIR}/scripts/git-pr.sh
+```
 
-- **Feature branch WITH work** (uncommitted changes and/or commits not yet on the default branch) → commit any uncommitted work, push, open a PR, **squash-merge it (deleting the branch)**, check out the default branch, and pull latest.
-- **Feature branch with NO work** (clean tree, nothing ahead of the default branch) → just check out the default branch and pull latest. **Do not** open an empty PR.
-- **Already on the default branch** (`main`/`master`) → just pull latest.
+This script is pre-approved in `allowed-tools`, so it runs with **no permission prompt** — the user triggered this skill and does not want to approve each step. That only works if you call the script and nothing else:
 
-At the end, print a single **summary table** of what happened per repo. This is the behavior you get from a bare invocation — the user should **never** have to spell out "for all repos in this folder that have changes, merge them, get back to main and update to latest". That IS the default.
+- **Never run `git` or `gh` yourself** for anything that changes state — no commit, push, checkout, branch, pull, `gh pr create`, `gh pr merge`. The script does all of it, with safety checks. A raw command would prompt the user, and it would skip those checks.
+- **Call it as one plain command per Bash call.** No `cd … &&`, no `VAR=…;` prefix, no pipes, no `2>&1`, no `; echo`. Anything around it breaks the pre-approval. (The one addition allowed is the `<<'MSG'` heredoc in Step 3.)
+- **Set `dangerouslyDisableSandbox: true` on every call.** The script needs the GitHub network and the macOS keychain, which the Bash sandbox blocks. The pre-approval covers it; there is no prompt.
+- **A line starting with `STOP:` is final** for that repo. Report it in the summary and move on to the next repo. Do not retry it another way — a STOP means a human has to look (a secret-looking file, a diverged branch, a failed merge).
 
-**Merge strategy:** always `gh pr merge --squash --delete-branch` unless the user asks for a different strategy.
-
----
-
-## Prerequisites
-
-- `git` installed.
-- `gh` (GitHub CLI) installed and authenticated (`gh auth status`).
-  - Not installed: https://cli.github.com/ · Not authenticated: `gh auth login`
+What the script will never do, whatever you pass it: force-push, reset, clean, rebase, stash, amend, `--admin` merge, or delete a branch whose commits are not merged.
 
 ---
 
 ## Workflow
 
-### Step 0: Discover the working set of repos
+### Step 0 — find the repos
 
-The "current folder" is the working directory. It may itself be a repo, OR it may be a **parent folder containing several repos** as immediate subdirectories (the common case — e.g. `~/Projects/Github/onion-ai-eu/` holding `onion-demo-01`, `onion-prod-01`, …).
-
-Find every repo to operate on:
-
-```bash
-# Immediate-subdirectory repos
-for d in */; do [ -d "$d/.git" ] && echo "REPO: ${d%/}"; done
-# ...and the current folder itself, if it is a repo
-[ -d ".git" ] && echo "REPO: ."
+```
+${CLAUDE_SKILL_DIR}/scripts/git-pr.sh discover <folder>
 ```
 
-- If subdirectory repos are found, operate on **each** of them.
-- If none are found but the current folder is itself a repo, operate on just that one.
-- If neither, tell the user there are no git repos here and stop.
+`<folder>` is the working directory, or the folder the user named. It prints one `REPO <path>` line per repo (the repos directly inside the folder, or the folder itself), or `NO_REPOS` — then tell the user and stop.
 
-If the user named a specific folder (e.g. "for all repos in `~/Projects/Github/onion-ai-eu`"), run discovery inside that folder instead of the CWD.
+### Step 1 — classify each repo
 
-### Step 1: Classify each repo
-
-Do this per repo. Use `git -C <repo>` so you never have to `cd` (which can trigger permission prompts). First sync remote refs so "ahead" counts are accurate:
-
-```bash
-git -C <repo> fetch --prune origin
-
-# Default branch (the branch to return to and merge into)
-BASE=$(git -C <repo> symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's@^origin/@@')
-# Fallback if origin/HEAD isn't set:
-#   BASE=main if origin/main exists, else master, else develop
-
-CUR=$(git -C <repo> branch --show-current)          # current branch
-DIRTY=$(git -C <repo> status --porcelain)           # non-empty => uncommitted changes
-AHEAD=$(git -C <repo> rev-list --count "origin/$BASE..HEAD" 2>/dev/null)  # commits to ship
+```
+${CLAUDE_SKILL_DIR}/scripts/git-pr.sh status <repo>
 ```
 
-Decide the case:
+It fetches, then prints `BASE=`, `BRANCH=`, `CHANGED_FILES=`, `COMMITS_AHEAD=`, `CASE=`, and — when there is work — the status, the commits and the diff. Act on `CASE`:
 
-| Condition | Case |
-|---|---|
-| `CUR` == `BASE` | **C — on default branch** → pull only |
-| `CUR` != `BASE`, and (`DIRTY` non-empty **or** `AHEAD` > 0) | **A — feature branch with work** → full PR + merge + return |
-| `CUR` != `BASE`, clean, `AHEAD` == 0 | **B — feature branch, no work** → return to default + pull |
+| `CASE` | Meaning | Run |
+|---|---|---|
+| `C` | on the default branch, clean | `sync <repo>` |
+| `B` | feature branch, nothing to ship | `sync <repo>` |
+| `B_MERGED` | feature branch whose PR was already squash-merged | `sync <repo>` |
+| `A` | feature branch with work | Steps 2 and 3 |
+| `A_NEW_BRANCH` | on the default branch with uncommitted work | Steps 2 and 3, with `--new-branch feature/<short-topic>` |
+| `STOP` | needs a human (`WHY=` says why) | nothing — report `WHY` as it is. Do not open the file it names. |
 
-> `develop`-based git flow: if the repo has a `develop` branch and the user is following git flow, `feature/*` and `bugfix/*` target `develop` and `hotfix/*` target `main`. Detect `develop` and use it as the merge base for those branches, then return to `develop`. Most of the user's repos are `main`-based — default to the repo's actual default branch and don't assume `develop` exists.
+Git flow: if the user asked to target `develop` (or another base), add `--base develop` to `status`, `sync` and `ship`.
 
-### Step 2 — Case C: on the default branch
+### Step 2 — compose the message (cases A and A_NEW_BRANCH)
 
-```bash
-git -C <repo> pull --ff-only origin "$BASE"
+Read the diff that `status` printed. If you need more, use the Read tool on changed source files — never on `.env`, keys or credential files, and never quote a secret value. Do not write the message to a file — a file in the repo would get committed.
+
 ```
-Record "updated `<base>`" and move on.
+<title: imperative, specific, ≤ 72 chars — never "update files">
 
-### Step 3 — Case B: feature branch, nothing to ship
-
-```bash
-git -C <repo> checkout "$BASE"
-git -C <repo> pull --ff-only origin "$BASE"
-```
-Optionally delete the now-stale local feature branch if it's fully merged (`git -C <repo> branch -d <feature>`; skip if it errors). Record "no changes → returned to `<base>` & pulled".
-
-### Step 4 — Case A: feature branch with work → full flow
-
-**4a. Commit any uncommitted work.** Synthesize a specific commit message from the diff (imperative, ≤72 chars; never "update files"). Inspect with `git -C <repo> diff` / `git -C <repo> status` first.
-
-```bash
-git -C <repo> add -A
-git -C <repo> commit -m "<specific message>"   # skip if tree was already clean
-```
-
-If the current branch name is generic (e.g. `feature` or a bare name) it's fine to keep it; do **not** rename an existing branch that already has commits/PR.
-
-**4b. Push.**
-
-```bash
-git -C <repo> push -u origin "$CUR"
-```
-
-**4c. Open the PR** (base = default branch, or `develop`/`main` per the git-flow note). If a PR already exists for this branch, skip creation and reuse it.
-
-```bash
-git -C <repo> ... # (use gh from within the repo)
-gh -R <owner/repo> pr create \
-  --base "$BASE" \
-  --head "$CUR" \
-  --title "<PR title = commit subject>" \
-  --body "<see template>" \
-  --assignee "@me"
-```
-Use `gh pr create` from inside the repo dir if `-R` is awkward — either works. Get `<owner/repo>` from `gh repo view --json nameWithOwner -q .nameWithOwner`.
-
-PR body template (fill from the diff; drop a section if not inferable):
-```
 ## What
 <1–2 sentences>
 
 ## Why
-<1–2 sentences, only if motivation is clear from the code>
+<1–2 sentences, only if the motivation is clear from the code>
 
 ## Changes
 - <key change>
 - <key change>
 ```
 
-**4d. Squash-merge and delete the branch.**
+Line 1 becomes the commit subject and the PR title. The rest becomes the PR body.
 
-```bash
-gh pr merge "$CUR" --squash --delete-branch
-```
-If the merge is blocked by required status checks, enable auto-merge with `--auto` (it will merge once checks pass) and note that in the summary. If the user has admin rights and wants to bypass protections, `--admin` forces it — only use `--admin` if the user has asked to bypass checks.
+### Step 3 — ship, with the message on stdin
 
-**4e. Return to the default branch and update.**
-
-```bash
-git -C <repo> checkout "$BASE"
-git -C <repo> pull --ff-only origin "$BASE"
-git -C <repo> branch -D "$CUR" 2>/dev/null   # local cleanup (remote branch already deleted by --delete-branch)
-```
-Record the real PR URL + "merged → returned to `<base>` & pulled".
-
-### Step 5: Print the summary
-
-After all repos are processed, output one table:
+Pass the message as a heredoc with a **quoted** delimiter (`<<'MSG'`), so backticks and `$` stay literal. Nothing else on the command line:
 
 ```
-| Repo            | Branch          | Action                                   | PR |
-|-----------------|-----------------|------------------------------------------|----|
-| onion-demo-01   | feature/x       | committed, merged, back on main & pulled | <url> |
-| onion-prod-01   | feature/y       | no changes → back on main & pulled       | —  |
-| onion-tech-...  | main            | pulled latest                            | —  |
+${CLAUDE_SKILL_DIR}/scripts/git-pr.sh ship <repo> --message-file - <<'MSG'
+Add greet helper to the CLI
+
+## What
+Adds a `greet()` command.
+MSG
 ```
 
-Only report real PR URLs returned by `gh`. Never a placeholder like `.../pull/42`.
+Add `--new-branch feature/<short-topic>` before `<<'MSG'` for case `A_NEW_BRANCH`.
 
----
+It commits (refusing new files that look like secrets or are huge), pushes (never forced), reuses an open PR for the branch or creates one (assigned to `@me`), squash-merges exactly the pushed commit with `--delete-branch`, checks out the base branch, pulls with `--ff-only`, and deletes the local branch. If checks or reviews block the merge it enables auto-merge instead and says so.
 
-## Autonomy
+User asked for PRs without merging? Add `--no-merge`. Any other variation the script has no option for (merge commit instead of squash, rebase, bypassing checks): tell the user this skill does not do that, and stop.
 
-The default run is **fully autonomous** — do not ask for per-repo confirmation of branch names, commit messages, or merges. Just do the flow for every eligible repo and report at the end. Only pause to ask the user if something genuinely ambiguous or destructive comes up (e.g. a merge conflict on pull, a non-fast-forward that would need a force push, or a repo with an unexpected/detached HEAD).
+### Step 4 — summary
 
-If the user *does* pass specifics ("only repo X", "don't merge, just open PRs", "use a merge commit not squash", "target develop"), honor those over the defaults.
+One table after all repos, built only from the script's `RESULT:`, `PR:` and `STOP:` lines:
 
----
+```
+| Repo            | Branch    | Result                                   | PR    |
+|-----------------|-----------|------------------------------------------|-------|
+| onion-demo-01   | feature/x | merged, back on main & pulled            | <url> |
+| onion-prod-01   | feature/y | no changes → back on main & pulled       | —     |
+| onion-tech-01   | main      | STOP: new file '.env' looks like a secret | —     |
+```
 
-## Error Handling
-
-| Situation | Action |
-|---|---|
-| `gh` not installed | Tell user, link https://cli.github.com, stop |
-| `gh` not authenticated | Show `gh auth status`, tell user to `gh auth login` |
-| No git repos in folder | Tell user, stop |
-| `pull --ff-only` fails (diverged) | Don't force. Report the repo as needing manual attention in the summary and continue with the others |
-| Merge blocked by required checks | Use `gh pr merge --auto --squash --delete-branch`; note "auto-merge enabled" in summary |
-| Merge conflict | Skip that repo's merge, flag it in the summary, continue with the rest |
-| PR already exists for branch | Reuse it (skip create), proceed to merge |
-| Push rejected (branch exists on remote) | `git push --force-with-lease` only if this skill just created the branch; otherwise flag for the user |
-| A single repo errors | Never abort the whole batch — record the failure and keep going |
-
----
-
-## Expected tool-call sequence
-
-Every invocation MUST produce tool calls in roughly this order. If you're writing a final answer without having made these calls, STOP and start over with Bash.
-
-1. `Bash`: discover repos (Step 0)
-2. Per repo: `Bash` fetch + classify (`branch --show-current`, `status --porcelain`, `rev-list --count`)
-3. Per **Case A** repo: `Bash` diff → commit → push → `gh pr create` → `gh pr merge --squash --delete-branch` → checkout base → pull
-4. Per **Case B/C** repo: `Bash` checkout base (if needed) + `pull --ff-only`
-5. Text to user: the summary table with **real** PR URLs
+A single repo's STOP never aborts the batch — finish the others first.
