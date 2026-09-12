@@ -15,6 +15,8 @@ The id is the join key for the whole pipeline:
 |---|---|
 | clip | `demo/capture/03-search.mp4` |
 | clip measurement | `demo/capture/03-search.json` |
+| raw OBS take | `demo/capture/raw/03-search.mov` (`03-search.failed.mov` for a broken take) |
+| action log (script captures) | `demo/capture/03-search.actions.json` |
 | narration | `demo/audio/03-search.mp3` |
 | narration measurement | `demo/audio/03-search.json` |
 | alignment (optional) | `demo/audio/03-search.align.json` |
@@ -42,6 +44,13 @@ Written by you at stage 2, validated on every write. The parts that matter most:
 - `meta.appUrl`, `meta.startCommand`, `meta.readySignal` — how the app is booted for capture.
 - `meta.electron` — launch config for electron sections (`args`, `cwd`, `env`,
   `executablePath`, `freezeClock`).
+- `meta.capture` — who drives and what records. `driver`: `mcp` | `launch` | `attach`;
+  `recorder`: `playwright` | `obs` | `ffmpeg`; `attach`: the CDP endpoint (required for
+  `attach`); `page`: part of the page URL or title; `input`: `cdp` | `dom`; `windowSize`;
+  `obs`: `{ input, window, scene }`. See `demo-capture/references/obs.md`.
+- `meta.fcp` — the Final Cut Pro export: `titleTemplate`, `lowerThirdTemplate`,
+  `captionLanguage`, `projectName`, `version`. See
+  `demo-assembly/references/final-cut-pro.md`.
 - `sections[].beat` — `hook | problem | core-flow | wow | integration | proof | close`.
   At least one `core-flow` is required.
 - `sections[].surface` — `web` and `electron` are captured; `still`, `code`, and
@@ -59,6 +68,7 @@ Written by you at stage 2, validated on every write. The parts that matter most:
   pasted in; nothing reads `code.file` from disk at render time), plus optional `file`
   and `lines` (shown as the panel header) and `highlight` ("3-5", 1-based).
 - `sections[].resetBefore` — run `demo/prep/reset.sh` before capturing this section.
+- `sections[].setup` — actions the capture scripts run before recording starts.
 
 ### Action kinds
 
@@ -67,16 +77,20 @@ Written by you at stage 2, validated on every write. The parts that matter most:
 | `goto` | `path` | route or URL |
 | `click`, `dblclick`, `hover` | `target` | pointer glides, then dwells, then acts |
 | `type` | `target`, `text` | `wps` = chars/sec, default 6 |
-| `press`, `shortcut` | `key` | keystroke badge appears for modifier combos |
+| `press`, `shortcut` | `key` | keystroke badge appears for modifier combos; `target` picks the document |
 | `scroll` | `by` | eased wheel steps, never a jump |
-| `waitFor` | `target` or nothing | `idleUpTo` caps the wait AND marks it compressible |
+| `selectText` | `text` | selects that passage inside `target`, as a drag would (scripts only) |
+| `waitFor` | `target` or nothing | `idleUpTo` caps the wait; `state: "hidden"` waits for it to go; `compress: "pause"` pauses OBS through it |
 | `dwell` | `seconds` | deliberate pause for narration to land |
 | `select`, `upload`, `drag` | `target` | |
-| `menu` | `to` (`"File>New Window"`) | Electron native menu only |
-| `window` | `to` (index) | Electron multi-window |
+| `menu` | `to` (`"File>New Window"`) | Electron native menu only (driver `launch`) |
+| `window` | `to` (index) | Electron multi-window (driver `launch`) |
 | `eval` | `text` | escape hatch; avoid in a demo unless it is invisible setup |
 
 Common per-action fields: `dwellBefore` (default 0.5s), `dwellAfter`, `idleUpTo`, `note`.
+For the capture scripts also: `in` (a chain of shadow hosts and iframes to resolve a `css=` or
+`text=` target inside), `input` (`cdp` | `dom`), `showSeconds` (how much of a paused wait
+stays on screen, default 1).
 
 ## Measurement sidecars
 
@@ -89,6 +103,25 @@ Written by hooks; consumed by `reconcile.mjs`.
 
 If a sidecar is missing, `reconcile.mjs` falls back to `ffprobe`. If both are unavailable
 the section cannot be timed — the clip is treated as missing.
+
+## Action logs
+
+Written by `capture-attached.mjs`, and by `capture-electron.mjs` when it records with OBS —
+never for Playwright video, whose clock starts at launch and would not match the clip.
+
+```json
+{ "id": "03-ask", "clock": "seconds on the recording, pauses removed",
+  "actions": [ { "i": 0, "kind": "selectText", "target": "css=article", "t0": 1.0, "t1": 2.4, "ok": true } ] }
+```
+
+`t0`/`t1` are positions in the clip, so a camera move or a review finding can point at the
+moment an action happened.
+
+## demo/out/demo.fcpxml
+
+Written by `timeline-to-fcpxml.mjs` from `timeline.json`, validated against the installed
+Final Cut Pro's own DTD. Regenerable like every render — and like every render, hand edits
+made inside FCP live in the FCP library, not here.
 
 ## timeline.json
 
@@ -113,9 +146,10 @@ is the escape hatch. `--force-studio` restores the bundled version.
 
 ## What is committed
 
-Commit: `brief.md`, `inventory.json`, `storyboard.json`, `prep/`, and any customisation of
-`studio/src`. Everything else — clips, narration, `timeline.json`, renders — is
-regenerable and gitignored by `init-demo.sh`.
+Commit: `brief.md`, `inventory.json`, `storyboard.json`, `prep/` (except `prep/state/`), and
+any customisation of `studio/src`. Everything else — clips, raw takes, narration,
+`timeline.json`, renders, the FCPXML, isolated app state — is regenerable and gitignored by
+`init-demo.sh`.
 
 A reviewer should be able to read `storyboard.json` and know exactly what the video says
 and shows, without watching it.

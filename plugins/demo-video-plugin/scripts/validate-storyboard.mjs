@@ -17,12 +17,15 @@ const WPS_HARD_MIN = 1.1;
 const WPS_HARD_MAX = 3.6;
 
 const ACTION_KINDS = new Set([
-  'goto', 'click', 'dblclick', 'hover', 'type', 'press', 'scroll',
+  'goto', 'click', 'dblclick', 'hover', 'type', 'press', 'scroll', 'selectText',
   'waitFor', 'dwell', 'drag', 'select', 'upload', 'menu', 'window', 'shortcut', 'eval',
 ]);
 const BEATS = new Set(['hook', 'problem', 'core-flow', 'wow', 'integration', 'proof', 'close']);
 const SURFACES = new Set(['web', 'electron', 'still', 'code', 'titlecard']);
 const CAPTURED = new Set(['web', 'electron']);
+const DRIVERS = new Set(['mcp', 'launch', 'attach']);
+const RECORDERS = new Set(['playwright', 'obs', 'ffmpeg']);
+const INPUTS = new Set(['cdp', 'dom']);
 
 // Phrases that make a demo sound like every other demo. Hard-banned ones are the
 // tells that a human never says out loud.
@@ -68,6 +71,50 @@ if (meta.fps && ![24, 25, 30, 60].includes(meta.fps)) {
 for (const key of ['captureSize', 'outputSize']) {
   if (meta[key] && !/^\d{3,4}x\d{3,4}$/.test(meta[key])) {
     errors.push(`meta.${key} must look like 1600x900, got "${meta[key]}".`);
+  }
+}
+
+// ── meta.capture: who drives the app, and what records it ─────────────────────
+const capture = meta.capture ?? {};
+if (meta.capture !== undefined) {
+  if (capture.driver && !DRIVERS.has(capture.driver)) {
+    errors.push(`meta.capture.driver "${capture.driver}" is not one of ${[...DRIVERS].join(', ')}.`);
+  }
+  if (capture.recorder && !RECORDERS.has(capture.recorder)) {
+    errors.push(`meta.capture.recorder "${capture.recorder}" is not one of ${[...RECORDERS].join(', ')}.`);
+  }
+  if (capture.input && !INPUTS.has(capture.input)) {
+    errors.push(`meta.capture.input "${capture.input}" is not one of ${[...INPUTS].join(', ')}.`);
+  }
+  if (capture.driver === 'attach') {
+    if (!/^https?:\/\/[^\s]+$/.test(String(capture.attach ?? ''))) {
+      errors.push('meta.capture.driver "attach" needs meta.capture.attach — the CDP endpoint, e.g. "http://127.0.0.1:9222".');
+    }
+    if (capture.recorder === 'playwright') {
+      errors.push('Playwright cannot record a browser it attached to — use meta.capture.recorder "obs" with driver "attach".');
+    }
+  }
+  if (capture.driver === 'mcp' && capture.recorder && capture.recorder !== 'playwright') {
+    warnings.push('meta.capture: the demo-playwright MCP browser is headless, so OBS or ffmpeg has no window to record. Use driver "launch" or "attach".');
+  }
+  if (capture.recorder === 'obs' && !capture.obs?.window) {
+    warnings.push(
+      'meta.capture.recorder is "obs" but meta.capture.obs.window is unset, so OBS records whatever its scene shows. ' +
+        'Set it to part of the window title so every take re-points the capture.'
+    );
+  }
+  if (capture.windowSize && !/^\d{3,4}x\d{3,4}$/.test(capture.windowSize)) {
+    errors.push(`meta.capture.windowSize must look like 1600x900, got "${capture.windowSize}".`);
+  }
+}
+
+// ── meta.fcp: the Final Cut Pro export ─────────────────────────────────────────
+if (meta.fcp !== undefined) {
+  for (const key of ['titleTemplate', 'lowerThirdTemplate', 'projectName', 'captionLanguage']) {
+    if (meta.fcp[key] !== undefined && typeof meta.fcp[key] !== 'string') errors.push(`meta.fcp.${key} must be a string.`);
+  }
+  if (meta.fcp.version !== undefined && !/^1\.\d{1,2}$/.test(String(meta.fcp.version))) {
+    errors.push(`meta.fcp.version must look like "1.14", got "${meta.fcp.version}".`);
   }
 }
 
@@ -170,8 +217,11 @@ sections.forEach((s, i) => {
     );
   }
 
-  (s.actions ?? []).forEach((a, j) => {
-    const aat = `${at}.actions[${j}]`;
+  if (s.setup !== undefined && !Array.isArray(s.setup)) {
+    errors.push(`${at}: setup must be an array of actions (they run before recording starts).`);
+  }
+
+  const checkAction = (a, aat) => {
     if (!ACTION_KINDS.has(a.kind)) {
       errors.push(`${aat}: unknown kind "${a.kind}". Allowed: ${[...ACTION_KINDS].join(', ')}.`);
       return;
@@ -183,7 +233,26 @@ sections.forEach((s, i) => {
       errors.push(`${aat}: ${a.kind} requires target (a human description the operator resolves from the snapshot).`);
     }
     if (a.kind === 'scroll' && a.by === undefined) errors.push(`${aat}: scroll requires by (pixels).`);
-  });
+    if (a.kind === 'selectText' && !String(a.text ?? '').trim()) {
+      errors.push(`${aat}: selectText requires text — the exact passage to select, as rendered.`);
+    }
+    if (a.in !== undefined && (!Array.isArray(a.in) || !a.in.length || a.in.some((x) => typeof x !== 'string'))) {
+      errors.push(`${aat}: in must be a non-empty array of CSS selectors (shadow hosts and iframes, outermost first).`);
+    }
+    if (a.input !== undefined && !INPUTS.has(a.input)) errors.push(`${aat}: input "${a.input}" is not one of cdp, dom.`);
+    if (a.state !== undefined && !['visible', 'hidden'].includes(a.state)) {
+      errors.push(`${aat}: state must be "visible" or "hidden".`);
+    }
+    if (a.compress !== undefined) {
+      if (a.kind !== 'waitFor' || a.compress !== 'pause') {
+        errors.push(`${aat}: compress is only "pause", and only on waitFor.`);
+      } else if (capture.recorder !== 'obs') {
+        warnings.push(`${aat}: compress "pause" needs meta.capture.recorder "obs"; with another recorder the wait stays in the clip.`);
+      }
+    }
+  };
+  (s.setup ?? []).forEach((a, j) => checkAction(a, `${at}.setup[${j}]`));
+  (s.actions ?? []).forEach((a, j) => checkAction(a, `${at}.actions[${j}]`));
 
   if (s.camera?.to !== undefined && (s.camera.to < 1 || s.camera.to > 1.6)) {
     warnings.push(`${at}: camera.to ${s.camera.to} is outside 1.0-1.6; heavy zoom on a screen recording looks soft.`);

@@ -19,6 +19,10 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/extract-frames.sh demo/out/demo-draft.mp4 dem
 This writes 24 labelled frames plus `contact-sheet.png`. Read the contact sheet first — one
 image, whole-video pacing — then individual frames for anything suspicious.
 
+A Final Cut Pro finish is reviewed the same way, from the file the user exported
+(`demo/out/demo-fcp.mp4`). Its frames can differ from the timeline wherever the user edited by
+hand, so grade it against `successCriteria`, not against the Remotion draft.
+
 Delegate the frame reading to the **`demo-frame-critic`** subagent. Image tokens are heavy and
 the useful output is a short findings list.
 

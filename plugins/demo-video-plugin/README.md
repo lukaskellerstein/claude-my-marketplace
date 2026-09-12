@@ -4,17 +4,18 @@ Turns a project repo into a narrated, edited demo video.
 
 Reads the codebase → writes a storyboard with real narrative value → prepares deterministic
 app state → drives the UI with Playwright and records one clip per section (web **and**
-Electron) → generates ElevenLabs voiceover → reconciles *measured* durations into a timeline →
-renders the final cut with Remotion.
+Electron, recorded by Playwright or by **OBS**) → generates ElevenLabs voiceover → reconciles
+*measured* durations into a timeline → renders the final cut with Remotion, or exports it as a
+**Final Cut Pro** project.
 
 ```
-/demo-setup                 # once per machine: ffmpeg, Playwright, Remotion, API key
-/demo-video                 # then describe it: "90s demo of semantic search, for
-                            #   engineering leads evaluating us"
+/demo-video-plugin:demo-setup   # once per machine: ffmpeg, Playwright, Remotion, API key, OBS, FCP
+/demo-video-plugin:demo-video   # then describe it: "90s demo of semantic search, for
+                                #   engineering leads evaluating us"
 ```
 
-(Everything is a skill — invoke by `/name`, or just ask for a demo video and the
-`demo-video` skill triggers on its own.)
+(Everything is a skill — invoke it by its namespaced name, or just ask for a demo video and
+the `demo-video` skill triggers on its own.)
 
 ## Design
 
@@ -35,13 +36,22 @@ narration file is probed too.
 Plus one rule that removes most agent-driven capture failures: **never record the first take.**
 Rehearse unrecorded, then record.
 
+And two separations that keep the pipeline honest about quality:
+
+- **Who drives the app is separate from what records it.** Playwright drives; Playwright video
+  *or* OBS records. OBS captures the real window at native pixels and 60 fps, so text stays
+  readable, and it pauses through long waits so an agent run does not fill the clip.
+- **The cut is separate from the finish.** One reconciled timeline renders headlessly in
+  Remotion *or* exports as a Final Cut Pro project for hand-finishing with FCP's titles.
+
 ## Pipeline
 
 ```
 /demo-video → preflight → research → storyboard →【GATE 1: narrative】
       → app prep → rehearse →【GATE 2: feasible】
-      → voiceover (measured) → record (budgeted to the voice)
-      → reconcile → draft render →【GATE 3: watch it】→ review → final render
+      → voiceover (measured) → record (budgeted to the voice; Playwright or OBS)
+      → reconcile → draft render →【GATE 3: watch it】→ review
+      → final render (Remotion) and/or FCPXML → finished by hand in Final Cut Pro
 ```
 
 Stages are individually re-runnable — in practice one section is re-cut several times while
@@ -57,10 +67,10 @@ Every stage is a skill: it triggers on a matching request, or invoke it directly
 | `demo-video` | The pipeline, artifact contracts, gates. The entry point — load before touching `demo/`. |
 | `demo-setup` | Doctor + installer for the toolchain; scaffolds `demo/` |
 | `demo-scripting` | Narrative: what earns screen time, beat structure, pacing math, narration writing |
-| `demo-app-prep` | Deterministic, demo-worthy app state — seeding, frozen clocks, hidden dev UI |
-| `demo-capture` | Cinematography, the Playwright MCP video tools, the Electron tiers |
+| `demo-app-prep` | Deterministic, demo-worthy app state — seeding, frozen clocks, hidden dev UI, isolated desktop-app state |
+| `demo-capture` | Cinematography, drivers (MCP, launch, attach) and recorders (Playwright, OBS, ffmpeg) |
 | `demo-voiceover` | Voice/model selection, fitting a line to a duration, captions, music |
-| `demo-assembly` | Reconciliation rules, the Remotion template, render presets |
+| `demo-assembly` | Reconciliation rules, the Remotion template, render presets, the Final Cut Pro export |
 | `demo-review` | QA rubric, frame reading, routing findings back to the right stage |
 
 ## Subagents
@@ -98,8 +108,11 @@ Each one prevents a specific expensive failure.
   `claude plugin install remotion@remotion` (restart Claude Code). The Remotion *agent
   skills* are an optional manual install (https://www.remotion.dev/docs/ai), used only for
   custom compositions beyond the bundled template
-- **`playwright` module** — only for Electron sections; `/demo-setup` installs it into
-  `~/.cache/demo-video-plugin`
+- **`playwright` module** — for the script capture paths (launch, attach); `/demo-setup`
+  installs it into `~/.cache/demo-video-plugin`
+- **OBS 30+** (optional, for the OBS recorder) — WebSocket server enabled,
+  `OBS_WEBSOCKET_PASSWORD` in the environment, Node ≥ 22 for the built-in WebSocket client
+- **Final Cut Pro** (optional, for the FCP finish) — plus `xmllint`, which macOS ships
 
 ## MCP servers
 
@@ -111,17 +124,39 @@ Each one prevents a specific expensive failure.
 `demo-playwright` records at 1600×900 into a 1920×1080 composition on purpose: the 1.2×
 upscale makes app text readable at normal playback sizes.
 
-## Electron
+## Capture: drivers and recorders
 
-Playwright MCP cannot drive Electron. Three tiers, preferred first:
+`meta.capture` in the storyboard picks both:
 
-1. **Capture the renderer in Chromium** (`surface: web`) — best quality, cursor overlay works.
-   Usually most of a desktop demo.
-2. **`scripts/capture-electron.mjs`** — real `_electron.launch({recordVideo})`, driven by the
-   same storyboard actions. Handles native menus and multi-window. Size-checks its output,
-   because empty WebM from Electron `recordVideo` is a known bug.
-3. **`scripts/capture-screen-macos.sh`** — ffmpeg/avfoundation screen capture. Lower quality,
-   real OS cursor, needs Screen Recording permission. Last resort, kept short.
+| | Options |
+|---|---|
+| **driver** | `mcp` — the headless Playwright MCP (web) · `launch` — `capture-electron.mjs` starts the Electron app per section · `attach` — `capture-attached.mjs` attaches over CDP to an app already running on its own (isolated data, wrapper scripts, packaged builds) |
+| **recorder** | `playwright` — VP8 at 25 fps · `obs` — the real window through obs-websocket, native pixels, 60 fps, pauses through waits · `ffmpeg` — `capture-screen-macos.sh`, last resort |
+
+```bash
+node scripts/obs.mjs status                                   # reachable? can it pause?
+node scripts/obs.mjs setup-scene --window "My App" --size 1600x900
+node scripts/capture-attached.mjs --project . --dry           # rehearse
+node scripts/capture-attached.mjs --project . --section 03-ask
+```
+
+The script paths add actions the MCP cannot do: `setup` before recording, `in` to reach
+targets through shadow roots and sandboxed iframes, `selectText`, `waitFor` with
+`compress: "pause"` or `state: "hidden"`, and `input: "dom"` for windows real input does not
+reach. Guides: `skills/demo-capture/references/obs.md` and `electron.md`.
+
+## Finish: Remotion or Final Cut Pro
+
+```bash
+bash scripts/render.sh --final                                # Remotion -> demo/out/demo.mp4
+node scripts/timeline-to-fcpxml.mjs --project .               # FCP      -> demo/out/demo.fcpxml
+node scripts/fcp-templates.mjs --category "Lower Thirds"      # what meta.fcp can name
+```
+
+The FCPXML carries the same cut: clips with retimes and holds, cross dissolves, narration,
+the ducked music bed, title cards and lower thirds on FCP's own Motion templates, captions and
+chapter markers. It is validated against the installed FCP's DTD before anyone imports it.
+Guide: `skills/demo-assembly/references/final-cut-pro.md`.
 
 ## Layout
 
@@ -129,6 +164,7 @@ Playwright MCP cannot drive Electron. Three tiers, preferred first:
 demo/                       created in the target project
   brief.md  storyboard.json  prep/           [committed]
   capture/  audio/  timeline.json  out/      [gitignored, regenerable]
+  prep/state/                                 [gitignored — isolated app state]
   studio/                    Remotion project, reads ../timeline.json
 ```
 
@@ -136,9 +172,12 @@ demo/                       created in the target project
 
 ## Notable details
 
-- **Playwright records no mouse cursor.** `assets/cursor-overlay.js` (via `--init-script`)
-  draws one that eases toward the real pointer, with a click ripple and a keystroke badge.
-  Without it the video looks like a test run.
+- **Playwright records no mouse cursor, and OBS hides the OS one.** `assets/cursor-overlay.js`
+  draws one that eases toward the real pointer — or is driven explicitly by the capture
+  scripts, over iframes too — with a click ripple and a keystroke badge. Without it the video
+  looks like a test run.
+- **OBS lies about pausing.** `PauseRecord` answers success even when the output cannot pause,
+  so the recorder waits for the `PAUSED` event and warns when it never comes.
 - **Time-warp is capped at ±15%.** Beyond that the reconciler holds a frozen last frame under a
   continuing camera move rather than producing rubbery motion — and says so in its report.
 - **A surface change forces a hard cut**, so web → desktop reads as intentional.

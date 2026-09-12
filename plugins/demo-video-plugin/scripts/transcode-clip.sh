@@ -1,22 +1,26 @@
 #!/usr/bin/env bash
-# Transcode a raw Playwright WebM recording into constant-frame-rate H.264 MP4 and
-# write a measured duration sidecar next to it.
+# Transcode a raw recording — Playwright WebM, OBS MOV/MKV/MP4, ffmpeg MKV — into
+# constant-frame-rate H.264 MP4 and write a measured duration sidecar next to it.
 #
-# The capture hook does this automatically after browser_stop_video. Run it by hand for
-# Electron takes, for clips recorded before the hook existed, or after a manual re-record.
+# The capture hook does this automatically after browser_stop_video, and the capture
+# scripts call it after every take. Run it by hand for clips recorded outside them.
 #
-# usage: transcode-clip.sh <input.webm> [output.mp4] [--fps 30] [--crf 18]
+# usage: transcode-clip.sh <input> [output.mp4] [--fps 30] [--crf 18]
 set -euo pipefail
 
 IN="${1:-}"
 if [[ -z "$IN" || ! -f "$IN" ]]; then
-  echo "usage: transcode-clip.sh <input.webm> [output.mp4] [--fps N] [--crf N]" >&2
+  echo "usage: transcode-clip.sh <input> [output.mp4] [--fps N] [--crf N]" >&2
   exit 1
 fi
 
 OUT="${2:-}"
 if [[ -z "$OUT" || "$OUT" == --* ]]; then
   OUT="${IN%.*}.mp4"
+fi
+if [[ "$(cd "$(dirname "$IN")" && pwd)/$(basename "$IN")" == "$(cd "$(dirname "$OUT")" 2>/dev/null && pwd)/$(basename "$OUT")" ]]; then
+  echo "demo-video: $IN would be transcoded onto itself. Keep raw takes in capture/raw/." >&2
+  exit 1
 fi
 
 FPS=30

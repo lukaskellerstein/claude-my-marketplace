@@ -1,6 +1,6 @@
 ---
 name: demo-setup
-description: Checks and installs everything the demo-video pipeline needs — ffmpeg, Playwright browsers, the Remotion plugin, uvx, and the ElevenLabs key — and scaffolds demo/ in the target project. Use before the first demo video on a machine, when any pipeline stage reports missing tooling, when MCP video tools are absent from /mcp, or when the user asks to set up, doctor, or install the demo toolchain.
+description: Checks and installs everything the demo-video pipeline needs — ffmpeg, Playwright browsers, the Remotion plugin, uvx, and the ElevenLabs key, plus the optional OBS recorder (websocket reachable, able to pause) and Final Cut Pro finish — and scaffolds demo/ in the target project. Use before the first demo video on a machine, when any pipeline stage reports missing tooling, when MCP video tools are absent from /mcp, when OBS will not connect, or when the user asks to set up, doctor, or install the demo toolchain.
 ---
 
 # Demo pipeline setup
@@ -14,8 +14,10 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/setup.sh
 ```
 
 This changes nothing. It reports on: node ≥18, ffmpeg/ffprobe, uvx, Playwright browsers, an
-importable `playwright` module for the Electron path, `ELEVENLABS_API_KEY`, and whether the
-Remotion plugin and agent skills are present.
+importable `playwright` module for the script capture paths, `ELEVENLABS_API_KEY`, whether
+the Remotion plugin and agent skills are present, and the two optional pieces: OBS (installed,
+Node 22+, `OBS_WEBSOCKET_PASSWORD` set, the websocket answering, pausing possible) and Final
+Cut Pro (installed, the newest FCPXML it imports, `xmllint`).
 
 Show the user the report.
 
@@ -69,7 +71,37 @@ If the key is present, `mcp__demo-elevenlabs__check_subscription` confirms it wo
 remaining characters. Worth doing before a demo, since the whole narration is generated in one
 pass.
 
-## 5. Scaffold (optional)
+## 5. OBS (optional — the crisp recorder)
+
+Needed when a demo records with `meta.capture.recorder: "obs"`: desktop apps, and any demo
+whose text must stay readable. None of it is installed or changed by `setup.sh`; the user does
+the OBS side once, by hand:
+
+1. `brew install --cask obs` — **ask first**, it is a system app.
+2. OBS → Tools → WebSocket Server Settings → Enable. The password shown under "Show Connect
+   Info" goes into the user's secret store and the environment as `OBS_WEBSOCKET_PASSWORD`.
+   Never write it into the repo, never echo it, never pass it as a flag.
+3. System Settings → Privacy & Security → Screen Recording → OBS.
+4. OBS → Settings → Output → Recording Quality: anything but "Same as stream", which cannot
+   pause.
+
+Then verify, and create the capture scene for the app's window:
+
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/scripts/obs.mjs status          # output.canPause must be true
+node ${CLAUDE_PLUGIN_ROOT}/scripts/obs.mjs setup-scene --window "<part of the window title>" --size 1600x900 --fps 30
+```
+
+`setup-scene` changes OBS's scene collection and canvas size — say so before running it on a
+machine where OBS is also used for other work. Full guide: `demo-capture/references/obs.md`.
+
+## 6. Final Cut Pro (optional — the hand finish)
+
+Nothing to install beyond FCP itself. `setup.sh` reports the newest FCPXML version it
+imports; `node ${CLAUDE_PLUGIN_ROOT}/scripts/fcp-templates.mjs` lists the title templates
+`meta.fcp` can name. Guide: `demo-assembly/references/final-cut-pro.md`.
+
+## 7. Scaffold (optional)
 
 ```bash
 bash ${CLAUDE_PLUGIN_ROOT}/scripts/init-demo.sh

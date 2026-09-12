@@ -1,6 +1,6 @@
 ---
 name: demo-assembly
-description: Assembles measured clips and narration into a finished demo video with Remotion — reconciles real durations into a timeline, then renders. Covers the timeline contract, the bundled timeline-driven Remotion project, how to extend or replace it for custom compositions, transitions, camera moves, captions, music ducking, and draft/final render presets. Use at the reconcile, render, or editing stage of a demo video, or when changing how the finished video looks.
+description: Assembles measured clips and narration into a finished demo video — reconciles real durations into a timeline, then renders it with Remotion or exports it as a Final Cut Pro project (FCPXML) for finishing with FCP titles and lower thirds. Covers the timeline contract, the bundled timeline-driven Remotion project, how to extend or replace it for custom compositions, transitions, camera moves, captions, music ducking, draft/final render presets, and the FCPXML export. Use at the reconcile, render, or editing stage of a demo video, when changing how the finished video looks, or when the user wants to edit or finish a demo in Final Cut Pro.
 ---
 
 # Demo Assembly
@@ -13,6 +13,19 @@ node ${CLAUDE_PLUGIN_ROOT}/scripts/reconcile.mjs --project .    # -> demo/timeli
 bash ${CLAUDE_PLUGIN_ROOT}/scripts/render.sh --draft            # -> demo/out/demo-draft.mp4
 bash ${CLAUDE_PLUGIN_ROOT}/scripts/render.sh --final            # -> demo/out/demo.mp4
 ```
+
+## Two finishes from one timeline
+
+| Finish | Command | Ends with |
+|---|---|---|
+| Remotion (default) | `render.sh --final` | `demo/out/demo.mp4`, no person needed |
+| Final Cut Pro | `node ${CLAUDE_PLUGIN_ROOT}/scripts/timeline-to-fcpxml.mjs --project .` | `demo/out/demo.fcpxml`, finished and shared by a person in FCP |
+
+Both read the same reconciled timeline, so the cut, the narration timing and the ducking are
+identical; only titles, lower thirds and hand polish differ. Offer the FCP finish when the
+user cares about FCP's title templates or wants to fine-tune by hand. Say plainly that its
+last step is theirs. Mapping, template choice, what does not carry over, and the import
+checklist: [final-cut-pro.md](${CLAUDE_PLUGIN_ROOT}/skills/demo-assembly/references/final-cut-pro.md).
 
 ## Do not hand-write the timeline
 

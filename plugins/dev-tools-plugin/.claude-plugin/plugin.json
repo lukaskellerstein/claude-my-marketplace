@@ -1,6 +1,6 @@
 {
   "name": "dev-tools-plugin",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "General developer tooling — read-only thinking and Q&A, git workflows, code hygiene, dependency management, and project documentation generation. Every skill is user-invoked only: Claude never starts a merge, an upgrade or a docs rewrite on its own.",
   "author": {
     "name": "Lukas Kellerstein"

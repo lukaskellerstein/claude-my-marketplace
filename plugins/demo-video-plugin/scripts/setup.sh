@@ -26,6 +26,7 @@ echo
 
 # ── Core tooling ───────────────────────────────────────────────────────────────
 echo "Core tooling"
+NODE_MAJOR=0
 if command -v node >/dev/null 2>&1; then
   NODE_MAJOR=$(node -p 'process.versions.node.split(".")[0]')
   if [[ "$NODE_MAJOR" -ge 18 ]]; then ok "node $(node -v)"; else bad "node $(node -v) is too old; Remotion needs 18+"; fi
@@ -58,11 +59,11 @@ else
 fi
 
 if [[ -d "$CACHE/node_modules/playwright" ]]; then
-  ok "playwright module available for the Electron capture path"
+  ok "playwright module available for the script capture paths (launch, attach)"
 elif [[ -d "node_modules/playwright" || -d "node_modules/@playwright/test" ]]; then
   ok "playwright module available in this project"
 else
-  warn "no importable playwright module — needed only for electron-surface sections"
+  warn "no importable playwright module — needed by capture-electron.mjs and capture-attached.mjs"
   ACTIONS+=("npm install --prefix \"$CACHE\" playwright")
 fi
 
@@ -95,6 +96,44 @@ if [[ -d "$HOME/.claude/skills" ]] && ls "$HOME/.claude/skills" 2>/dev/null | gr
 else
   warn "remotion agent skills not detected — optional, used only for custom compositions beyond"
   warn "the bundled template. Install per https://www.remotion.dev/docs/ai (manual step)."
+fi
+
+# ── Recorder: OBS (optional) ───────────────────────────────────────────────────
+echo
+echo "Recorder: OBS (optional — crisp 60 fps window capture, meta.capture.recorder \"obs\")"
+if [[ -d /Applications/OBS.app ]]; then
+  ok "OBS $(defaults read /Applications/OBS.app/Contents/Info.plist CFBundleShortVersionString 2>/dev/null)"
+  if [[ "${NODE_MAJOR:-0}" -ge 22 ]]; then
+    ok "node $(node -v) has the global WebSocket obs.mjs needs"
+  else
+    warn "obs.mjs needs Node 22+ for its WebSocket client"
+  fi
+  if [[ -n "${OBS_WEBSOCKET_PASSWORD:-}" ]]; then
+    ok "OBS_WEBSOCKET_PASSWORD is set"
+    if STATUS=$(node "$PLUGIN_ROOT/scripts/obs.mjs" status 2>&1); then
+      ok "OBS answers: $(node -e 'const s=JSON.parse(process.argv[1]); console.log(`OBS ${s.obs}, websocket ${s.websocket}, ${s.video.base} @ ${s.video.fps} fps, pause ${s.output.canPause === false ? "NOT possible (" + s.output.detail + ")" : "possible"}`)' "$STATUS")"
+    else
+      warn "OBS did not answer — ${STATUS#demo-video: }"
+    fi
+  else
+    warn "OBS_WEBSOCKET_PASSWORD is not set. OBS → Tools → WebSocket Server Settings: enable it, copy the"
+    warn "password into your secret store, and export it to the environment. Never into a repo."
+  fi
+else
+  warn "OBS not installed — needed only for OBS capture (brew install --cask obs)"
+fi
+
+# ── Finish: Final Cut Pro (optional) ───────────────────────────────────────────
+echo
+echo "Finish: Final Cut Pro (optional — timeline-to-fcpxml.mjs)"
+FCP_APP=$(ls -d /Applications/Final\ Cut\ Pro*.app 2>/dev/null | head -1)
+if [[ -n "$FCP_APP" ]]; then
+  FCP_DTD=$(ls "$FCP_APP"/Contents/Frameworks/Interchange.framework/Versions/A/Resources/FCPXMLv1_*.dtd 2>/dev/null \
+    | sed -E 's/.*FCPXMLv1_([0-9]+)\.dtd/\1/' | sort -n | tail -1)
+  ok "$(basename "$FCP_APP" .app) $(defaults read "$FCP_APP/Contents/Info.plist" CFBundleShortVersionString 2>/dev/null), imports FCPXML up to 1.${FCP_DTD:-?}"
+  if command -v xmllint >/dev/null 2>&1; then ok "xmllint (validates the export against FCP's own DTD)"; else warn "xmllint not found — exports go unvalidated"; fi
+else
+  warn "Final Cut Pro not installed — needed only for the FCP finish"
 fi
 
 # ── MCP servers ────────────────────────────────────────────────────────────────
