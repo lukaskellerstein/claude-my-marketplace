@@ -12,7 +12,7 @@ Full-bleed photo background with dark overlay and large white text.
 
 **When to use:** Opening slide, section dividers, closing slide.
 
-**Image:** Source a **16:9** (1920x1080) background photo via the `image-sourcing` skill. Make it specific to the presentation topic.
+**Image:** Source a **16:9** (1920x1080) background photo. Make it specific to the presentation topic.
 
 ```javascript
 function addTitleSlide(pres, { title, subtitle, bgImageData, primary, accent, headerFont, bodyFont }) {
@@ -54,7 +54,7 @@ Photo fills one half edge-to-edge, content on the other half.
 
 **When to use:** Explaining a concept alongside an illustration, before/after comparisons, feature descriptions.
 
-**Image:** Source a **9:10 or 1:1** photo via the `image-sourcing` skill — it fills a tall, narrow space.
+**Image:** Source a **9:10 or 1:1** photo — it fills a tall, narrow space.
 
 ```javascript
 function addSplitImageSlide(pres, { title, bodyText, imageData, imageSide, primary, accent, headerFont, bodyFont }) {
@@ -360,7 +360,7 @@ Large quote with attribution over a full-bleed photo.
 
 **When to use:** Customer quotes, expert opinions, mission statements.
 
-**Image:** Source a **16:9** (1920x1080) atmospheric, moody photo via the `image-sourcing` skill.
+**Image:** Source a **16:9** (1920x1080) atmospheric, moody photo.
 
 ```javascript
 function addQuoteSlide(pres, { quote, author, role, bgImageData, primary, accent, headerFont, bodyFont }) {
@@ -439,7 +439,7 @@ Full-bleed photo or solid color with centered call-to-action. Mirrors the title 
 
 **When to use:** Last slide, next steps, contact information, thank you.
 
-**Image:** Reuse the title photo or source a new **16:9** photo via the `image-sourcing` skill.
+**Image:** Reuse the title photo or source a new **16:9** photo.
 
 ```javascript
 function addClosingSlide(pres, { headline, subtext, contactInfo, bgImageData, primary, accent, headerFont, bodyFont }) {
@@ -525,7 +525,7 @@ Full-bleed photo with minimal text overlay at the bottom. Maximum visual impact.
 
 **When to use:** Emotional impact, portfolio pieces, product showcase, photography-first slides.
 
-**Image:** Source a **16:9** (1920x1080) high-quality photo via the `image-sourcing` skill.
+**Image:** Source a **16:9** (1920x1080) high-quality photo.
 
 ```javascript
 function addPhotoHeroSlide(pres, { caption, bgImageData, position, bodyFont }) {
@@ -691,7 +691,7 @@ Before generating slides, plan which slides need images and at what aspect ratio
 | Photo Hero | Full-bleed background | 16:9 | High-quality, impactful |
 | Closing | Full-bleed background | 16:9 | Can reuse title photo |
 
-**Gather all needed images BEFORE starting the generation script.** Use the `image-sourcing` skill to search Unsplash first; fall back to the `image-generation` skill only when no suitable stock photo exists.
+**Gather all needed images BEFORE starting the generation script.** Get them through the route in the Visuals section of SKILL.md: prefer real photos, and AI-generate only when no suitable photo exists. If no photos are available, swap photo layouts for Big Idea, Bold Stats or Dark Elevated Cards.
 
 ### Deck Rhythm Principles
 

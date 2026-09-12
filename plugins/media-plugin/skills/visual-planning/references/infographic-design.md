@@ -54,7 +54,7 @@ Match the layout to *what the data is*, not to what looks fancy:
 Put each value **on or beside** the thing it describes. Legends force the eye to ping-pong; direct labels read instantly. Show the number *and* its unit (`42ms`, not `42`). No legend unless a map/heatmap truly needs a color scale.
 
 ### 5. Restrained, intentional color
-One accent color for the hero/most-important data, neutrals (greys) for everything else, plus at most 1–2 secondary accents for categories. Pull the palette from the project's brand or the **`styleguide`** skill — never random. Color must **encode meaning** (this metric, this category), never decorate. If removing a color loses no information, make it grey.
+One accent color for the hero/most-important data, neutrals (greys) for everything else, plus at most 1–2 secondary accents for categories. Pull the palette from the project's brand or styleguide — never random. Color must **encode meaning** (this metric, this category), never decorate. If removing a color loses no information, make it grey.
 
 ### 6. Maximize data-ink, declutter
 Strip anything that isn't carrying information: heavy gridlines, 3-D effects, drop shadows, boxes around boxes, redundant axis ticks, background gradients. Light, thin, calm. Whitespace is a feature, not wasted space — it creates the grouping and breathing room that read as "professional".
@@ -63,7 +63,7 @@ Strip anything that isn't carrying information: heavy gridlines, 3-D effects, dr
 If you use icons, get them from **`icon-library`** (one set, one stroke weight, one corner radius) — never AI-generate them and never mix sets. One icon per concept, sized to match the type scale, aligned to the same baseline grid.
 
 ### 8. Align to a grid; respect aspect ratio
-Everything sits on a shared grid — left edges line up, gaps are uniform, cards are equal height. Misalignment is the single most common "amateur" tell. Match the canvas aspect ratio to where it lands (the `pptx`/`docx` skills list exact sizes; vertical 9:16 / 4:5 for social, 16:9 or full-width for decks/docs).
+Everything sits on a shared grid — left edges line up, gaps are uniform, cards are equal height. Misalignment is the single most common "amateur" tell. Match the canvas aspect ratio to where it lands (16:9 for a full slide, 5:4 or 9:10 for a half slide, page width (about 6.5in) for a document; vertical 9:16 / 4:5 for social).
 
 ### 9. Typography
 Two weights of one family is plenty: bold for hero/labels, regular for body. Establish the size scale from §2. Numbers in a tabular/lining figure style so columns align. Generous line spacing.
@@ -107,5 +107,3 @@ Before rendering, state one line: **`Infographic: <message> | Path A (archetype:
 - **image-generation** — Path B decorative hero only (never for legible data).
 - **icon-library** — the one consistent icon set for Path A.
 - **media-prompt-craft** — turns the style prefix into the Path B prompt.
-- **styleguide** (design-plugin) — derives the palette/mood when there's no brand yet.
-- **pptx / docx** (office-plugin) — consume the finished infographic; see their image-sizing tables.

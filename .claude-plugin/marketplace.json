@@ -1,6 +1,6 @@
 {
   "name": "claude-my-marketplace",
-  "version": "1.12.0",
+  "version": "1.14.0",
   "description": "A marketplace for Claude Code plugins focused on ME",
   "owner": {
     "name": "Lukas Kellerstein",
@@ -14,10 +14,6 @@
     {
       "name": "office-plugin",
       "source": "./plugins/office-plugin"
-    },
-    {
-      "name": "company-plugin",
-      "source": "./plugins/company-plugin"
     },
     {
       "name": "infra-plugin",

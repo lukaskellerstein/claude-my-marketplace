@@ -1,7 +1,8 @@
 {
   "name": "design-plugin",
-  "version": "1.2.0",
-  "description": "Design direction and creative guidance for Claude Code — styleguides, aesthetic strategy, typography pairings, color mood systems, and design review. The 'taste layer' that makes AI-assisted design intentional rather than generic. Works with media-plugin (which now owns media prompt crafting) for asset generation and office-plugin for presentations.",
+  "version": "1.3.0",
+  "description": "Design direction and creative guidance for Claude Code — styleguides, aesthetic strategy, typography pairings, color mood systems, and design review. The 'taste layer' that makes AI-assisted design intentional rather than generic. Works with media-plugin (which now owns media prompt crafting) for asset generation.",
+  "dependencies": ["media-plugin"],
   "author": {
     "name": "Lukas Kellerstein"
   },

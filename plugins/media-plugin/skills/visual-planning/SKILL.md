@@ -55,7 +55,7 @@ If you catch yourself writing *"glowing holographic representation of [concept],
 Pin down, in one line, **what artifact** and **its hard specs**: type (→ which engine, see step 5); where it's used (slide, doc, web hero, social, avatar, print); format specs (aspect ratio/dimensions, resolution/DPI, file type; for video/music: duration & loop; for speech: voice, language, pacing); and how many (one, a variation set, or a consistent series). If something is genuinely ambiguous *and changes the output*, ask **one** focused question; otherwise pick the obvious default and state it.
 
 ### 2. Confirm style & design guidelines
-Is there a direction to obey? **Yes** (brand, `styleguide`, an existing deck/site) → extract a **style prefix**: palette, mood, photography/illustration style, composition rules — and reuse it on *every* asset so the set is cohesive. **No** direction yet and it matters → create one via the **`styleguide`** skill first. For audio, the equivalent is genre/tempo/instrumentation/tone-of-voice.
+Is there a direction to obey? **Yes** (brand, a styleguide, an existing deck/site) → extract a **style prefix**: palette, mood, photography/illustration style, composition rules — and reuse it on *every* asset so the set is cohesive. **No** direction yet and it matters → agree on one with the user first (palette, mood, imagery style). For audio, the equivalent is genre/tempo/instrumentation/tone-of-voice.
 
 ### 3. Pin the message / intent
 State the **single thing** the asset must make the viewer/listener understand or feel ("Adoption tripled this year"; "calm, trustworthy, premium"; "these are the 4 steps"). If you can't write it in one sentence, it isn't ready — or it's two assets. Everything else serves this sentence; cut what doesn't.
@@ -117,7 +117,7 @@ Aim for **3-5 deliberate visuals over 12 random ones.** If five "visuals" all tu
 For each surviving concept, pick the form + engine via the Iron Rule table. Be specific about the *form* — "stacked bar of adoption by quarter", not "a chart".
 
 ### B4 — Bind everything to ONE style
-Lock a shared **palette + style prefix** (from brand, or the `styleguide` skill). One palette, one mood — applied to every D3 theme, Draw.io color, and image prompt. Match each visual's aspect ratio to its placement (`pptx`/`docx` list exact sizes).
+Lock a shared **palette + style prefix** (from the brand or the project's styleguide). One palette, one mood — applied to every D3 theme, Draw.io color, and image prompt. Match each visual's aspect ratio to its placement (16:9 for a full slide, 5:4 or 9:10 for a half slide, page width (about 6.5in) for a document).
 
 ### B5 — Produce the Visual Plan, then loop
 Write the table below (confirm with the user if the deliverable is large), then **run Mode A on each row** — style is already locked, so step 2 just inherits the shared prefix.
@@ -153,5 +153,3 @@ Gather all visuals **before** writing the document/deck generation code.
 - **icon-library** — pre-made SVG icons (don't generate these).
 - **svg-mastery** — hand-authored vector (illustration, isometric, logos/marks, patterns, type, custom layouts) and the QA layer that validates/renders any SVG before it ships.
 - **video-generation / music-generation / speech-generation** — motion and audio engines invoked at step 7.
-- **styleguide** (design-plugin) — derive the palette/mood when the product has no brand yet.
-- **pptx / docx** (office-plugin) — consume the gathered visuals; see their image-sizing tables.

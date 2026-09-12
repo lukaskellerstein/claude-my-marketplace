@@ -1,6 +1,8 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "companyAnnouncements": ["Welcome to My marketplace server"],
+  "companyAnnouncements": [
+    "Welcome to My marketplace server"
+  ],
   "permissions": {
     "allow": [
       "Agent",
@@ -40,28 +42,41 @@
       "mcp__media-mcp",
       "mcp__media-playwright",
       "mcp__mermaid",
-      "mcp__stripe",
       "mcp__webdesign-playwright"
     ],
     "deny": [
       "Bash(sudo *)",
-      "Bash(rm -rf /*)",
       "Bash(rm -rf ~*)",
-      "Bash(rm -fr /*)",
-      "Bash(rm -fr ~*)",
       "Bash(mkfs*)",
       "Bash(dd *)",
       "Bash(diskutil *)",
       "Bash(git push --force*)",
-      "Bash(git push -f*)",
+      "Bash(git push -f*)"
+    ],
+    "ask": [
       "Read(./.env)",
-      "Read(./.env.*)",
-      "Read(~/.ssh/**)",
-      "Read(~/.aws/**)"
+      "Read(./.env.*)"
     ]
   },
   "enabledPlugins": {
     "plugin-dev@claude-plugins-official": true,
     "dev-tools-plugin@claude-my-marketplace": true
+  },
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true,
+    "filesystem": {
+      "denyRead": [
+        "./**/.env",
+        "./**/*.pem",
+        "./**/*.key",
+        "./**/*.agekey",
+        "./**/keys.txt",
+        "./**/*credentials*.json",
+        "./**/serviceAccountKey.json",
+        "./**/*.tfstate"
+      ]
+    },
+    "excludedCommands": []
   }
 }

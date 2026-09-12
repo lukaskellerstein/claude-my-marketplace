@@ -350,14 +350,14 @@ slide.addShape(pres.shapes.RECTANGLE, { shadow: makeShadow(), x: 5, y: 1, w: 3, 
 
 PptxGenJS doesn't support native gradient fills on shapes. To achieve gradient backgrounds:
 
-**Option 1: Generate a gradient image** — use the `image-generation` skill to create a gradient background at 1920x1080, then set it as the slide background:
+**Option 1: Generate a gradient image** — create a gradient background at 1920x1080 (see the Visuals section of SKILL.md), then set it as the slide background:
 
 ```javascript
 const gradientData = fs.readFileSync("gradient-bg.jpg");
 slide.background = { data: "image/jpeg;base64," + gradientData.toString("base64") };
 ```
 
-**Option 2: Source a gradient/abstract image** — use the `image-sourcing` skill to find a suitable abstract or gradient image from Unsplash.
+**Option 2: Source a gradient/abstract image** — find a suitable abstract or gradient photo (see the Visuals section of SKILL.md).
 
 **Option 3: Simulate with layered shapes** — use overlapping semi-transparent OVALs on a solid background:
 

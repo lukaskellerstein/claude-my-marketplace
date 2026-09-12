@@ -63,7 +63,7 @@ Paint back-to-front (SVG paint order = document order):
   </linearGradient>
 </defs>
 ```
-- Build the palette from a base hue + tints/shades, or pull from the **`styleguide`** skill / project brand. Avoid fully saturated, equal-brightness colors fighting for attention.
+- Build the palette from a base hue + tints/shades, or pull from the project's styleguide or brand. Avoid fully saturated, equal-brightness colors fighting for attention.
 - One **accent** color does the heavy lifting (the focal element); everything else recedes (lower saturation/contrast).
 - For "duotone" art, map shadows to a dark hue and highlights to a light hue of the *same* family.
 

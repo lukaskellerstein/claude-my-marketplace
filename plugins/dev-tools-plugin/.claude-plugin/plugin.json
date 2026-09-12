@@ -1,6 +1,6 @@
 {
   "name": "dev-tools-plugin",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "General developer tooling — read-only thinking and Q&A, git workflows, code hygiene, dependency management, and project documentation generation. Every skill is user-invoked only: Claude never starts a merge, an upgrade or a docs rewrite on its own.",
   "author": {
     "name": "Lukas Kellerstein"
@@ -24,7 +24,8 @@
     "docs",
     "readme",
     "architecture",
-    "features"
+    "features",
+    "mermaid"
   ],
   "skills": [
     "./skills/brainstorm",
@@ -36,5 +37,12 @@
     "./skills/update-docs",
     "./skills/update-feature-docs",
     "./skills/update-readme"
-  ]
+  ],
+  "mcpServers": {
+    "mermaid": {
+      "url": "https://mcp.mermaid.ai/mcp",
+      "type": "http",
+      "description": "Mermaid diagram syntax validation for generated documentation"
+    }
+  }
 }

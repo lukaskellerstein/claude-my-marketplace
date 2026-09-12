@@ -1,13 +1,13 @@
 # claude-my-marketplace
 
 [![GitHub](https://img.shields.io/github/stars/lukaskellerstein/claude-my-marketplace?style=flat&logo=github)](https://github.com/lukaskellerstein/claude-my-marketplace)
-[![Plugins](https://img.shields.io/badge/plugins-12-blue?logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0id2hpdGUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE0IiBoZWlnaHQ9IjE0IiByeD0iMiIvPjwvc3ZnPg==)](plugins/)
-[![Skills](https://img.shields.io/badge/skills-46-8a2be2)](plugins/)
+[![Plugins](https://img.shields.io/badge/plugins-11-blue?logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0id2hpdGUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE0IiBoZWlnaHQ9IjE0IiByeD0iMiIvPjwvc3ZnPg==)](plugins/)
+[![Skills](https://img.shields.io/badge/skills-44-8a2be2)](plugins/)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-orange?logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0id2hpdGUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMTAiIGN5PSIxMCIgcj0iOCIvPjwvc3ZnPg==)](https://code.claude.com/docs)
 
 > A curated collection of [Claude Code](https://code.claude.com/docs) plugins for design, development, documentation, media generation, video production, and infrastructure management.
 
-This marketplace bundles **12 plugins** contributing **46 skills**, **19 agents**, **4 commands**, **9 MCP servers**, and **4 LSP servers** — capabilities spanning the software development lifecycle from design direction through implementation, documentation, deployment, and demo video production.
+This marketplace bundles **11 plugins** contributing **44 skills**, **19 agents**, **4 commands**, **9 MCP servers**, and **4 LSP servers** — capabilities spanning the software development lifecycle from design direction through implementation, documentation, deployment, and demo video production. Every plugin installs and works on its own; the two that build on others declare it, so their dependencies install automatically.
 
 ## Features
 
@@ -17,27 +17,25 @@ This marketplace bundles **12 plugins** contributing **46 skills**, **19 agents*
 - **Developer workflow** — read-only thinking and Q&A, autonomous multi-repo PR flow, dead-code sweeps, dependency upgrades, docs and README generation (`dev-tools-plugin`)
 - **Infrastructure** — Kubernetes/GKE, Istio, Helm, Terraform, Traefik and Keycloak/OAuth2-proxy auth (`infra-plugin`)
 - **Office documents** — PowerPoint, Word and Excel generation (`office-plugin`)
-- **Business operations** — Zásilkovna shipping and Stripe payments (`company-plugin`)
 - **Opt-in code intelligence** — per-language LSP navigation loaded per session, never globally (`lsp-python`, `lsp-typescript`, `lsp-go`, `lsp-bash`)
 
 ## Plugins
 
 | Plugin | Version | What it does | Skills | Agents |
 |---|---|---|---|---|
-| [media-plugin](plugins/media-plugin) | `v1.15.0` | Image, video, music, speech, icon and data-viz generation | 10 | 1 |
-| [web-design-plugin](plugins/web-design-plugin) | `v1.5.11` | Brief → working React/Vite site | 4 | 11 |
-| [dev-tools-plugin](plugins/dev-tools-plugin) | `v1.5.0` | Thinking/Q&A, git, code hygiene, deps, docs — all user-invoked | 9 | 2 |
+| [media-plugin](plugins/media-plugin) | `v1.15.1` | Image, video, music, speech, icon and data-viz generation | 10 | 1 |
+| [web-design-plugin](plugins/web-design-plugin) | `v1.6.0` | Brief → working React/Vite site | 4 | 11 |
+| [dev-tools-plugin](plugins/dev-tools-plugin) | `v1.6.0` | Thinking/Q&A, git, code hygiene, deps, docs — all user-invoked | 9 | 2 |
 | [demo-video-plugin](plugins/demo-video-plugin) | `v1.0.1` | Repo → narrated demo video | 8 | 4 |
 | [infra-plugin](plugins/infra-plugin) | `v1.1.0` | K8s, Istio, Helm, Terraform, auth | 6 | — |
-| [design-plugin](plugins/design-plugin) | `v1.2.0` | Creative direction and design review | 4 | 1 |
-| [office-plugin](plugins/office-plugin) | `v5.0.2` | PPTX, DOCX, XLSX generation | 3 | — |
-| [company-plugin](plugins/company-plugin) | `v1.1.0` | Shipping and payments | 2 | — |
+| [design-plugin](plugins/design-plugin) | `v1.3.0` | Creative direction and design review | 4 | 1 |
+| [office-plugin](plugins/office-plugin) | `v5.1.0` | PPTX, DOCX, XLSX generation | 3 | — |
 | [lsp-python](plugins/lsp-python) | `v1.0.0` | Python navigation via basedpyright | — | — |
 | [lsp-typescript](plugins/lsp-typescript) | `v1.0.0` | TS/JS navigation via vtsls | — | — |
 | [lsp-go](plugins/lsp-go) | `v1.0.0` | Go navigation via gopls | — | — |
 | [lsp-bash](plugins/lsp-bash) | `v1.0.0` | Shell navigation via bash-language-server | — | — |
 
-### [media-plugin](plugins/media-plugin) `v1.15.0`
+### [media-plugin](plugins/media-plugin) `v1.15.1`
 
 Media generation and manipulation — images, videos/GIFs, music, text-to-speech, and data visualizations (charts, graphs, diagrams, maps) via Google Gemini, ElevenLabs, D3.js, Mermaid and Draw.io. A single visual-planning gate plus `media-prompt-craft` ensure every asset is clarified, styled and reviewed before it is produced.
 
@@ -45,8 +43,9 @@ Media generation and manipulation — images, videos/GIFs, music, text-to-speech
 - **Agents:** media-director
 - **Commands:** `/media-generate`, `/media-assets`
 - **MCP:** media-mcp (Gemini), ElevenLabs, Mermaid, Draw.io, Playwright
+- **Hooks:** draw.io edge-routing post-processor and SVG sanity check after every write
 
-### [web-design-plugin](plugins/web-design-plugin) `v1.5.11`
+### [web-design-plugin](plugins/web-design-plugin) `v1.6.0`
 
 End-to-end website/webapp design and implementation — from brief to working React/Vite code. Orchestrates design direction, content architecture, media generation, parallel per-page implementation and visual testing with an opinionated anti-slop workflow.
 
@@ -54,8 +53,9 @@ End-to-end website/webapp design and implementation — from brief to working Re
 - **Agents:** page-builder, scaffold-builder, assembler, variation-generator, visual-fixer-app, visual-fixer-page, design-doc-foundation, design-doc-animation, design-doc-data, design-doc-media, design-doc-pages
 - **Commands:** `/web-design`
 - **MCP:** Playwright
+- **Depends on:** design-plugin, media-plugin — installed automatically
 
-### [dev-tools-plugin](plugins/dev-tools-plugin) `v1.5.0`
+### [dev-tools-plugin](plugins/dev-tools-plugin) `v1.6.0`
 
 General developer tooling — git workflows, code hygiene, dependency management, spec-kit synchronization and project documentation generation. `git-pr` runs the whole commit → PR → squash-merge → back-to-main round trip across every repo in a folder, autonomously.
 
@@ -63,6 +63,7 @@ Every skill here is **invoked by you only** — none is ever auto-selected, so n
 
 - **Skills (all user-invoked):** brainstorm, question, git-pr, dead-code, update-dependencies, sync-spec-kit, update-docs, update-feature-docs, update-readme
 - **Agents:** dead-code-analyzer, sync-spec-kit-agent
+- **MCP:** Mermaid (diagram validation for `update-docs` and `update-feature-docs`)
 
 ### [demo-video-plugin](plugins/demo-video-plugin) `v1.0.1`
 
@@ -79,26 +80,21 @@ Infrastructure management for Kubernetes/GKE, Istio service mesh, and authentica
 
 - **Skills:** auth, helm, istio, kubernetes, terraform, traefik
 
-### [design-plugin](plugins/design-plugin) `v1.2.0`
+### [design-plugin](plugins/design-plugin) `v1.3.0`
 
 Design direction and creative guidance — the "taste layer" that makes AI-assisted design intentional rather than generic. Styleguides, aesthetic strategy, typography pairings, color mood systems and design review.
 
 - **Skills:** styleguide, frontend-aesthetics, design-review, design-system
 - **Agents:** design-director
 - **Commands:** `/design`
+- **Depends on:** media-plugin — installed automatically
 
-### [office-plugin](plugins/office-plugin) `v5.0.2`
+### [office-plugin](plugins/office-plugin) `v5.1.0`
 
 Office document generation — professional PowerPoint presentations, polished Word documents and Excel spreadsheets.
 
 - **Skills:** pptx, docx, xlsx
-
-### [company-plugin](plugins/company-plugin) `v1.1.0`
-
-Business operations toolkit — shipping logistics via Zásilkovna (Packeta) and payment processing via Stripe.
-
-- **Skills:** zasilkovna, stripe
-- **MCP:** Stripe
+- **Optional:** media-plugin — used for charts, diagrams and images when installed; otherwise native PPTX charts and DOCX tables
 
 ### LSP plugins
 
@@ -123,12 +119,10 @@ graph TD
     webdesign[web-design-plugin] --> design[design-plugin]
     webdesign --> media[media-plugin]
     design --> media
-    design --> office[office-plugin]
-    office --> media
-    dev[dev-tools-plugin] --> media
+    office[office-plugin] -.->|optional| media
+    dev[dev-tools-plugin]
     demo[demo-video-plugin]
     infra[infra-plugin]
-    company[company-plugin]
     lsp["lsp-python · lsp-typescript · lsp-go · lsp-bash"]
 
     style media fill:#4a9eff,color:#fff
@@ -138,25 +132,25 @@ graph TD
     style demo fill:#ec4899,color:#fff
     style dev fill:#6b7280,color:#fff
     style infra fill:#6b7280,color:#fff
-    style company fill:#ef4444,color:#fff
     style lsp fill:#0ea5e9,color:#fff
 ```
 
-- **media-plugin** is foundational — design, web-design, office and dev-tools all route asset generation through it
+- **Every plugin works on its own, with two exceptions.** web-design-plugin depends on design-plugin and media-plugin, and design-plugin depends on media-plugin. Both declare it in `dependencies`, so installing them installs what they need.
 - **design-plugin** provides creative direction, consumed by web-design-plugin for styleguides and design review
-- **office-plugin** uses media-plugin for slide imagery; media-plugin references it back for PPTX dimensions
-- **demo-video-plugin**, **infra-plugin**, **company-plugin** and the **LSP plugins** are standalone
+- **media-plugin** generates the assets for design-plugin and web-design-plugin
+- **office-plugin** works alone; if media-plugin is installed, it uses it for charts, diagrams and images
+- **dev-tools-plugin**, **demo-video-plugin**, **infra-plugin** and the **LSP plugins** are standalone
 
 ### Commands
 
 | Plugin | Command | Purpose |
 |---|---|---|
-| design-plugin | `/design` | Design direction workflow |
-| media-plugin | `/media-generate` | Generate a media asset with guided prompts |
-| media-plugin | `/media-assets` | List and manage generated media assets |
-| web-design-plugin | `/web-design` | End-to-end website design workflow |
+| design-plugin | `/design-plugin:design` | Design direction workflow |
+| media-plugin | `/media-plugin:media-generate` | Generate a media asset with guided prompts |
+| media-plugin | `/media-plugin:media-assets` | List and manage generated media assets |
+| web-design-plugin | `/web-design-plugin:web-design` | End-to-end website design workflow |
 
-Every skill is also directly invocable as `/<skill-name>` — e.g. `/styleguide`, `/demo-video`.
+Every skill is also invocable as `/<plugin-name>:<skill-name>` — e.g. `/design-plugin:styleguide`, `/demo-video-plugin:demo-video`. Plugin commands and skills are always namespaced; the rest of this README uses the short name (`/git-pr`) for readability.
 
 The nine `dev-tools-plugin` skills are invocable **only** that way. They set `disable-model-invocation: true`, so Claude never selects them on its own and their descriptions cost no context: `/git-pr` merges when you say so, not when your work looks finished.
 
@@ -169,10 +163,10 @@ The nine `dev-tools-plugin` skills are invocable **only** that way. They set `di
 | media-plugin | Mermaid (HTTP) | Diagram generation |
 | media-plugin | `@drawio/mcp` (npx) | Draw.io diagram editing |
 | media-plugin | Playwright (npx) | D3.js chart rendering |
+| dev-tools-plugin | Mermaid (HTTP) | Diagram validation for generated docs |
 | web-design-plugin | Playwright (npx) | Visual testing of built websites |
 | demo-video-plugin | Playwright (npx) | UI recording with devtools video capture |
 | demo-video-plugin | `elevenlabs-mcp` (uvx) | Demo voiceover generation |
-| company-plugin | `@stripe/mcp` (npx) | Stripe payments, subscriptions, invoicing |
 
 ### LSP servers
 
@@ -209,8 +203,9 @@ claude plugin marketplace add lukaskellerstein/claude-my-marketplace
 /plugin install demo-video-plugin@claude-my-marketplace
 /plugin install office-plugin@claude-my-marketplace
 /plugin install infra-plugin@claude-my-marketplace
-/plugin install company-plugin@claude-my-marketplace
 ```
+
+Installing `web-design-plugin` or `design-plugin` also installs the plugins they depend on.
 
 The four `lsp-*` plugins are deliberately **not** in this list — see below.
 
@@ -219,6 +214,29 @@ The four `lsp-*` plugins are deliberately **not** in this list — see below.
 ```
 /plugin marketplace update
 ```
+
+## Usage
+
+Commands take arguments; model-invoked skills trigger from a plain request.
+
+```
+# Design and build a site from a brief (--fast skips checkpoints, --no-media skips asset generation)
+/web-design-plugin:web-design Landing page for a specialty coffee roaster --fast
+
+# Design direction and styleguide only
+/design-plugin:design Brand refresh for a specialty coffee roaster
+
+# Generate and organize media
+/media-plugin:media-generate image A futuristic city skyline at sunset, cyberpunk style
+/media-plugin:media-assets organize
+
+# Developer workflow — user-invoked only
+/dev-tools-plugin:question Where is the auth token refreshed?
+/dev-tools-plugin:brainstorm Split the monolith API or keep it?
+/dev-tools-plugin:git-pr
+```
+
+Office documents, infrastructure and demo videos need no command — ask in plain words. *"Make a 6-slide pitch deck about our Q3 results"* triggers the `pptx` skill.
 
 ## Using the LSP plugins
 
@@ -238,15 +256,13 @@ Each plugin installs nothing and bundles nothing; it fails soft until its binary
 
 ## Environment Variables
 
-**media-plugin**, **demo-video-plugin** and **company-plugin** require environment variables. All other plugins work without any configuration.
+**media-plugin** and **demo-video-plugin** require environment variables. **design-plugin** and **web-design-plugin** install media-plugin as a dependency, so set them for those too (or run `/web-design` with `--no-media`). All other plugins work without any configuration.
 
 | Variable | Required by | Description |
 |---|---|---|
 | `GEMINI_API_KEY` | media-plugin | Google Gemini API key for image, video and music generation via `media-mcp`. Get one at [aistudio.google.com](https://aistudio.google.com/apikey). |
 | `ELEVENLABS_API_KEY` | media-plugin, demo-video-plugin | ElevenLabs API key for text-to-speech, voice cloning and demo voiceover. Get one at [elevenlabs.io](https://elevenlabs.io). |
 | `MEDIA_OUTPUT_DIR` | media-plugin | Absolute path where generated media is saved. When set, MCP servers return file paths instead of base64, keeping context clean. Falls back to the current directory. |
-| `STRIPE_SECRET_KEY` | company-plugin | Stripe secret API key. Use `sk_test_...` for development. Get one at [dashboard.stripe.com](https://dashboard.stripe.com). |
-| `ZASILKOVNA_API_KEY` | company-plugin | Zásilkovna (Packeta) API password for shipment operations, from the Zásilkovna client section. |
 
 ### Setup by OS
 
@@ -258,8 +274,6 @@ Add to your `~/.bashrc`, `~/.bash_profile` or `~/.zshrc`:
 export GEMINI_API_KEY="your-gemini-api-key"
 export ELEVENLABS_API_KEY="your-elevenlabs-api-key"
 export MEDIA_OUTPUT_DIR="/path/to/media/output"
-export STRIPE_SECRET_KEY="sk_test_your-stripe-secret-key"
-export ZASILKOVNA_API_KEY="your-zasilkovna-api-key"
 ```
 
 Then reload your shell:
@@ -274,8 +288,6 @@ source ~/.zshrc   # or ~/.bashrc
 [System.Environment]::SetEnvironmentVariable("GEMINI_API_KEY", "your-gemini-api-key", "User")
 [System.Environment]::SetEnvironmentVariable("ELEVENLABS_API_KEY", "your-elevenlabs-api-key", "User")
 [System.Environment]::SetEnvironmentVariable("MEDIA_OUTPUT_DIR", "C:\path\to\media\output", "User")
-[System.Environment]::SetEnvironmentVariable("STRIPE_SECRET_KEY", "sk_test_your-stripe-secret-key", "User")
-[System.Environment]::SetEnvironmentVariable("ZASILKOVNA_API_KEY", "your-zasilkovna-api-key", "User")
 ```
 
 Restart your terminal for changes to take effect.
@@ -286,8 +298,6 @@ Restart your terminal for changes to take effect.
 setx GEMINI_API_KEY "your-gemini-api-key"
 setx ELEVENLABS_API_KEY "your-elevenlabs-api-key"
 setx MEDIA_OUTPUT_DIR "C:\path\to\media\output"
-setx STRIPE_SECRET_KEY "sk_test_your-stripe-secret-key"
-setx ZASILKOVNA_API_KEY "your-zasilkovna-api-key"
 ```
 
 Restart your terminal for changes to take effect.
@@ -300,7 +310,7 @@ Restart your terminal for changes to take effect.
 ├── plugins/
 │   ├── <plugin-name>/
 │   │   ├── .claude-plugin/
-│   │   │   └── plugin.json   # Metadata: name, version, description, skills, MCP servers
+│   │   │   └── plugin.json   # Metadata: name, version, description, dependencies, skills, MCP servers
 │   │   ├── skills/           # <skill-name>/SKILL.md — invocable as /<skill-name>
 │   │   ├── agents/           # Subagent definitions
 │   │   ├── commands/         # Slash commands
@@ -315,14 +325,17 @@ Restart your terminal for changes to take effect.
 
 1. Create `plugins/<name>/.claude-plugin/plugin.json` with `name`, `version`, `description`, `author` and `keywords`
 2. Add skills under `skills/<skill-name>/SKILL.md` (auto-discovered), plus `agents/`, `commands/`, `hooks/` as needed
-3. Register it in `.claude-plugin/marketplace.json` as `{ "name": "<name>", "source": "./plugins/<name>" }` and bump the marketplace `version`
-4. Validate before shipping:
+3. Keep it independent — don't name another plugin's skills or tools. If the plugin truly needs another one, list it in `dependencies` in `plugin.json`; if it is only nice to have, write "if `<plugin>` is installed, use …" with a fallback
+4. Register it in `.claude-plugin/marketplace.json` as `{ "name": "<name>", "source": "./plugins/<name>" }` and bump the marketplace `version`
+5. Validate before shipping:
 
 ```bash
 claude plugin validate ./plugins/<name>   # manifest + components
 claude plugin validate .                  # marketplace manifest
 claude --plugin-dir "$PWD/plugins/<name>" plugin details <name>   # inventory + token cost
 ```
+
+For a plugin with `dependencies`, pass each dependency with its own `--plugin-dir` as well.
 
 ## Archive
 

@@ -103,7 +103,7 @@ Arc geometry & the full-circle gotcha: [path-geometry.md](path-geometry.md). (Fo
 From `visual-planning/references/infographic-design.md`, enforced by hand here:
 - **One message, one hero element.** Largest thing = the single takeaway.
 - **Direct labels**, value + unit (`42ms`, not `42`); no legend unless a color scale truly needs one.
-- **≤3 hues**, color encodes meaning, rest grey; pull palette from brand/`styleguide`.
+- **≤3 hues**, color encodes meaning, rest grey; pull palette from the brand or styleguide.
 - **Grid alignment**, equal-height cards, uniform gaps.
 - **No chartjunk** — no 3-D, gratuitous shadows, heavy gridlines.
 - **Real numbers only** — never invent figures to fill a layout.

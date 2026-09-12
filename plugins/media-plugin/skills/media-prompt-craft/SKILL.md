@@ -28,7 +28,7 @@ The bridge between design intent and media execution. Translates styleguide choi
 
 - User wants to generate the actual image → use **media-plugin/image-generation**
 - User wants to search stock photos directly → use **media-plugin/image-sourcing**
-- User hasn't defined a design direction yet → use **styleguide** skill first
+- User hasn't defined a design direction yet → agree on palette, mood and imagery style with the user first
 - User wants to fetch SVG icons → use **media-plugin/icon-library**
 
 ## Prompt-from-Styleguide Workflow
@@ -216,7 +216,6 @@ See [references/style-vocabulary.md](${CLAUDE_PLUGIN_ROOT}/skills/media-prompt-c
 - **media-plugin/image-sourcing** — use with the crafted search queries for Unsplash/Pexels/Pixabay
 - **media-plugin/video-generation** — use `mcp__media-mcp__generate_video` for video backgrounds
 - **media-plugin/icon-library** — for SVG icons (don't generate these, fetch pre-made ones)
-- **styleguide** skill — create the design language FIRST, then use this skill to translate it into prompts
 
 ## Tips
 
@@ -224,4 +223,4 @@ See [references/style-vocabulary.md](${CLAUDE_PLUGIN_ROOT}/skills/media-prompt-c
 - Stock photos for people, AI generation for abstract/conceptual — AI struggles with natural-looking humans
 - Include negative prompts to avoid common AI artifacts: "no watermark, no text, no distortion"
 - Test your Unsplash queries before committing — search results vary significantly with keyword order
-- For presentations, reference **office-plugin/pptx** for recommended image dimensions per slide type
+- For presentations and documents, match the image aspect ratio to its placement: 16:9 for a full slide, 5:4 or 9:10 for a half slide, page width (about 6.5in) for a document

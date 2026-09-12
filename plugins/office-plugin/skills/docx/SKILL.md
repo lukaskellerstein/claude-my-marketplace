@@ -1,17 +1,25 @@
 ---
 name: docx
-description: "This skill should be activated when the user asks to create a Word document, report, memo, letter, proposal, whitepaper, or anything involving .docx output. Also triggers when the user says 'write a report', 'create a document', 'make a Word file', 'draft a proposal', 'generate a whitepaper', or mentions .docx. Creates polished Word documents (.docx) using the docx npm package (docx-js) for all document generation and the media-plugin for sourcing/generating images. Can also edit existing DOCX files. Activates even for simple requests like 'write a one-page memo' — the skill ensures professional output every time."
+description: "This skill should be activated when the user asks to create a Word document, report, memo, letter, proposal, whitepaper, or anything involving .docx output. Also triggers when the user says 'write a report', 'create a document', 'make a Word file', 'draft a proposal', 'generate a whitepaper', or mentions .docx. Creates polished Word documents (.docx) using the docx npm package (docx-js) for all document generation. Can also edit existing DOCX files. Activates even for simple requests like 'write a one-page memo' — the skill ensures professional output every time."
 ---
 
 # DOCX Document Skill
 
-Create professional Word documents using **docx** (docx-js npm package) for all document generation, **media-plugin** for sourcing/generating images, and **graph-generation** for charts and diagrams.
+Create professional Word documents using **docx** (docx-js npm package) for all document generation.
 
-## Before you start: plan the visuals
+## Visuals: charts, diagrams and images
 
-If you are deciding the document's visuals yourself (a report/whitepaper/proposal that "should look good" or "needs diagrams"), run the **visual-planning** skill (media-plugin) FIRST. It decides which concepts deserve a visual, picks the right technique for each, and binds them to one style — then routes each to the correct engine. Skipping it is the main cause of ugly documents.
+This skill works on its own. If media-plugin is installed, use its skills for better visuals — they are optional, never required.
 
-**Routing rule (no exceptions):** diagrams, charts, architecture, flows, and data viz go to the **graph-generation** skill (D3 / Mermaid / Draw.io) and are embedded as PNG. They are **never** produced via AI `generate_image`, which mangles labels and layout. AI image generation is only for photos, illustrations, backgrounds, and mockups.
+| Visual | If media-plugin is installed | Otherwise |
+|--------|------------------------------|-----------|
+| Document-wide visual plan | Run **visual-planning** FIRST when you decide the visuals yourself — it picks which concepts deserve a visual and binds them to one style | Plan the visuals in Step 2 |
+| Charts, data viz | **graph-generation** (D3), embedded as PNG | A styled data table (header shading, alternating rows) |
+| Diagrams, flows, architecture | **graph-generation** (Mermaid / Draw.io), embedded as PNG | A numbered list or table that walks through the steps — tell the user a rendered diagram needs media-plugin |
+| Photos | **image-sourcing** (Unsplash) | Photos the user provides; otherwise leave them out |
+| Illustrations | **image-generation** | Leave them out |
+
+**Never** use AI image generation for charts or diagrams — it mangles labels and layout. AI images are only for photos, illustrations, backgrounds, and mockups.
 
 ## Quick Reference
 
@@ -59,7 +67,7 @@ For each section, define:
 
 1. **Text content** — headings, paragraphs, bullet points, tables, data
 2. **Image plan** — which sections need images/charts and at what size
-3. **Chart plan** — which data needs D3.js charts or Mermaid diagrams
+3. **Chart plan** — which data needs a chart or diagram (see [Visuals](#visuals-charts-diagrams-and-images))
 4. **Color palette** — pick a palette matching the topic (see [references/design.md](${CLAUDE_PLUGIN_ROOT}/skills/docx/references/design.md))
 5. **Font pairing** — pick header + body fonts (see [references/design.md](${CLAUDE_PLUGIN_ROOT}/skills/docx/references/design.md))
 
@@ -77,14 +85,9 @@ Read the Design System in [references/design.md](${CLAUDE_PLUGIN_ROOT}/skills/do
 
 **Gather all planned images and charts BEFORE writing any code.**
 
-For each image:
-1. **Try Unsplash first** — use the `image-sourcing` skill for real photos
-2. **Fall back to AI generation** — use `image-generation` skill if no suitable stock photo exists
-
-For each chart/diagram:
-1. **Use `graph-generation` skill** for D3.js charts (bar, line, pie, scatter, area, etc.)
-2. **Use `graph-generation` skill** for Mermaid diagrams (flowcharts, sequence, ER, C4, etc.)
-3. Charts are rendered as PNG via Playwright, then embedded into the DOCX
+For each image and each chart/diagram, follow the route in [Visuals](#visuals-charts-diagrams-and-images):
+1. **Prefer real photos** — AI-generate an image only if no suitable photo exists and image generation is available
+2. **Charts and diagrams** — embed the rendered PNG (see [Embedding Charts](#embedding-charts)), or use the table/list fallback
 
 ### Image Sizing for Documents
 
@@ -260,28 +263,12 @@ To generate visual page thumbnails:
 python3 ${CLAUDE_PLUGIN_ROOT}/skills/docx/scripts/thumbnail.py input.docx thumbnails
 ```
 
-## Chart Integration
+## Embedding Charts
 
-The DOCX skill integrates with the `graph-generation` skill for embedding charts and diagrams.
-
-### D3.js Charts
-
-Use `graph-generation` to create data visualizations:
-- Bar charts, line charts, pie charts, scatter plots
-- Area charts, grouped/stacked bars
-- Charts rendered as PNG, then embedded into DOCX via `ImageRun`
-
-### Mermaid Diagrams
-
-Use `graph-generation` to create diagrams:
-- Flowcharts, sequence diagrams, ER diagrams
-- C4 architecture diagrams, state diagrams
-- Diagrams rendered as PNG via Playwright, then embedded into DOCX
-
-### Embedding Charts
+Embed a chart or diagram PNG (see [Visuals](#visuals-charts-diagrams-and-images)) with `ImageRun`:
 
 ```javascript
-// After generating chart PNG via graph-generation skill
+// After you have the chart PNG
 const chartData = fs.readFileSync("chart.png");
 new Paragraph({
   children: [
