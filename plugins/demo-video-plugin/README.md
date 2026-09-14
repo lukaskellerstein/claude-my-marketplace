@@ -156,12 +156,19 @@ reach. Guides: `skills/demo-capture/references/obs.md` and `electron.md`.
 
 ```bash
 bash scripts/render.sh --final                                # Remotion -> demo/out/demo.mp4
+node scripts/timeline-to-fcpxml.mjs --project . --probe       # 10s smoke test -> demo/out/probe.fcpxml
 node scripts/timeline-to-fcpxml.mjs --project .               # FCP      -> demo/out/demo.fcpxml
 ```
 
 The FCPXML carries the same cut: clips with retimes and holds, transitions, narration, the
 ducked music bed, captions and chapter markers. It is validated against the installed FCP's
-DTD before anyone imports it. Guide: `skills/demo-assembly/references/final-cut-pro.md`.
+DTD before anyone imports it.
+
+DTD-valid is not the same as imports-correctly, so import `--probe` first: ten seconds of real
+footage carrying every template the storyboard names, each text layer filled with a sentinel
+(`FB5S#0`), built by the same exporter. Any import warning is a failed test.
+`meta.authoritativeRenderer` says which film the user is approving — a Remotion draft renders
+no Motion template. Guide: `skills/demo-assembly/references/final-cut-pro.md`.
 
 ### Graphics: Motion templates, MotionVFX first
 
@@ -180,9 +187,33 @@ node scripts/fcp-templates.mjs --check --project .            # what the storybo
 ```
 
 mExtension lists the whole catalog, but an element never downloaded is a placeholder that
-renders *"The file is missing"*. The scanner tells the two apart, the graphics stage looks at
-thumbnails of downloaded elements only, and the export refuses to write a file that names a
-placeholder — it prints what to download instead. Guide: `skills/demo-graphics/SKILL.md`.
+renders *"The file is missing"*. The scanner tells the two apart and the export refuses to
+write a file that names a placeholder — it prints what to download instead.
+
+A placeholder has no picture on this Mac, so the plugin asks MotionVFX. Their public catalog
+needs no login and covers all 9,699 FCP elements, with the real preview still, preview movie
+and length:
+
+```bash
+node scripts/motionvfx-catalog.mjs --search "cursor click" --kind titles --limit 12 \
+  --out demo/out/graphics/cursors --sheet demo/out/graphics/cursors.png
+node scripts/motionvfx-catalog.mjs --preview 6SMY,FB5S --out demo/out/graphics/picks
+node scripts/motionvfx-catalog.mjs --collections               # which collections are nearly complete
+```
+
+Every row says whether it is downloaded here. This is the only part of the plugin that uses
+the network. Guide: `skills/demo-graphics/SKILL.md`.
+
+### After approval
+
+```bash
+node scripts/fcp-finish-manifest.mjs --project .   # inputs hashed, templates, what is left by hand
+node scripts/youtube-package.mjs --project .       # title, description, chapters from the measured cut
+```
+
+Then consolidate the FCP library, check the archive restores on a fresh path, and ask before
+cleaning anything up: `skills/demo-video/references/delivery.md`. Neither script uploads,
+publishes, commits or pushes, and approving a film authorises none of those.
 
 ## Layout
 
@@ -192,9 +223,11 @@ demo/                       created in the target project
   capture/  audio/  timeline.json  out/      [gitignored, regenerable]
   prep/state/                                 [gitignored — isolated app state]
   studio/                    Remotion project, reads ../timeline.json
+  <videoId>/final/  <videoId>/youtube/       [committed, after approval]
 ```
 
-`brief.md` + `storyboard.json` + `prep/` rebuild the entire video.
+`brief.md` + `storyboard.json` + `prep/` rebuild the entire video. When a repository holds
+several videos, `meta.videoId` (`01-rex-overview`) keeps their deliveries apart.
 
 ## Notable details
 
@@ -210,6 +243,19 @@ demo/                       created in the target project
 - **Captions are on by default**, because most demos are first watched muted.
 - **The storyboard validator rejects demo filler** ("as you can see", "revolutionize") and
   unspeakable pacing.
+- **A DTD-valid FCPXML can still import wrong.** Anchoring inside a connected storyline, an
+  empty `text-style`, and moving a template that draws the footage all passed the DTD and all
+  broke in Final Cut Pro. That is why `--probe` exists.
+
+## Tests
+
+```bash
+node --test "tests/*.test.mjs"
+```
+
+They cover what silently breaks an export: placeholder detection, template resolution,
+published-parameter keys, text-layer order, and the MotionVFX catalog requests (with a mocked
+network, so they run offline).
 
 ## Extending
 

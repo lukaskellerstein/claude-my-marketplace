@@ -30,7 +30,14 @@
 // In FCP, select the lane-1 storyline and choose Edit → Overwrite to Primary Storyline if
 // you prefer to edit on the primary.
 //
+// --probe writes a short version of the same document instead: a few seconds of real footage
+// with every Motion template the storyboard names, each text layer filled with a sentinel.
+// Import that first. A file can validate against FCP's own DTD and still import with warnings
+// or mean something else — only Final Cut Pro can tell you, and a 10-second probe tells you in
+// a minute instead of after a full export.
+//
 // usage: node timeline-to-fcpxml.mjs [--project DIR] [--out PATH] [--version 1.14] [--no-validate]
+//        node timeline-to-fcpxml.mjs --probe [--probe-seconds 6]
 
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -49,7 +56,8 @@ const argOf = (name, fallback) => {
 };
 const projectDir = resolve(argOf('--project', process.cwd()));
 const demoDir = join(projectDir, 'demo');
-const outPath = resolve(argOf('--out', join(demoDir, 'out', 'demo.fcpxml')));
+const isProbe = args.includes('--probe');
+const outPath = resolve(argOf('--out', join(demoDir, 'out', isProbe ? 'probe.fcpxml' : 'demo.fcpxml')));
 
 const readJson = (p, what) => {
   if (!existsSync(p)) {
@@ -58,12 +66,104 @@ const readJson = (p, what) => {
   }
   return JSON.parse(readFileSync(p, 'utf8'));
 };
-const timeline = readJson(join(demoDir, 'timeline.json'), 'timeline (run reconcile.mjs first)');
+let timeline = readJson(join(demoDir, 'timeline.json'), 'timeline (run reconcile.mjs first)');
 const storyboard = readJson(join(demoDir, 'storyboard.json'), 'storyboard');
 const fcpMeta = storyboard.meta?.fcp ?? {};
 
 const installed = fcpxmlVersions();
 const version = argOf('--version', fcpMeta.version ?? installed[0]?.version ?? '1.14');
+
+// ── The probe ──────────────────────────────────────────────────────────────────
+/**
+ * A short timeline that names every Motion template the storyboard does, over real footage,
+ * with a sentinel in every text layer. Built here and exported by the code below, so it tests
+ * the exporter and not a second implementation of it.
+ *
+ * Sentinels look like FB5S#0 and FB5S#1. After importing, export the project back out of FCP:
+ * the sentinels say which text layer FCPXML filled, and the parameters say what FCP kept.
+ */
+function probeTimeline(tl, sb) {
+  const rate = tl.fps;
+  const distinct = (names) => [...new Set(names.filter((n) => n && n !== 'none'))];
+  const sections = sb.sections ?? [];
+  const meta = sb.meta?.fcp ?? {};
+  const titles = distinct([meta.titleTemplate, ...sections.map((s) => s.fcp?.titleTemplate)]);
+  const backgrounds = distinct([meta.backgroundTemplate, ...sections.map((s) => s.fcp?.backgroundTemplate)]);
+  const lowerThirds = distinct([meta.lowerThirdTemplate, ...sections.map((s) => s.fcp?.lowerThirdTemplate)]);
+  const transitions = distinct([meta.transitionTemplate, ...sections.map((s) => s.fcp?.transitionTemplate)]);
+  const effects = distinct(sections.flatMap((s) => s.fcp?.effects ?? []));
+  // Overlays come from the timeline, not the storyboard: reconcile has already turned
+  // position "action" into pixels and `at` into frames, and those are what we want to test.
+  const overlaySpecs = [...new Map(tl.sections.flatMap((s) => s.fcp?.overlays ?? []).filter((o) => o?.template).map((o) => [o.template, o])).values()];
+
+  /** One sentinel per text layer the template actually has, so the round-trip is readable. */
+  const sentinels = (name) => {
+    const { template: t } = resolveTemplate(name, { kind: ['title', 'generator'] });
+    if (!t || t.status !== 'ready') return ['PROBE#0'];
+    // A template with no text layer gets no text: an ignored <text> proves nothing.
+    return Array.from({ length: inspectTemplate(t.path).texts.length }, (_, i) => `${t.code ?? 'PROBE'}#${i}`);
+  };
+
+  const source = tl.sections.find((s) => s.video);
+  if (!source) {
+    console.error('demo-video: the probe needs one captured clip, and this timeline has none.');
+    process.exit(1);
+  }
+  const wanted = Math.round(Number(argOf('--probe-seconds', 6)) * rate);
+  const clipFrames = Math.max(rate, Math.min(wanted, source.video.videoFrames ?? wanted));
+
+  // Everything that is not the first title card, background or transition rides the clip as an
+  // overlay: an overlay takes any title or generator, so one pass covers every remaining slot.
+  const extras = [...overlaySpecs.map((o) => ({ template: o.template, position: o.position })), ...titles.slice(1).map((t) => ({ template: t })), ...backgrounds.slice(1).map((t) => ({ template: t })), ...lowerThirds.slice(1).map((t) => ({ template: t }))];
+  const step = Math.max(1, Math.floor(clipFrames / (extras.length + 1)));
+  const overlays = extras.map((o, i) => ({
+    template: o.template,
+    inFrame: Math.min(i * step, clipFrames - 1),
+    durationFrames: Math.max(rate, clipFrames - i * step),
+    text: sentinels(o.template),
+    position: o.position,
+  }));
+
+  const transitionFrames = transitions.length ? Math.round(0.8 * rate) : 0;
+  const cardFrames = Math.round(5 * rate);
+  const clip = {
+    ...source,
+    id: 'probe-clip',
+    title: 'Probe — clip, lower third, overlays, effects',
+    startFrame: 0,
+    durationInFrames: clipFrames,
+    transitionIn: { kind: 'cut', frames: 0 },
+    camera: { kind: 'static' },
+    captions: [],
+    audio: null,
+    video: { ...source.video, videoFrames: clipFrames, playbackRate: 1, holdLastFrameFrames: 0 },
+    lowerThird: lowerThirds.length ? { inFrame: 0, outFrame: clipFrames, text: sentinels(lowerThirds[0])[0] ?? 'PROBE#0' } : null,
+    fcp: { lowerThirdTemplate: lowerThirds[0], lowerThirdText: lowerThirds.length ? sentinels(lowerThirds[0]) : undefined, effects, overlays },
+  };
+  const card = {
+    id: 'probe-card',
+    beat: 'close',
+    title: 'Probe — title card and background',
+    surface: 'titlecard',
+    startFrame: clipFrames,
+    durationInFrames: cardFrames,
+    transitionIn: { kind: transitionFrames ? 'crossfade' : 'cut', frames: transitionFrames },
+    captions: [],
+    fcp: { titleTemplate: titles[0], backgroundTemplate: backgrounds[0], text: titles.length ? sentinels(titles[0]) : ['PROBE#0'] },
+  };
+
+  return {
+    ...tl,
+    title: `${tl.title ?? 'Demo'} — probe`,
+    durationInFrames: clipFrames + cardFrames,
+    captionsMode: 'none',
+    music: null,
+    sections: [clip, card],
+    probe: { transitionsCovered: transitions.slice(0, 1), transitionsNotCovered: transitions.slice(1) },
+  };
+}
+
+if (isProbe) timeline = probeTimeline(timeline, storyboard);
 
 const { fps, width, height } = timeline;
 const notes = [];
@@ -248,6 +348,11 @@ const round4 = (v) => Number(v.toFixed(4));
  */
 function placement(t, position, where) {
   if (position === undefined || position === 'center') return { params: [], transform: null };
+  if (!Array.isArray(position) && !ANCHOR_POINTS[position]) {
+    // reconcile turns "action" into pixels; anything else here never reached it.
+    notes.push(`${where}: position "${position}" is not a point or an anchor — left where the design puts it`);
+    return { params: [], transform: null };
+  }
   const [x, y] = Array.isArray(position) ? position : ANCHOR_POINTS[position].map((v, i) => v * (i ? height : width));
   const scene = info(t);
   if (scene?.placement === 'content-position' && scene.width && scene.height) {
@@ -526,7 +631,8 @@ if (timeline.captionsMode !== 'none') {
 
 // ── Document ───────────────────────────────────────────────────────────────────
 const total = frames(timeline.durationInFrames);
-const projectName = fcpMeta.projectName ?? timeline.title ?? 'Demo';
+// The probe is named apart from the film, so importing both into one library cannot confuse them.
+const projectName = `${fcpMeta.projectName ?? timeline.title ?? 'Demo'}${isProbe ? ' — probe' : ''}`;
 const sequenceFormat = formatFor(width, height);
 const xml = [
   '<?xml version="1.0" encoding="UTF-8"?>',
@@ -578,10 +684,26 @@ if (!args.includes('--no-validate')) {
   }
 }
 
+const appName = (installed[0]?.app ?? '/Applications/Final Cut Pro.app').split('/').pop().replace(/\.app$/, '');
 const lines = [
   `demo-video: FCPXML ${version} -> ${outPath}`,
   `  ${sections.length} sections, ${(timeline.durationInFrames / fps).toFixed(2)}s @ ${fps}fps, ${validation}`,
-  `  import: File → Import → XML in Final Cut Pro, or: open -a "${(installed[0]?.app ?? '/Applications/Final Cut Pro.app').split('/').pop().replace(/\.app$/, '')}" "${outPath}"`,
+  `  import: File → Import → XML in Final Cut Pro, or: open -a "${appName}" "${outPath}"`,
   ...[...new Set(notes)].map((n) => `  note   ${n}`),
+  ...(isProbe
+    ? [
+        '',
+        'This is the probe, not the film. Import it into a throwaway library and check, in order:',
+        '  1. It imports with NO warnings. A warning is a failed test, even when the picture looks right.',
+        '  2. Every title shows its sentinel (CODE#0, CODE#1) — an empty layer means the text order is wrong.',
+        '  3. No template shows "The file is missing", sample text, or grey "DROP ZONE" art.',
+        '  4. The footage under each overlay is whole: no black band, no shifted picture.',
+        '  5. Each title is readable at its entrance, its settled hold, and its exit — not only one frame.',
+        '  Then File → Export XML from that project and read it back: it says which parameters FCP kept.',
+        ...(timeline.probe?.transitionsNotCovered.length
+          ? [`  Not covered by this probe: ${timeline.probe.transitionsNotCovered.join(', ')} (one transition per probe).`]
+          : []),
+      ]
+    : []),
 ];
 console.log(lines.join('\n'));

@@ -128,7 +128,8 @@ if (missing.length) {
 if (notDownloaded.length) {
   lines.push(
     `The storyboard names MotionVFX elements that are not downloaded, so the FCP export will refuse to run: ${notDownloaded.join(', ')}. ` +
-      'The user downloads them in Final Cut Pro → mExtension (see the demo-graphics skill).'
+      'The user downloads them in Final Cut Pro → mExtension (see the demo-graphics skill). ' +
+      'To see what one looks like first: scripts/motionvfx-catalog.mjs --preview CODE --out DIR.'
   );
 }
 

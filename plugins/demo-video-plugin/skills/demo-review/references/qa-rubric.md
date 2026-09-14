@@ -29,6 +29,15 @@ Work top to bottom. A blocking failure makes everything below it moot.
 - [ ] FCP finish: no graphic covers the element the narration names; no template shows its
       sample text or "DROP ZONE" art; callouts placed with `position` sit on or beside their
       target; no black band where footage should be (a moved template dragging the footage).
+- [ ] FCP finish: every title is readable at its entrance, its settled hold and its exit —
+      three samples per title family, not one.
+- [ ] FCP finish: a logo is complete inside its mask for its whole hold (sample densely), in
+      its own colours, and is the official file rather than a redrawn one.
+- [ ] FCP finish: if captions were asked for, they are in the picture at a timestamp where a
+      caption is active — an iTT sidecar is not burn-in.
+- [ ] The exported film's decoded frame count equals `timeline.durationInFrames`. A Share
+      export can be probed successfully while it is still being written.
+- [ ] The film reviewed is the one `meta.authoritativeRenderer` names.
 
 ## 3. Quality — worth one iteration
 

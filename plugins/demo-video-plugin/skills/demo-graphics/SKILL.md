@@ -18,17 +18,22 @@ After reconcile — the clips are captured, the action logs exist, the timing is
 before `timeline-to-fcpxml.mjs`. It ends at **GATE 4**: the user approves the look and
 downloads anything not yet downloaded.
 
-## Two rules
+## Three rules
 
-**1. Never name a placeholder.** mExtension lists its whole catalog in FCP, but an element
+**1. Never export a placeholder.** mExtension lists its whole catalog in FCP, but an element
 that was never downloaded is a stand-in that renders *"The file is missing, please
-re-download the element"*. Only a downloaded element has a thumbnail, and only a downloaded
-element can be exported. The export refuses to write a file that names a placeholder and
-prints the download list.
+re-download the element"*. Only a downloaded element can be exported. The export refuses to
+write a file that names a placeholder and prints the download list. You may still *choose* a
+placeholder — see the catalog below — you just cannot export before the user downloads it.
 
 **2. One look, few elements.** The product is the subject. One theme pack or one visual
 family across the video; one element per role, repeated; 1–2 overlays in a section at most.
 A demo dressed like a music video reads as hiding something.
+
+**3. A template reference is not a finished title.** Naming a template puts it on the
+timeline. It does not fill its media wells, fix a vendor default that is nearly black, clear
+the field you did not use, or prove the text is readable over this footage. That work happens
+in FCP, and the [binding checklist](#7-the-binding-checklist) is how you know it is done.
 
 ## 1. Inventory
 
@@ -43,6 +48,27 @@ Roles come from names, so they are a shortlist, not a verdict: `lower-third`, `t
 `intro`, `module`, `background`, `callout`, `cursor`, `frame`, `infographic`, `ui`, `text`,
 `caption-style`, `transition`, `effect`. MotionVFX facts — codes, packs, collections, what
 downloads contain: [motionvfx.md](${CLAUDE_PLUGIN_ROOT}/skills/demo-graphics/references/motionvfx.md).
+
+## 1b. The catalog beyond this Mac
+
+A downloaded element has a thumbnail on disk. A placeholder has nothing, so it can only be
+picked by its name — unless you ask MotionVFX. The public DesignStudio catalog needs no login
+and covers everything: the real preview still, the real preview movie, the real length.
+
+```bash
+node ${CLAUDE_PLUGIN_ROOT}/scripts/motionvfx-catalog.mjs --search "cursor click" --kind titles \
+  --limit 12 --out demo/out/graphics/cursors --sheet demo/out/graphics/cursors.png
+node ${CLAUDE_PLUGIN_ROOT}/scripts/motionvfx-catalog.mjs --preview 6SMY,FB5S --out demo/out/graphics/picks
+node ${CLAUDE_PLUGIN_ROOT}/scripts/motionvfx-catalog.mjs --collections    # what is nearly complete here
+```
+
+Each row says `downloaded`, `NOT downloaded` or `not in mExtension here`. Kinds are `titles`,
+`generators`, `transitions`, `effects`. `--preview` also fetches the preview movie, so you can
+judge entrance and exit, not one frozen frame. This is the only part of the plugin that uses
+the network, and it sends nothing about this machine.
+
+Use it when nothing downloaded fits a role, and to check a placeholder before asking the user
+to spend one of their 500 daily downloads on it.
 
 ## 2. Decide what the demo needs
 
@@ -93,6 +119,9 @@ What a good pick has:
   "DROP ZONE" art.
 - A title card on its own solid ground hides `backgroundTemplate` completely; set a background
   only under a card whose thumbnail is transparent.
+- Its default colours survive this footage. Vendor defaults are made for a vendor's demo reel:
+  measured here, one popular lower third ships nearly black text, and plain white titles vanish
+  over a white document. Judge the still against a real frame, not against grey.
 
 ## 4. GATE 4 — the look and the downloads
 
@@ -102,9 +131,10 @@ Stop and show the user:
 2. A table: slot, template name with code, sections where it appears, one-line reason.
 3. The contact-sheet paths, so they can see the picks.
 4. **The download list:** every pick that is still a placeholder. Only the user can download
-   (Final Cut Pro → mExtension, search the 4-character code; 500 downloads a day). A
-   placeholder pick was chosen by name only — look at its thumbnail after download, before
-   export, and swap it if it does not fit.
+   (Final Cut Pro → mExtension, search the 4-character code; 500 downloads a day). Say which
+   picks you judged from the public catalog preview rather than from an installed thumbnail.
+5. **What they will have to finish by hand** — drop zones, colours, a generator's text. Say it
+   now, not after the export.
 
 ## 5. Write it into the storyboard
 
@@ -157,21 +187,56 @@ Stop and show the user:
 - **Transitions:** set `transitionIn.seconds` to the template's own length (`--inspect`) on the
   sections it plays into — reconcile owns the overlap. The export notes a big mismatch.
 
-## 6. Check and export
+## 6. Probe, then export
+
+**Import the probe before the film.** A file that validates against FCP's own DTD can still
+import with warnings, or mean something other than the timeline meant — that is how the
+"Anchored items were ignored" rule was found. The probe is ten seconds of real footage
+carrying every template the storyboard names, with a sentinel (`FB5S#0`, `FB5S#1`) in every
+text layer, built by the same exporter:
 
 ```bash
 node ${CLAUDE_PLUGIN_ROOT}/scripts/reconcile.mjs --project .                 # resolves at / position into frames
 node ${CLAUDE_PLUGIN_ROOT}/scripts/fcp-templates.mjs --check --project .     # ready / placeholder / missing, per slot
-node ${CLAUDE_PLUGIN_ROOT}/scripts/timeline-to-fcpxml.mjs --project .        # refuses placeholders, validates against FCP's DTD
+node ${CLAUDE_PLUGIN_ROOT}/scripts/timeline-to-fcpxml.mjs --project . --probe   # -> demo/out/probe.fcpxml
+node ${CLAUDE_PLUGIN_ROOT}/scripts/timeline-to-fcpxml.mjs --project .        # -> demo/out/demo.fcpxml
+node ${CLAUDE_PLUGIN_ROOT}/scripts/fcp-finish-manifest.mjs --project .       # what it is made of, what is left by hand
 ```
+
+Import the probe into a throwaway library. **Treat any import warning as a failed test**, even
+when the picture looks right. Then File → Export XML from that project and read it back: it
+tells you which text layer each sentinel landed in and which parameters FCP kept. Only export
+the film once the probe is clean.
 
 Read every `note` the export prints. Then the user imports, finishes, and shares from FCP.
 
-## 7. Review the exported film
+## 7. The binding checklist
+
+Run this in FCP, per template family, before anyone calls the finish done. Each line is here
+because it failed once.
+
+- [ ] Every media well has real media in it. An empty one shows grey "DROP ZONE" art.
+- [ ] Every text field has final copy, and fields you do not use are cleared — not left with
+      the vendor's sample name.
+- [ ] Colour and contrast checked **over real footage**, light frames and dark frames, not over
+      a black canvas or the vendor preview.
+- [ ] Judged over time: entrance, settled hold, exit. A 3-second title can have almost no
+      readable hold once its animation is counted.
+- [ ] Measured with the **longest** final copy, not the sentinel. Wrap long labels at a
+      meaningful break and keep them inside the backing.
+- [ ] A logo is the official file, unchanged, complete inside its mask for the whole hold.
+      Sample it densely: a clipped wide mark reads as a reveal in a single frame.
+- [ ] Nothing covers the thing the narration names at that moment.
+
+## 8. Review the exported film
 
 Review `demo/out/demo-fcp.mp4` with `demo-review`. Graphics add three checks: no *"The file
 is missing"* text anywhere, no overlay covering what the narration names, and no more element
 kinds than the story needs.
+
+**A Remotion draft cannot approve this finish.** It does not render Motion templates. When the
+storyboard says `"meta": { "authoritativeRenderer": "final-cut-pro" }`, the film under review is
+the one exported from FCP, and nothing else closes the gate.
 
 ## What FCPXML cannot do
 
@@ -186,3 +251,9 @@ The export writes template, timing, text and position. It cannot:
 - set up elements that need **analysis inside FCP** (mTracker, mRotoAI).
 
 Say which of these the user has to finish by hand, in the GATE 4 summary.
+
+It also does not carry them **back**. A logo assigned to a media well in FCP does not survive
+that project's own XML export, so the finished library — not the XML — is the editable
+deliverable. Never re-import the XML over a hand-finished project: a re-export makes a new
+project and every hand edit is lost. `fcp-finish-manifest.mjs` writes down what only exists in
+the library, so the next person knows what the XML does not hold.

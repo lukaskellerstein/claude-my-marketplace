@@ -122,6 +122,47 @@ if (meta.fcp !== undefined) {
     errors.push(`meta.fcp.version must look like "1.14", got "${meta.fcp.version}".`);
   }
 }
+
+// ── meta.authoritativeRenderer: which film the user is approving ───────────────
+// A Remotion draft and a Final Cut finish are different films. The draft proves the footage,
+// the narration and the cut; it proves nothing about Motion titles, logos or transitions. Say
+// which one is the deliverable, so a review of the wrong one cannot pass a gate.
+const RENDERERS = new Set(['remotion', 'final-cut-pro']);
+if (meta.authoritativeRenderer !== undefined && !RENDERERS.has(meta.authoritativeRenderer)) {
+  errors.push(`meta.authoritativeRenderer "${meta.authoritativeRenderer}" is not one of ${[...RENDERERS].join(', ')}.`);
+}
+if (meta.fcp !== undefined && meta.authoritativeRenderer === undefined) {
+  warnings.push(
+    'meta.fcp is set but meta.authoritativeRenderer is not. Ask at GATE 1 which film is the deliverable: ' +
+      '"remotion" renders without a person, "final-cut-pro" is hand-finished and must be reviewed from its own export.'
+  );
+}
+if (meta.authoritativeRenderer === 'final-cut-pro' && meta.fcp === undefined) {
+  errors.push('meta.authoritativeRenderer is "final-cut-pro" but there is no meta.fcp to say what the finish looks like.');
+}
+
+// ── meta.videoId: one repository, several videos ───────────────────────────────
+if (meta.videoId !== undefined && !/^\d{2}-[a-z0-9][a-z0-9-]*$/.test(String(meta.videoId))) {
+  errors.push(`meta.videoId must be a production number plus a slug, e.g. "01-rex-overview", got "${meta.videoId}".`);
+}
+
+// ── meta.voice: the recipe that made the narration ─────────────────────────────
+// A voice's display name does not reproduce it. Keep the ids and the settings with the audio,
+// never the API key.
+if (meta.voice !== undefined) {
+  if (typeof meta.voice !== 'object' || Array.isArray(meta.voice)) {
+    errors.push('meta.voice must be an object.');
+  } else {
+    for (const key of ['provider', 'voiceId', 'modelId']) {
+      if (!meta.voice[key]) warnings.push(`meta.voice.${key} is missing — without it the same narrator cannot be found again.`);
+    }
+    for (const key of Object.keys(meta.voice)) {
+      if (/key|token|secret|password/i.test(key)) errors.push(`meta.voice.${key} looks like a credential. Never store one in the storyboard.`);
+    }
+  }
+} else if ((Array.isArray(sb.sections) ? sb.sections : []).some((s) => String(s?.voiceover ?? '').trim())) {
+  warnings.push('meta.voice is not set. Record provider, voiceId, modelId and the generation settings, so this narrator can be used again.');
+}
 const overlayTemplates = new Set();
 
 // ── sections ───────────────────────────────────────────────────────────────────
