@@ -58,6 +58,7 @@ const remotionInstalled =
 // ── Pipeline stage ─────────────────────────────────────────────────────────────
 let stage = 'brief';
 let detail = '';
+let notDownloaded = [];
 if (has('out/demo.mp4')) stage = 'done (final render exists)';
 else if (has('out/demo-draft.mp4')) stage = 'draft rendered — awaiting review';
 else if (has('timeline.json')) stage = 'reconciled — ready to render';
@@ -89,8 +90,23 @@ if (has('storyboard.json')) {
       }
       if (Number(process.versions.node.split('.')[0]) < 22) missing.push('Node 22+ for the OBS WebSocket client');
     }
-    if (sb.meta?.fcp && !count('/Applications', '.app', 'Final Cut Pro')) {
+    const usesFcp = sb.meta?.fcp || (sb.sections ?? []).some((s) => s.fcp);
+    if (usesFcp && !count('/Applications', '.app', 'Final Cut Pro')) {
       missing.push('Final Cut Pro (meta.fcp is set)');
+    } else if (usesFcp) {
+      // A MotionVFX element named but never downloaded blocks the export; say so up front.
+      const { resolveTemplate, storyboardTemplateRefs } = await import('../scripts/lib/fcp.mjs');
+      const toDownload = [
+        ...new Set(
+          storyboardTemplateRefs(sb)
+            .map((r) => resolveTemplate(r.name, { kind: r.kind }))
+            .filter((r) => r.status === 'placeholder')
+            .map((r) => r.template.name)
+        ),
+      ];
+      if (toDownload.length) {
+        notDownloaded = toDownload;
+      }
     }
   } catch {
     detail = ' (storyboard.json is present but does not parse — fix it before continuing.)';
@@ -108,6 +124,12 @@ if (!remotionInstalled) {
 }
 if (missing.length) {
   lines.push(`Missing prerequisites: ${missing.join('; ')}. Run /demo-setup to fix.`);
+}
+if (notDownloaded.length) {
+  lines.push(
+    `The storyboard names MotionVFX elements that are not downloaded, so the FCP export will refuse to run: ${notDownloaded.join(', ')}. ` +
+      'The user downloads them in Final Cut Pro → mExtension (see the demo-graphics skill).'
+  );
 }
 
 emitContext('SessionStart', lines.join('\n'));

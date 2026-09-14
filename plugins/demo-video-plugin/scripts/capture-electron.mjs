@@ -23,7 +23,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { installOverlay, runAction, sleep } from './lib/actions.mjs';
+import { installOverlay, runAction, sleep, viewportOf } from './lib/actions.mjs';
 import { loadPlaywright } from './lib/playwright.mjs';
 import { createRecorder, saveClip } from './lib/recorders.mjs';
 
@@ -95,6 +95,7 @@ for (const section of sections) {
   let obsRaw = null;
   const warnings = [];
   const actionLog = [];
+  let viewport = null;
 
   try {
     app = await _electron.launch(launchOptions);
@@ -126,6 +127,7 @@ for (const section of sections) {
     }
 
     await sleep(700); // settle before the first action so the clip does not open mid-paint
+    viewport = await viewportOf(page);
     await recorder.prepare();
     await recorder.start();
 
@@ -184,7 +186,7 @@ for (const section of sections) {
   if (!dryRun && !error && recorderKind === 'obs') {
     writeFileSync(
       join(captureDir, `${section.id}.actions.json`),
-      `${JSON.stringify({ id: section.id, clock: 'seconds on the recording, pauses removed', actions: actionLog }, null, 2)}\n`
+      `${JSON.stringify({ id: section.id, clock: 'seconds on the recording, pauses removed', viewport, actions: actionLog }, null, 2)}\n`
     );
   }
 

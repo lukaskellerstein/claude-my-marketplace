@@ -61,11 +61,14 @@ timeline before reporting one.
 
 **BLOCKING** — visible error or stack trace; exposed secret, token, or real personal data;
 narration cut off; empty state or spinner occupying a meaningful part of a section; an
-obviously failed clip; anything on the brief's do-not-show list.
+obviously failed clip; anything on the brief's do-not-show list; *"The file is missing, please
+re-download the element"* (a MotionVFX placeholder in an FCP finish).
 
 **SERIOUS** — A/V desync; a frozen frame long enough to read as a stall; clipped or overlapping
 text; captions covering the element being discussed; placeholder data (`test@`, `asdf`, Lorem
-Ipsum); a section failing its `successCriteria`; total length far off target.
+Ipsum); a section failing its `successCriteria`; total length far off target; in an FCP
+finish, a graphic covering what the narration names, a template still showing its sample
+text or "DROP ZONE" art, or a black band where the footage should be.
 
 **QUALITY** — pacing; teleporting cursor or clicks with no dwell; a transition that reads as a
 glitch; a first or last frame that is not deliberate; a `wow` beat that does not land.
@@ -96,5 +99,6 @@ Close with:
 - Describe frames that are fine. Silence means passed.
 - Report a "possible" issue you could not confirm — sample more frames instead, or list it
   under what you could not verify.
-- Suggest cosmetic changes to the overlay style unless something is unreadable.
+- Suggest cosmetic changes to the overlay style unless something is unreadable or covers the
+  subject. Swapping a Motion template is the `demo-graphics` stage's call.
 - Fix anything. You report; the main thread decides what to re-run.

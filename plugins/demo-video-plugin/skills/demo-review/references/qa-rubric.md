@@ -13,6 +13,7 @@ Work top to bottom. A blocking failure makes everything below it moot.
 - [ ] No empty state, skeleton, or spinner occupying a meaningful part of a section.
 - [ ] No obviously failed clip: blank, half-loaded, mid-navigation, or a mis-click on camera.
 - [ ] Nothing from `brief.md`'s do-not-show list.
+- [ ] FCP finish: no *"The file is missing, please re-download the element"* in any frame.
 
 ## 2. Serious — fix before shipping
 
@@ -25,6 +26,9 @@ Work top to bottom. A blocking failure makes everything below it moot.
 - [ ] Sections are in the storyboard's order, with no missing or duplicated section.
 - [ ] Total length within ~10% of `meta.targetSeconds`.
 - [ ] Audio level consistent across sections; no clipping, no section markedly quieter.
+- [ ] FCP finish: no graphic covers the element the narration names; no template shows its
+      sample text or "DROP ZONE" art; callouts placed with `position` sit on or beside their
+      target; no black band where footage should be (a moved template dragging the footage).
 
 ## 3. Quality — worth one iteration
 
@@ -36,6 +40,7 @@ Work top to bottom. A blocking failure makes everything below it moot.
 - [ ] Camera drift is present but not noticeable as an effect.
 - [ ] Music, if any, sits under the voice and ducks properly.
 - [ ] Lower-thirds appear with the narration and leave; none linger the whole section.
+- [ ] FCP finish: the graphics share one look; one element per role; 1–2 overlays a section.
 - [ ] The first frame is a deliberate opening, not a half-painted page.
 - [ ] The last frame is a deliberate hold, not a frozen cursor or mid-animation state.
 - [ ] The `wow` beat actually lands — if nothing in the frames is surprising, the demo is a tour.

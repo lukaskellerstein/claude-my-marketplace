@@ -1,15 +1,24 @@
-// What the installed Final Cut Pro offers: its FCPXML DTDs and its title templates. Read
-// from the app bundle, never assumed — FCP ships as "Final Cut Pro.app" and as
-// "Final Cut Pro Creator Studio.app", and the template set differs between versions.
+// What the installed Final Cut Pro offers: its FCPXML DTDs and its Motion templates — titles,
+// generators, transitions and effects, built in or installed by the user (Motion, MotionVFX and
+// other packs). Read from disk, never assumed — FCP ships as "Final Cut Pro.app" and as
+// "Final Cut Pro Creator Studio.app", and the template set differs between versions and machines.
 
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, readlinkSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join, relative, sep } from 'node:path';
+import { basename, dirname, join, relative, sep } from 'node:path';
+import { classify, isMotionVfx, PLACEHOLDER_DIR, splitCode } from './motionvfx.mjs';
 
 const DTD_DIR = 'Contents/Frameworks/Interchange.framework/Versions/A/Resources';
-const TITLES_DIR =
-  'Contents/PlugIns/MediaProviders/MotionEffect.fxp/Contents/Resources/PETemplates.localized/Titles.localized';
-const USER_TITLES_DIR = join(homedir(), 'Movies', 'Motion Templates.localized', 'Titles.localized');
+const PE_DIR = 'Contents/PlugIns/MediaProviders/MotionEffect.fxp/Contents/Resources/PETemplates.localized';
+export const USER_TEMPLATES_DIR = join(homedir(), 'Movies', 'Motion Templates.localized');
+
+/** The four kinds of Motion template, where FCP keeps each, and its file extension. */
+export const KINDS = {
+  title: { dir: 'Titles.localized', ext: '.moti' },
+  generator: { dir: 'Generators.localized', ext: '.motn' },
+  transition: { dir: 'Transitions.localized', ext: '.motr' },
+  effect: { dir: 'Effects.localized', ext: '.moef' },
+};
 
 export function findFcpApps() {
   try {
@@ -39,43 +48,212 @@ export function fcpxmlVersions() {
     .sort((a, b) => versionKey(b.version) - versionKey(a.version));
 }
 
-function walkTemplates(root, prefix) {
+/** A downloaded element carries its own pictures; a placeholder carries none. */
+function previewsOf(file, name) {
+  const dir = dirname(file);
+  const pick = (...names) => names.map((n) => join(dir, n)).find((p) => existsSync(p)) ?? null;
+  return { thumb: pick('large.png', `${name}.jpg`, 'small.png'), video: pick(`${name}.mov`) };
+}
+
+function walk(root, kind, source) {
+  const { dir, ext } = KINDS[kind];
   const out = [];
-  const walk = (dir) => {
+  const visit = (folder) => {
     let entries;
     try {
-      entries = readdirSync(dir, { withFileTypes: true });
+      entries = readdirSync(folder, { withFileTypes: true });
     } catch {
       return;
     }
     for (const entry of entries) {
-      const full = join(dir, entry.name);
-      if (entry.isDirectory()) walk(full);
-      else if (entry.name.endsWith('.moti')) {
-        const parts = relative(root, full).split(sep);
-        out.push({
-          name: entry.name.replace(/\.moti$/, ''),
-          category: parts.length > 2 ? parts[0].replace(/\.localized$/, '') : '',
-          // FCPXML names a Motion title by its path under Titles.localized.
-          uid: `${prefix}/Titles.localized/${parts.join('/')}`,
-          source: prefix === '...' ? 'built-in' : 'user',
-        });
+      const full = join(folder, entry.name);
+      if (entry.isDirectory()) {
+        // mExtension's shared stand-ins are not templates of their own.
+        if (entry.name !== PLACEHOLDER_DIR) visit(full);
+        continue;
       }
+      if (!entry.name.endsWith(ext) || !(entry.isFile() || entry.isSymbolicLink())) continue;
+      // mExtension lists its whole catalog as links to one stand-in per kind. Used in a
+      // project, a stand-in renders "The file is missing, please re-download the element".
+      let status = 'ready';
+      if (entry.isSymbolicLink()) {
+        let target = '';
+        try {
+          target = readlinkSync(full);
+        } catch {
+          /* unreadable link: treat as not downloaded */
+        }
+        if (!target || target.split(/[\\/]/).includes(PLACEHOLDER_DIR) || !existsSync(full)) status = 'placeholder';
+      }
+      const parts = relative(root, full).split(sep);
+      const name = entry.name.slice(0, -ext.length);
+      // Only user templates carry a vendor code; a built-in name is just a name.
+      const { base, code } = source === 'user' ? splitCode(name) : { base: name, code: null };
+      const t = {
+        kind,
+        name,
+        base,
+        code,
+        category: parts.length > 2 ? parts[0].replace(/\.localized$/, '') : '',
+        group: parts.length > 3 ? parts[1].replace(/\.localized$/, '') : '',
+        // FCPXML names a Motion template by its path under its kind's folder.
+        uid: `${source === 'built-in' ? '...' : '~'}/${dir}/${parts.join('/')}`,
+        source,
+        status,
+        path: full,
+      };
+      t.vendor = isMotionVfx(t) ? 'motionvfx' : null;
+      t.role = classify(t);
+      if (status === 'ready') Object.assign(t, previewsOf(full, name));
+      out.push(t);
     }
   };
-  walk(root);
+  visit(root);
   return out;
 }
 
-/** Built-in titles (uid ".../Titles.localized/…") and the user's own ("~/Titles.localized/…"). */
-export function listTitleTemplates() {
-  const builtIn = findFcpApps().flatMap((app) => walkTemplates(join(app, TITLES_DIR), '...'));
-  const user = walkTemplates(USER_TITLES_DIR, '~');
-  const seen = new Set();
-  return [...builtIn, ...user].filter((t) => (seen.has(t.uid) ? false : seen.add(t.uid)));
+let catalog = null;
+
+/** Every Motion template on this Mac, built-in first. Scanned once per process. */
+export function listTemplates({ kind } = {}) {
+  if (!catalog) {
+    const seen = new Set();
+    catalog = [];
+    for (const k of Object.keys(KINDS)) {
+      const builtIn = findFcpApps().flatMap((app) => walk(join(app, PE_DIR, KINDS[k].dir), k, 'built-in'));
+      const user = walk(join(USER_TEMPLATES_DIR, KINDS[k].dir), k, 'user');
+      for (const t of [...builtIn, ...user]) {
+        if (seen.has(t.uid)) continue;
+        seen.add(t.uid);
+        catalog.push(t);
+      }
+    }
+  }
+  return kind ? catalog.filter((t) => [kind].flat().includes(t.kind)) : catalog;
 }
 
-export function findTitleTemplate(name) {
-  const all = listTitleTemplates();
-  return all.find((t) => t.name === name) ?? all.find((t) => t.name.toLowerCase() === name.toLowerCase()) ?? null;
+/**
+ * Find a template by exact name, by name in any case, by its MotionVFX code ("FB5S"), or by
+ * its name without the code when exactly one downloaded template has it. A downloaded
+ * template wins over a placeholder of the same name.
+ */
+export function findTemplate(query, { kind } = {}) {
+  const q = String(query ?? '').trim();
+  if (!q) return null;
+  const all = listTemplates({ kind });
+  const rank = (t) => (t.status === 'ready' ? 0 : 1);
+  const best = (hits) => hits.sort((a, b) => rank(a) - rank(b))[0] ?? null;
+  const sameBase = all.filter((t) => t.status === 'ready' && t.code && t.base.toLowerCase() === q.toLowerCase());
+  return (
+    best(all.filter((t) => t.name === q)) ??
+    best(all.filter((t) => t.name.toLowerCase() === q.toLowerCase())) ??
+    (/^[A-Z0-9]{4}$/i.test(q) ? best(all.filter((t) => t.code === q.toUpperCase())) : null) ??
+    (sameBase.length === 1 ? sameBase[0] : null)
+  );
+}
+
+/** ready | placeholder | missing, with the template when there is one. */
+export function resolveTemplate(query, { kind } = {}) {
+  const template = findTemplate(query, { kind });
+  return { template, status: template?.status ?? 'missing' };
+}
+
+const decode = (s) =>
+  s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
+
+/**
+ * What a template exposes: its length, its text layers in file order (the order the FCPXML
+ * export fills them), its published parameters, and its drop zones.
+ */
+export function inspectTemplate(path) {
+  const xml = readFileSync(path, 'utf8');
+  const setting = (tag) => Number(new RegExp(`<sceneSettings>[\\s\\S]*?<${tag}>([\\d.]+)</${tag}>`).exec(xml)?.[1] ?? 0);
+  const frameRate = setting('frameRate') || 30;
+  const durationFrames = setting('duration');
+
+  const textFactories = new Set(
+    [...xml.matchAll(/<factory id="(\d+)"[^>]*>\s*<description>Text<\/description>/g)].map((m) => m[1])
+  );
+  const nodes = [...xml.matchAll(/<scenenode name="([^"]*)" id="\d+" factoryID="(\d+)"/g)].filter((m) => textFactories.has(m[2]));
+  const texts = nodes.map((m, i) => {
+    const chunk = xml.slice(m.index, nodes[i + 1]?.index ?? xml.length);
+    return {
+      layer: decode(m[1]),
+      text: decode(/<text>([\s\S]*?)<\/text>/.exec(chunk)?.[1] ?? ''),
+      font: /<font>([^<]+)<\/font>/.exec(chunk)?.[1] ?? null,
+    };
+  });
+
+  const publish = /<publishSettings>([\s\S]*?)<\/publishSettings>/.exec(xml)?.[1] ?? '';
+  const params = [...new Set([...publish.matchAll(/<target [^>]*name="([^"]+)"/g)].map((m) => decode(m[1])))];
+
+  // FCPXML addresses a published parameter as 9999/<every group and layer above the object>/
+  // <object>/<channel>. Confirmed by FCP's own export of a MotionVFX lower third, and by FCP
+  // keeping such a key on import and dropping one without the enclosing group.
+  const ancestors = new Map();
+  const stack = [];
+  for (const m of xml.matchAll(/<(\/?)(group|layer|scenenode|behavior|filter)\b([^>]*?)(\/?)>/g)) {
+    const [, closing, tag, attrs, selfClosing] = m;
+    if (closing) {
+      stack.pop();
+      continue;
+    }
+    const id = /\bid="(\d+)"/.exec(attrs)?.[1];
+    if (id && !ancestors.has(id)) ancestors.set(id, stack.filter((s) => s.container).map((s) => s.id));
+    if (!selfClosing) stack.push({ id, container: tag === 'group' || tag === 'layer' });
+  }
+  const keys = {};
+  for (const m of publish.matchAll(/<target object="(\d+)" channel="\.\/([^"]+)" name="([^"]+)"\/>/g)) {
+    const [, object, channel, name] = m;
+    if (ancestors.has(object) && !keys[decode(name)]) keys[decode(name)] = ['9999', ...ancestors.get(object), object, channel].join('/');
+  }
+
+  // How an export can move the element. A template that draws the picture underneath into its
+  // own frame ("Title Background") cannot be moved as a whole without dragging the footage along;
+  // MotionVFX's mOSC plugin gives most of those a Content Position that moves only the element.
+  const moscObject = /<target object="(\d+)" channel="\.\/2\/1\/13" name="Content Position"\/>/.exec(publish)?.[1];
+  const mosc = Boolean(moscObject) && new RegExp(`<scenenode [^>]*\\bid="${moscObject}"[^>]*pluginName="mOSC"`).test(xml);
+  const drawsBackground = /<(layer|scenenode) name="Title Background"/.test(xml);
+
+  return {
+    name: basename(path).replace(/\.(moti|motn|motr|moef)$/, ''),
+    placement: mosc ? 'content-position' : drawsBackground ? 'fixed' : 'transform',
+    width: setting('width'),
+    height: setting('height'),
+    frameRate,
+    durationFrames,
+    seconds: Number((durationFrames / frameRate).toFixed(3)),
+    texts,
+    params,
+    keys,
+    dropZones: params.filter((p) => /^drop ?zone( \d+)?$/i.test(p)),
+    fonts: [...new Set(texts.map((t) => t.font).filter(Boolean))],
+  };
+}
+
+/**
+ * Every template a storyboard names, with where it is named and which kinds may fill that
+ * slot. The export and `fcp-templates.mjs --check` both read the storyboard through this.
+ */
+export function storyboardTemplateRefs(storyboard) {
+  const refs = [];
+  const add = (where, name, kind) => {
+    if (typeof name === 'string' && name && name !== 'none') refs.push({ where, name, kind });
+  };
+  const fcp = storyboard?.meta?.fcp ?? {};
+  add('meta.fcp.titleTemplate', fcp.titleTemplate, ['title', 'generator']);
+  add('meta.fcp.lowerThirdTemplate', fcp.lowerThirdTemplate, ['title']);
+  add('meta.fcp.transitionTemplate', fcp.transitionTemplate, ['transition']);
+  add('meta.fcp.backgroundTemplate', fcp.backgroundTemplate, ['generator', 'title']);
+  for (const s of storyboard?.sections ?? []) {
+    const f = s.fcp ?? {};
+    const at = `sections[${s.id}].fcp`;
+    add(`${at}.titleTemplate`, f.titleTemplate, ['title', 'generator']);
+    add(`${at}.lowerThirdTemplate`, f.lowerThirdTemplate, ['title']);
+    add(`${at}.transitionTemplate`, f.transitionTemplate, ['transition']);
+    add(`${at}.backgroundTemplate`, f.backgroundTemplate, ['generator', 'title']);
+    (f.effects ?? []).forEach((e, i) => add(`${at}.effects[${i}]`, e, ['effect']));
+    (f.overlays ?? []).forEach((o, i) => add(`${at}.overlays[${i}]`, o?.template, ['title', 'generator']));
+  }
+  return refs;
 }

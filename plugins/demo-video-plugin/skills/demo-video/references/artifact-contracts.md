@@ -49,7 +49,8 @@ Written by you at stage 2, validated on every write. The parts that matter most:
   `attach`); `page`: part of the page URL or title; `input`: `cdp` | `dom`; `windowSize`;
   `obs`: `{ input, window, scene }`. See `demo-capture/references/obs.md`.
 - `meta.fcp` — the Final Cut Pro export: `titleTemplate`, `lowerThirdTemplate`,
-  `captionLanguage`, `projectName`, `version`. See
+  `transitionTemplate`, `backgroundTemplate` (Motion template names from
+  `fcp-templates.mjs`), `captionLanguage`, `projectName`, `version`. See
   `demo-assembly/references/final-cut-pro.md`.
 - `sections[].beat` — `hook | problem | core-flow | wow | integration | proof | close`.
   At least one `core-flow` is required.
@@ -69,6 +70,13 @@ Written by you at stage 2, validated on every write. The parts that matter most:
   and `lines` (shown as the panel header) and `highlight` ("3-5", 1-based).
 - `sections[].resetBefore` — run `demo/prep/reset.sh` before capturing this section.
 - `sections[].setup` — actions the capture scripts run before recording starts.
+- `sections[].fcp` — graphics for the FCP export only, written at the `demo-graphics` stage:
+  the four `meta.fcp` template fields as per-section overrides (`"none"` turns one off),
+  `text` (title card text layers), `lowerThirdText`, `effects` (template names), and
+  `overlays`: `{ template, at, seconds, text, position }` where `at` is section seconds,
+  `{ "action": N, "edge": "start"|"end" }` or `{ "clip": seconds }`, and `position` is
+  `[x, y]` output pixels, an anchor, or `"action"`. Reconcile turns `at` and
+  `position: "action"` into frames and pixels in `timeline.json`.
 
 ### Action kinds
 
@@ -111,17 +119,22 @@ never for Playwright video, whose clock starts at launch and would not match the
 
 ```json
 { "id": "03-ask", "clock": "seconds on the recording, pauses removed",
-  "actions": [ { "i": 0, "kind": "selectText", "target": "css=article", "t0": 1.0, "t1": 2.4, "ok": true } ] }
+  "viewport": { "width": 1600, "height": 900 },
+  "actions": [ { "i": 0, "kind": "selectText", "target": "css=article", "t0": 1.0, "t1": 2.4, "ok": true, "x": 412, "y": 230 } ] }
 ```
 
-`t0`/`t1` are positions in the clip, so a camera move or a review finding can point at the
-moment an action happened.
+`t0`/`t1` are positions in the clip, so a camera move, a review finding, or a graphics
+overlay can point at the moment an action happened. `x`/`y` (viewport CSS pixels) are where
+the pointer went, on actions that move it; `sections[].fcp.overlays` with
+`position: "action"` places a callout there.
 
 ## demo/out/demo.fcpxml
 
 Written by `timeline-to-fcpxml.mjs` from `timeline.json`, validated against the installed
 Final Cut Pro's own DTD. Regenerable like every render — and like every render, hand edits
-made inside FCP live in the FCP library, not here.
+made inside FCP live in the FCP library, not here. It is never written while a template it
+names is a MotionVFX placeholder. Contact sheets and frames from the graphics stage go to
+`demo/out/graphics/`.
 
 ## timeline.json
 

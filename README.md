@@ -13,7 +13,7 @@ This marketplace bundles **11 plugins** contributing **44 skills**, **19 agents*
 
 - **Design → code, end to end** — creative direction, styleguides and design systems (`design-plugin`) feeding a parallel per-page React/Vite build with visual testing (`web-design-plugin`)
 - **Media generation** — images, video, music, speech, icons, charts and diagrams behind a single visual-planning gate (`media-plugin`)
-- **Automated demo videos** — repo → storyboard → recorded UI take (Playwright or OBS) → voiceover → rendered cut or Final Cut Pro project (`demo-video-plugin`)
+- **Automated demo videos** — repo → storyboard → recorded UI take (Playwright or OBS) → voiceover → rendered cut or Final Cut Pro project with MotionVFX graphics (`demo-video-plugin`)
 - **Developer workflow** — read-only thinking and Q&A, autonomous multi-repo PR flow, dead-code sweeps, dependency upgrades, docs and README generation (`dev-tools-plugin`)
 - **Infrastructure** — Kubernetes/GKE, Istio, Helm, Terraform, Traefik and Keycloak/OAuth2-proxy auth (`infra-plugin`)
 - **Office documents** — PowerPoint, Word and Excel generation (`office-plugin`)
@@ -26,7 +26,7 @@ This marketplace bundles **11 plugins** contributing **44 skills**, **19 agents*
 | [media-plugin](plugins/media-plugin) | `v1.15.1` | Image, video, music, speech, icon and data-viz generation | 10 | 1 |
 | [web-design-plugin](plugins/web-design-plugin) | `v1.6.0` | Brief → working React/Vite site | 4 | 11 |
 | [dev-tools-plugin](plugins/dev-tools-plugin) | `v1.7.0` | Thinking/Q&A, git, code hygiene, deps, docs — all user-invoked | 9 | 2 |
-| [demo-video-plugin](plugins/demo-video-plugin) | `v1.1.0` | Repo → narrated demo video | 8 | 4 |
+| [demo-video-plugin](plugins/demo-video-plugin) | `v1.2.0` | Repo → narrated demo video | 9 | 5 |
 | [infra-plugin](plugins/infra-plugin) | `v1.1.0` | K8s, Istio, Helm, Terraform, auth | 6 | — |
 | [design-plugin](plugins/design-plugin) | `v1.3.0` | Creative direction and design review | 4 | 1 |
 | [office-plugin](plugins/office-plugin) | `v5.1.0` | PPTX, DOCX, XLSX generation | 3 | — |
@@ -65,12 +65,12 @@ Every skill here is **invoked by you only** — none is ever auto-selected, so n
 - **Agents:** dead-code-analyzer, sync-spec-kit-agent
 - **MCP:** Mermaid (diagram validation for `update-docs` and `update-feature-docs`)
 
-### [demo-video-plugin](plugins/demo-video-plugin) `v1.1.0`
+### [demo-video-plugin](plugins/demo-video-plugin) `v1.2.0`
 
-Turns a project repo into a narrated, edited demo video. Reads the codebase, writes a storyboard, prepares deterministic demo state, drives the UI with Playwright (web, launched Electron, or an already-running app attached over CDP) recording one clip per section — with Playwright video, or with **OBS** over obs-websocket for crisp native-pixel window capture that pauses through long waits — generates ElevenLabs voiceover, reconciles *measured* durations into a timeline, and renders the final cut with Remotion or exports the same timeline as a **Final Cut Pro** project. See its [README](plugins/demo-video-plugin/README.md) for the pipeline.
+Turns a project repo into a narrated, edited demo video. Reads the codebase, writes a storyboard, prepares deterministic demo state, drives the UI with Playwright (web, launched Electron, or an already-running app attached over CDP) recording one clip per section — with Playwright video, or with **OBS** over obs-websocket for crisp native-pixel window capture that pauses through long waits — generates ElevenLabs voiceover, reconciles *measured* durations into a timeline, and renders the final cut with Remotion or exports the same timeline as a **Final Cut Pro** project. The FCP finish is dressed with Motion templates, **MotionVFX** DesignStudio elements first-class: it tells downloaded elements from mExtension placeholders, picks one look and one element per role from thumbnails against real frames, places click callouts where the pointer went, and never exports a placeholder. See its [README](plugins/demo-video-plugin/README.md) for the pipeline.
 
-- **Skills:** demo-video, demo-setup, demo-scripting, demo-app-prep, demo-capture, demo-voiceover, demo-assembly, demo-review
-- **Agents:** demo-capture-operator, demo-frame-critic, demo-remotion-builder, demo-researcher
+- **Skills:** demo-video, demo-setup, demo-scripting, demo-app-prep, demo-capture, demo-voiceover, demo-assembly, demo-graphics, demo-review
+- **Agents:** demo-capture-operator, demo-frame-critic, demo-graphics-scout, demo-remotion-builder, demo-researcher
 - **MCP:** Playwright (demo capture), ElevenLabs
 - **Hooks:** clip post-processing, audio probing, artifact validation
 

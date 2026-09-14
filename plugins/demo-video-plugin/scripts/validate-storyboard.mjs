@@ -109,14 +109,20 @@ if (meta.capture !== undefined) {
 }
 
 // ── meta.fcp: the Final Cut Pro export ─────────────────────────────────────────
+// Template names are checked against this Mac by fcp-templates.mjs --check and by the export,
+// not here: a storyboard stays valid on a machine without the packs.
+const TEMPLATE_KEYS = ['titleTemplate', 'lowerThirdTemplate', 'transitionTemplate', 'backgroundTemplate'];
+const ANCHORS = new Set(['center', 'top', 'bottom', 'left', 'right', 'top-left', 'top-right', 'bottom-left', 'bottom-right', 'action']);
+const isStrings = (v) => Array.isArray(v) && v.every((x) => typeof x === 'string');
 if (meta.fcp !== undefined) {
-  for (const key of ['titleTemplate', 'lowerThirdTemplate', 'projectName', 'captionLanguage']) {
+  for (const key of [...TEMPLATE_KEYS, 'projectName', 'captionLanguage']) {
     if (meta.fcp[key] !== undefined && typeof meta.fcp[key] !== 'string') errors.push(`meta.fcp.${key} must be a string.`);
   }
   if (meta.fcp.version !== undefined && !/^1\.\d{1,2}$/.test(String(meta.fcp.version))) {
     errors.push(`meta.fcp.version must look like "1.14", got "${meta.fcp.version}".`);
   }
 }
+const overlayTemplates = new Set();
 
 // ── sections ───────────────────────────────────────────────────────────────────
 const sections = Array.isArray(sb.sections) ? sb.sections : [];
@@ -257,10 +263,65 @@ sections.forEach((s, i) => {
   if (s.camera?.to !== undefined && (s.camera.to < 1 || s.camera.to > 1.6)) {
     warnings.push(`${at}: camera.to ${s.camera.to} is outside 1.0-1.6; heavy zoom on a screen recording looks soft.`);
   }
-  if (s.transitionIn?.seconds !== undefined && s.transitionIn.seconds > 0.8) {
+  if (s.transitionIn?.seconds !== undefined && s.transitionIn.seconds > 0.8 && !(s.fcp?.transitionTemplate ?? meta.fcp?.transitionTemplate)) {
     warnings.push(`${at}: a ${s.transitionIn.seconds}s transition is slow for a demo; 0.3-0.5s reads better.`);
   }
+
+  // sections[].fcp — Motion templates for the Final Cut Pro export (demo-graphics skill).
+  if (s.fcp !== undefined) {
+    const fcp = s.fcp;
+    const fat = `${at}.fcp`;
+    for (const key of TEMPLATE_KEYS) {
+      if (fcp[key] !== undefined && typeof fcp[key] !== 'string') errors.push(`${fat}.${key} must be a template name, or "none".`);
+    }
+    for (const key of ['text', 'lowerThirdText', 'effects']) {
+      if (fcp[key] !== undefined && !isStrings(fcp[key])) errors.push(`${fat}.${key} must be an array of strings.`);
+    }
+    if ((fcp.titleTemplate || fcp.backgroundTemplate || fcp.text) && s.surface !== 'titlecard') {
+      warnings.push(`${fat}: titleTemplate, backgroundTemplate and text apply to titlecard sections only; ignored here.`);
+    }
+    if (fcp.lowerThirdText && !s.onScreenText) {
+      warnings.push(`${fat}.lowerThirdText has no effect without onScreenText — the lower third exists only when onScreenText is set.`);
+    }
+    if (fcp.overlays !== undefined && !Array.isArray(fcp.overlays)) errors.push(`${fat}.overlays must be an array.`);
+    (Array.isArray(fcp.overlays) ? fcp.overlays : []).forEach((o, j) => {
+      const oat = `${fat}.overlays[${j}]`;
+      if (!o || typeof o !== 'object') {
+        errors.push(`${oat}: must be an object with at least a template.`);
+        return;
+      }
+      if (typeof o.template !== 'string' || !o.template) errors.push(`${oat}: template is required — a name from fcp-templates.mjs.`);
+      else overlayTemplates.add(o.template);
+      const atOk =
+        o.at === undefined ||
+        (typeof o.at === 'number' && o.at >= 0) ||
+        (o.at && typeof o.at === 'object' && (Number.isInteger(o.at.action) || typeof o.at.clip === 'number'));
+      if (!atOk) errors.push(`${oat}: at is seconds into the section, { "action": N, "edge": "start"|"end" }, or { "clip": seconds }.`);
+      if (o.at?.action !== undefined) {
+        if (!CAPTURED.has(s.surface)) errors.push(`${oat}: at.action needs a captured section.`);
+        else if (o.at.action < 0 || o.at.action >= (s.actions ?? []).length) {
+          errors.push(`${oat}: at.action ${o.at.action} is not an index into this section's ${(s.actions ?? []).length} actions.`);
+        }
+        if (o.at.edge !== undefined && !['start', 'end'].includes(o.at.edge)) errors.push(`${oat}: at.edge must be "start" or "end".`);
+      }
+      if (o.seconds !== undefined && !(typeof o.seconds === 'number' && o.seconds > 0)) errors.push(`${oat}: seconds must be a positive number.`);
+      if (o.text !== undefined && !isStrings(o.text)) errors.push(`${oat}: text must be an array of strings, in the order fcp-templates.mjs --inspect lists them.`);
+      const p = o.position;
+      const posOk = p === undefined || ANCHORS.has(p) || (Array.isArray(p) && p.length === 2 && p.every((v) => typeof v === 'number'));
+      if (!posOk) errors.push(`${oat}: position must be [x, y] in output pixels, "action", or one of ${[...ANCHORS].filter((a) => a !== 'action').join(', ')}.`);
+      if (p === 'action' && o.at?.action === undefined) errors.push(`${oat}: position "action" needs at: { "action": N }.`);
+    });
+    if ((fcp.overlays ?? []).length > 3) {
+      warnings.push(`${fat}: ${fcp.overlays.length} overlays in one section competes with the product for attention; 1-2 reads better.`);
+    }
+  }
 });
+
+if (overlayTemplates.size > 6) {
+  warnings.push(
+    `${overlayTemplates.size} different overlay templates across the video. A demo reads as designed when a few elements repeat — pick one per role.`
+  );
+}
 
 // ── narrative shape ────────────────────────────────────────────────────────────
 if (sections.length) {

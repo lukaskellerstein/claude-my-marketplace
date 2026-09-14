@@ -2,20 +2,30 @@
 // timeline-to-fcpxml.mjs — demo/timeline.json -> a Final Cut Pro project (FCPXML).
 //
 // The second finish. Remotion renders the measured timeline headlessly; this exports the
-// SAME timeline as an editable FCP project, so a human can finish it with FCP's own title
-// and lower-third templates and fine-tune by hand. Nothing is re-timed here: every frame
+// SAME timeline as an editable FCP project, dressed with the Motion templates installed on
+// this Mac — FCP's own, and MotionVFX DesignStudio elements downloaded through mExtension —
+// so a human can finish it and fine-tune by hand. Nothing is re-timed here: every frame
 // position comes from reconcile.mjs.
 //
 // Layout, chosen so every time in the file is absolute and no retime arithmetic leaks into
 // anchoring:
 //
 //   primary storyline   one gap, the length of the video
+//     lane  4+          graphics overlays (sections[].fcp.overlays), one lane per overlap
 //     lane  3           captions (iTT)
-//     lane  2           lower thirds  (meta.fcp.lowerThirdTemplate)
-//     lane  1           connected storyline: clips, title cards, cross dissolves
+//     lane  2           lower thirds (lowerThirdTemplate), and title cards that have a
+//                       background — never both in one section
+//     lane  1           connected storyline: clips with their effects, title cards or their
+//                       backgrounds, transitions
+//
+// Nothing is ever anchored to an item inside the lane-1 storyline: FCP ignores such items on
+// import, although the DTD allows them.
 //     lane -1           narration, role dialogue
 //     lane -2           music bed, role music, with ducking keyframes
 //   chapter markers     one per section, which FCP also exports as YouTube chapters
+//
+// A MotionVFX element that was never downloaded is a placeholder that renders "The file is
+// missing". The export refuses to write a file that names one, and prints what to download.
 //
 // In FCP, select the lane-1 storyline and choose Edit → Overwrite to Primary Storyline if
 // you prefer to edit on the primary.
@@ -26,7 +36,8 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { fcpxmlVersions, findTitleTemplate } from './lib/fcp.mjs';
+import { fcpxmlVersions, inspectTemplate, resolveTemplate } from './lib/fcp.mjs';
+import { DAILY_DOWNLOAD_LIMIT } from './lib/motionvfx.mjs';
 
 const CROSS_DISSOLVE_UID = 'FxPlug:4731E73A-8DAC-4113-9A30-AE85B1761265';
 const DUCK_RAMP_FRAMES = 6;
@@ -180,26 +191,101 @@ function effectFor(name, uid) {
   return id;
 }
 
-function titleEffect(templateName, fallback) {
-  const wanted = templateName ?? fallback;
-  const hit = findTitleTemplate(wanted);
-  if (hit) return effectFor(hit.name, hit.uid);
-  if (templateName) notes.push(`title template "${templateName}" is not installed; used "${fallback}"`);
-  const base = findTitleTemplate(fallback);
-  if (!base) throw new Error(`neither "${wanted}" nor "${fallback}" is installed — run fcp-templates.mjs to list templates`);
-  return effectFor(base.name, base.uid);
+// ── Motion templates ───────────────────────────────────────────────────────────
+const downloads = new Map(); // placeholder name -> where the timeline names it
+
+/**
+ * A template for one slot: { id, t } when it is downloaded; null when the slot is empty or
+ * the template is not on this Mac (with a note). A placeholder is remembered for the download
+ * list — the export stops before writing anything.
+ */
+function template(name, kind, where, instead = 'skipped') {
+  if (!name || name === 'none') return null;
+  const { template: t, status } = resolveTemplate(name, { kind });
+  if (status === 'placeholder') {
+    downloads.set(t.name, [...(downloads.get(t.name) ?? []), where]);
+    return { id: null, t };
+  }
+  if (!t) {
+    notes.push(`${where}: no ${[kind].flat().join(' or ')} template "${name}" on this Mac; ${instead}`);
+    return null;
+  }
+  return { id: effectFor(t.name, t.uid), t };
 }
 
-/** A <text> per string, each with its own style definition, template look kept. */
-function texts(strings) {
-  const runs = [];
-  const defs = [];
-  for (const s of strings.filter(Boolean)) {
-    const id = `ts${nextStyle++}`;
-    runs.push(el('text', {}, [`<text-style ref="${id}">${esc(s)}</text-style>`]));
-    defs.push(el('text-style-def', { id }, [el('text-style')]));
+function titleOr(name, fallback, where, kind = 'title') {
+  const hit = template(name, kind, where, `used "${fallback}"`);
+  if (hit) return hit;
+  const base = resolveTemplate(fallback, { kind: 'title' }).template;
+  if (!base) throw new Error(`"${fallback}" is not installed — run fcp-templates.mjs --list --kind title`);
+  return { id: effectFor(base.name, base.uid), t: base };
+}
+
+const inspected = new Map();
+const info = (t) => {
+  if (t.status !== 'ready') return null;
+  if (!inspected.has(t.path)) inspected.set(t.path, inspectTemplate(t.path));
+  return inspected.get(t.path);
+};
+/** The template's own length in timeline frames — a Motion template's natural duration. */
+const ownFrames = (t) => Math.round((info(t)?.seconds ?? 0) * fps);
+
+const ANCHOR_POINTS = {
+  center: [0.5, 0.5], top: [0.5, 0.25], bottom: [0.5, 0.75], left: [0.25, 0.5], right: [0.75, 0.5],
+  'top-left': [0.25, 0.25], 'top-right': [0.75, 0.25], 'bottom-left': [0.25, 0.75], 'bottom-right': [0.75, 0.75],
+};
+const round4 = (v) => Number(v.toFixed(4));
+
+/**
+ * Move a template's design centre to a point in output pixels. Returns the <param>s and the
+ * <adjust-transform> to write — never both.
+ *
+ * Most MotionVFX templates draw the picture underneath into their own frame, so moving the
+ * whole title with adjust-transform drags a copy of the footage along and leaves black behind.
+ * Their mOSC "Content Position" moves only the element: normalized to the template scene, y up,
+ * the scene fitted to the frame by height — measured in FCP against a grid. One that draws the
+ * footage but has no mOSC control stays where its designer put it.
+ */
+function placement(t, position, where) {
+  if (position === undefined || position === 'center') return { params: [], transform: null };
+  const [x, y] = Array.isArray(position) ? position : ANCHOR_POINTS[position].map((v, i) => v * (i ? height : width));
+  const scene = info(t);
+  if (scene?.placement === 'content-position' && scene.width && scene.height) {
+    const nx = 0.5 + ((x - width / 2) * scene.height) / (height * scene.width);
+    const ny = 0.5 + (height / 2 - y) / height;
+    const key = scene.keys['Content Position'];
+    return { params: [el('param', { name: 'Content Position', key, value: `${round4(nx)} ${round4(ny)}` })], transform: null };
   }
-  return [...runs, ...defs];
+  if (scene?.placement === 'fixed') {
+    notes.push(`${where}: "${t.name}" draws the footage under it and has no position control — left where its design puts it; move it in FCP`);
+    return { params: [], transform: null };
+  }
+  // FCPXML position is an offset from the frame centre, in percent of the frame height, y up.
+  const pct = (v) => Number(v.toFixed(3));
+  return { params: [], transform: el('adjust-transform', { position: `${pct(((x - width / 2) / height) * 100)} ${pct(((height / 2 - y) / height) * 100)}` }) };
+}
+
+/** A title takes text; a generator cannot be given text through FCPXML. */
+function graphic(hit, attrs, strings, children, where, position) {
+  const { params, transform } = placement(hit.t, position, where);
+  const zones = info(hit.t)?.dropZones.length ?? 0;
+  if (zones) notes.push(`${where}: "${hit.t.name}" has ${zones} drop zone(s) — they show "DROP ZONE" art until media is dropped in, in FCP`);
+  if (hit.t.kind === 'generator') {
+    if (strings?.some(Boolean)) notes.push(`${where}: "${hit.t.name}" is a generator — FCPXML cannot set its text; edit it in FCP`);
+    return el('video', { ref: hit.id, ...attrs }, [...params, transform, ...children]);
+  }
+  return el('title', { ref: hit.id, ...attrs }, [...params, ...texts(strings ?? []), transform, ...children]);
+}
+
+/**
+ * A plain <text> per string, filling the template's text layers in file order (confirmed by
+ * import). No text-style: given even an empty one, FCP replaces the template's fonts with its
+ * own default (Abel, 12 pt). Trailing empty entries are dropped; an inner "" blanks its layer.
+ */
+function texts(strings) {
+  const list = [...strings];
+  while (list.length && !list[list.length - 1]) list.pop();
+  return list.map((s) => el('text', {}, [esc(s ?? '')]));
 }
 
 // ── The storyline (lane 1) ─────────────────────────────────────────────────────
@@ -207,6 +293,7 @@ const sections = timeline.sections;
 const half = (s) => Math.floor((s?.transitionIn?.frames ?? 0) / 2);
 const storyline = [];
 const chapters = [];
+const cardsOnBackground = [];
 
 sections.forEach((s, i) => {
   const next = sections[i + 1];
@@ -218,14 +305,30 @@ sections.forEach((s, i) => {
   if (duration <= 0) throw new Error(`${s.id}: no picture left after transitions (${duration} frames)`);
 
   if (i > 0 && s.transitionIn?.kind !== 'cut' && s.transitionIn?.frames > 0) {
-    if (s.transitionIn.kind !== 'crossfade') notes.push(`${s.id}: "${s.transitionIn.kind}" became a Cross Dissolve`);
-    const ref = effectFor('Cross Dissolve', CROSS_DISSOLVE_UID);
-    storyline.push(
-      el('transition', { name: 'Cross Dissolve', offset: frames(s.startFrame), duration: frames(s.transitionIn.frames) }, [
-        el('filter-video', { ref, name: 'Cross Dissolve' }),
-      ])
-    );
+    const where = `${s.id} transition`;
+    const motion = template(s.fcp?.transitionTemplate ?? fcpMeta.transitionTemplate, 'transition', where, 'used Cross Dissolve');
+    const timing = { offset: frames(s.startFrame), duration: frames(s.transitionIn.frames) };
+    if (motion) {
+      const own = ownFrames(motion.t);
+      if (own && Math.abs(own - s.transitionIn.frames) > own / 2) {
+        notes.push(
+          `${where}: "${motion.t.name}" is ${(own / fps).toFixed(2)}s long but this edit gives it ${(s.transitionIn.frames / fps).toFixed(2)}s — ` +
+            `set transitionIn.seconds to ${(own / fps).toFixed(2)} and re-reconcile`
+        );
+      }
+      storyline.push(el('transition', { name: motion.t.name, ...timing }, [el('filter-video', { ref: motion.id, name: motion.t.name })]));
+    } else {
+      if (s.transitionIn.kind !== 'crossfade') notes.push(`${s.id}: "${s.transitionIn.kind}" became a Cross Dissolve`);
+      const ref = effectFor('Cross Dissolve', CROSS_DISSOLVE_UID);
+      storyline.push(el('transition', { name: 'Cross Dissolve', ...timing }, [el('filter-video', { ref, name: 'Cross Dissolve' })]));
+    }
   }
+
+  // Effects ride on the section's own picture, in the order the storyboard lists them.
+  const effects = (s.fcp?.effects ?? [])
+    .map((e, j) => template(e, 'effect', `${s.id} effects[${j}]`))
+    .filter(Boolean)
+    .map((e) => el('filter-video', { ref: e.id, name: e.t.name }));
 
   const name = `${s.id} ${s.title}`;
   const clipMarkers = [];
@@ -248,15 +351,26 @@ sections.forEach((s, i) => {
   }
 
   if (s.surface === 'titlecard') {
-    const ref = titleEffect(fcpMeta.titleTemplate, 'Basic Title');
-    storyline.push(
-      el('title', { ref, name, offset: frames(offset), start: frames(k0), duration: frames(duration) }, [
-        ...texts([s.titlecard?.title ?? s.title, s.titlecard?.subtitle]),
-      ])
-    );
+    const where = `${s.id} title card`;
+    const card = titleOr(s.fcp?.titleTemplate ?? fcpMeta.titleTemplate, 'Basic Title', where, ['title', 'generator']);
+    const strings = s.fcp?.text ?? [s.titlecard?.title ?? s.title, s.titlecard?.subtitle];
+    const background = template(s.fcp?.backgroundTemplate ?? fcpMeta.backgroundTemplate, ['generator', 'title'], `${s.id} background`);
+    if (background) {
+      // The background carries the storyline, so transitions dissolve it. The card cannot be
+      // connected to it: FCP ignores items anchored inside a connected storyline ("Anchored
+      // items were ignored") although the DTD allows them. It goes on lane 2 of the gap, above.
+      storyline.push(
+        graphic(background, { name: `${name} background`, offset: frames(offset), start: frames(k0), duration: frames(duration) }, [], [], where)
+      );
+      cardsOnBackground.push(graphic(card, { name, lane: 2, offset: frames(offset), start: frames(k0), duration: frames(duration) }, strings, [], where));
+    } else {
+      storyline.push(graphic(card, { name, offset: frames(offset), start: frames(k0), duration: frames(duration) }, strings, [], where));
+    }
   } else if (s.surface === 'still' && s.still) {
     const asset = assetFor(s.still, 'still');
-    storyline.push(el('video', { ref: asset.id, name, offset: frames(offset), start: frames(k0), duration: frames(duration) }, [transform]));
+    storyline.push(
+      el('video', { ref: asset.id, name, offset: frames(offset), start: frames(k0), duration: frames(duration) }, [transform, ...effects])
+    );
   } else if (s.video) {
     const v = s.video;
     const asset = assetFor(v.src, 'video');
@@ -285,6 +399,7 @@ sections.forEach((s, i) => {
         timeMap,
         transform,
         ...clipMarkers,
+        ...effects,
       ])
     );
   } else {
@@ -300,7 +415,7 @@ sections.forEach((s, i) => {
 });
 
 // ── Anchored lanes ─────────────────────────────────────────────────────────────
-const anchored = [el('spine', { lane: 1, offset: '0s', name: 'Picture' }, storyline)];
+const anchored = [el('spine', { lane: 1, offset: '0s', name: 'Picture' }, storyline), ...cardsOnBackground];
 
 for (const s of sections) {
   if (!s.audio) continue;
@@ -347,20 +462,49 @@ if (timeline.music) {
   );
 }
 
-const lowerThirdRef = sections.some((s) => s.lowerThird) ? titleEffect(fcpMeta.lowerThirdTemplate, 'Basic Lower Third') : null;
 for (const s of sections) {
   if (!s.lowerThird) continue;
   const lt = s.lowerThird;
+  const where = `${s.id} lower third`;
+  const hit = titleOr(s.fcp?.lowerThirdTemplate ?? fcpMeta.lowerThirdTemplate, 'Basic Lower Third', where);
   anchored.push(
-    el('title', {
-      ref: lowerThirdRef,
-      name: `${s.id} lower third`,
-      lane: 2,
-      offset: frames(s.startFrame + lt.inFrame),
-      start: '0s',
-      duration: frames(lt.outFrame - lt.inFrame),
-    }, texts([lt.text]))
+    graphic(
+      hit,
+      { name: where, lane: 2, offset: frames(s.startFrame + lt.inFrame), start: '0s', duration: frames(lt.outFrame - lt.inFrame) },
+      s.fcp?.lowerThirdText ?? [lt.text],
+      [],
+      where
+    )
   );
+}
+
+// Overlays: one lane per overlap, from lane 4 up, so nothing covers the captions' lane.
+const laneEnds = [];
+const laneFor = (from, to) => {
+  let i = laneEnds.findIndex((end) => end <= from);
+  if (i < 0) i = laneEnds.push(0) - 1;
+  laneEnds[i] = to;
+  return 4 + i;
+};
+for (const s of sections) {
+  for (const [j, o] of (s.fcp?.overlays ?? []).entries()) {
+    const where = `${s.id} overlays[${j}]`;
+    const hit = template(o.template, ['title', 'generator'], where);
+    if (!hit) continue;
+    const own = ownFrames(hit.t);
+    const duration = Math.max(1, Math.min(o.durationFrames ?? (own || 3 * fps), o.maxFrames ?? Infinity));
+    const from = s.startFrame + o.inFrame;
+    anchored.push(
+      graphic(
+        hit,
+        { name: `${s.id} ${hit.t.base}`, lane: laneFor(from, from + duration), offset: frames(from), start: '0s', duration: frames(duration) },
+        o.text,
+        [],
+        where,
+        o.position
+      )
+    );
+  }
 }
 
 if (timeline.captionsMode !== 'none') {
@@ -401,6 +545,18 @@ const xml = [
   ]),
 ].join('\n');
 
+if (downloads.size) {
+  console.error(
+    [
+      `demo-video: ${downloads.size} template(s) are MotionVFX placeholders, not downloaded elements. FCP would show ` +
+        '"The file is missing, please re-download the element" in their place, so nothing was written.',
+      `Download them in Final Cut Pro → mExtension (search each 4-character code; ${DAILY_DOWNLOAD_LIMIT} downloads a day), then export again:`,
+      ...[...downloads].map(([n, where]) => `  ${n.padEnd(40)} ${where.join(', ')}`),
+    ].join('\n')
+  );
+  process.exit(1);
+}
+
 mkdirSync(dirname(outPath), { recursive: true });
 writeFileSync(outPath, `${xml}\n`);
 
@@ -426,6 +582,6 @@ const lines = [
   `demo-video: FCPXML ${version} -> ${outPath}`,
   `  ${sections.length} sections, ${(timeline.durationInFrames / fps).toFixed(2)}s @ ${fps}fps, ${validation}`,
   `  import: File → Import → XML in Final Cut Pro, or: open -a "${(installed[0]?.app ?? '/Applications/Final Cut Pro.app').split('/').pop().replace(/\.app$/, '')}" "${outPath}"`,
-  ...notes.map((n) => `  note   ${n}`),
+  ...[...new Set(notes)].map((n) => `  note   ${n}`),
 ];
 console.log(lines.join('\n'));

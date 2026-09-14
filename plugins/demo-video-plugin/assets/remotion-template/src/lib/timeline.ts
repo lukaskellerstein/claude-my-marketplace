@@ -66,6 +66,29 @@ export interface Section {
   still?: string;
   code?: { file: string; lines?: string; language?: string; highlight?: string; content?: string };
   titlecard?: { title: string; subtitle?: string };
+  /** Motion templates for the Final Cut Pro export. Remotion does not render them. */
+  fcp?: FcpSection;
+}
+
+export interface FcpOverlay {
+  template: string;
+  inFrame: number;
+  maxFrames: number;
+  durationFrames?: number;
+  text?: string[];
+  /** Output pixels [x, y] from the top left, or an anchor name. */
+  position?: [number, number] | string;
+}
+
+export interface FcpSection {
+  titleTemplate?: string;
+  lowerThirdTemplate?: string;
+  transitionTemplate?: string;
+  backgroundTemplate?: string;
+  text?: string[];
+  lowerThirdText?: string[];
+  effects?: string[];
+  overlays?: FcpOverlay[];
 }
 
 export interface Music {

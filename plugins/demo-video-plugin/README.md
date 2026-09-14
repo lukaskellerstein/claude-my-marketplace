@@ -6,7 +6,8 @@ Reads the codebase → writes a storyboard with real narrative value → prepare
 app state → drives the UI with Playwright and records one clip per section (web **and**
 Electron, recorded by Playwright or by **OBS**) → generates ElevenLabs voiceover → reconciles
 *measured* durations into a timeline → renders the final cut with Remotion, or exports it as a
-**Final Cut Pro** project.
+**Final Cut Pro** project dressed with Motion templates — **MotionVFX** DesignStudio elements
+first-class.
 
 ```
 /demo-video-plugin:demo-setup   # once per machine: ffmpeg, Playwright, Remotion, API key, OBS, FCP
@@ -42,7 +43,8 @@ And two separations that keep the pipeline honest about quality:
   *or* OBS records. OBS captures the real window at native pixels and 60 fps, so text stays
   readable, and it pauses through long waits so an agent run does not fill the clip.
 - **The cut is separate from the finish.** One reconciled timeline renders headlessly in
-  Remotion *or* exports as a Final Cut Pro project for hand-finishing with FCP's titles.
+  Remotion *or* exports as a Final Cut Pro project for hand-finishing, with the graphics
+  chosen from the Motion templates on the Mac.
 
 ## Pipeline
 
@@ -51,7 +53,8 @@ And two separations that keep the pipeline honest about quality:
       → app prep → rehearse →【GATE 2: feasible】
       → voiceover (measured) → record (budgeted to the voice; Playwright or OBS)
       → reconcile → draft render →【GATE 3: watch it】→ review
-      → final render (Remotion) and/or FCPXML → finished by hand in Final Cut Pro
+      → final render (Remotion)
+        and/or graphics →【GATE 4: look + downloads】→ FCPXML → finished by hand in Final Cut Pro
 ```
 
 Stages are individually re-runnable — in practice one section is re-cut several times while
@@ -71,6 +74,7 @@ Every stage is a skill: it triggers on a matching request, or invoke it directly
 | `demo-capture` | Cinematography, drivers (MCP, launch, attach) and recorders (Playwright, OBS, ffmpeg) |
 | `demo-voiceover` | Voice/model selection, fitting a line to a duration, captions, music |
 | `demo-assembly` | Reconciliation rules, the Remotion template, render presets, the Final Cut Pro export |
+| `demo-graphics` | Motion templates for the FCP finish — MotionVFX first: inventory, one look, one element per role, callouts on logged actions, the download gate |
 | `demo-review` | QA rubric, frame reading, routing findings back to the right stage |
 
 ## Subagents
@@ -81,6 +85,7 @@ Every stage is a skill: it triggers on a matching request, or invoke it directly
 | `demo-capture-operator` | One per section, **sequential** — Playwright snapshots are huge, the output is one clip |
 | `demo-remotion-builder` | Custom compositions; render/typecheck loops are noisy |
 | `demo-frame-critic` | Reads dozens of frames; returns a ranked findings list |
+| `demo-graphics-scout` | Reads contact sheets of templates against frames; returns one pick per slot and the download list |
 
 Storyboard and narration text stay in the main thread — they need whole-demo coherence.
 
@@ -113,6 +118,8 @@ Each one prevents a specific expensive failure.
 - **OBS 30+** (optional, for the OBS recorder) — WebSocket server enabled,
   `OBS_WEBSOCKET_PASSWORD` in the environment, Node ≥ 22 for the built-in WebSocket client
 - **Final Cut Pro** (optional, for the FCP finish) — plus `xmllint`, which macOS ships
+- **MotionVFX mExtension** (optional, for the FCP finish) — with a DesignStudio subscription;
+  the plugin uses what the user downloaded and never downloads anything itself
 
 ## MCP servers
 
@@ -150,13 +157,32 @@ reach. Guides: `skills/demo-capture/references/obs.md` and `electron.md`.
 ```bash
 bash scripts/render.sh --final                                # Remotion -> demo/out/demo.mp4
 node scripts/timeline-to-fcpxml.mjs --project .               # FCP      -> demo/out/demo.fcpxml
-node scripts/fcp-templates.mjs --category "Lower Thirds"      # what meta.fcp can name
 ```
 
-The FCPXML carries the same cut: clips with retimes and holds, cross dissolves, narration,
-the ducked music bed, title cards and lower thirds on FCP's own Motion templates, captions and
-chapter markers. It is validated against the installed FCP's DTD before anyone imports it.
-Guide: `skills/demo-assembly/references/final-cut-pro.md`.
+The FCPXML carries the same cut: clips with retimes and holds, transitions, narration, the
+ducked music bed, captions and chapter markers. It is validated against the installed FCP's
+DTD before anyone imports it. Guide: `skills/demo-assembly/references/final-cut-pro.md`.
+
+### Graphics: Motion templates, MotionVFX first
+
+On a Mac with MotionVFX's mExtension, the FCP finish can use its DesignStudio elements the way
+it uses FCP's own templates: title cards on a background, lower thirds, Motion transitions at
+section edges, effects on clips, and overlays — a click callout placed where the pointer went
+on a logged action, a callout beside a result, an infographic for a number.
+
+```bash
+node scripts/fcp-templates.mjs                                # per kind: built-in, installed, placeholders
+node scripts/fcp-templates.mjs --roles                        # downloaded templates per role
+node scripts/fcp-templates.mjs --packs                        # MotionVFX theme packs
+node scripts/fcp-templates.mjs --sheet out.png --role callout # contact sheet to look at
+node scripts/fcp-templates.mjs --inspect "Cursor Click 4G9Y"  # length, text layers, drop zones
+node scripts/fcp-templates.mjs --check --project .            # what the storyboard names: ready?
+```
+
+mExtension lists the whole catalog, but an element never downloaded is a placeholder that
+renders *"The file is missing"*. The scanner tells the two apart, the graphics stage looks at
+thumbnails of downloaded elements only, and the export refuses to write a file that names a
+placeholder — it prints what to download instead. Guide: `skills/demo-graphics/SKILL.md`.
 
 ## Layout
 

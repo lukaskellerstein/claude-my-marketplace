@@ -245,6 +245,7 @@ function domScrollInPage({ by }) {
 const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 
 async function cursorTo(ctx, x, y, ms = GLIDE_MS) {
+  ctx.point = { x, y }; // logged, so an overlay can later be placed where the pointer went
   await ctx.page.evaluate(([px, py, pms]) => window.__demoCursor?.moveTo(px, py, pms), [x, y, ms]);
   if (ctx.inputFor === 'cdp') await ctx.page.mouse.move(x, y, { steps: 12 });
   await sleep(ms);
@@ -483,10 +484,15 @@ const handlers = {
 handlers.dblclick = handlers.click;
 handlers.shortcut = handlers.press;
 
+/** The page's viewport in CSS pixels — the space the logged pointer positions are in. */
+export const viewportOf = (page) =>
+  page.evaluate(() => ({ width: window.innerWidth, height: window.innerHeight })).catch(() => null);
+
 /**
  * Run one storyboard action with its dwell times, and append a log entry whose times are
  * seconds on the recording's own clock (pauses removed), so a click can be found in the
- * clip later.
+ * clip later. Actions that move the pointer also log where it went (x, y in viewport CSS
+ * pixels), so a callout can be placed on it.
  */
 export async function runAction(ctx, action, index) {
   const handler = handlers[action.kind];
@@ -497,6 +503,7 @@ export async function runAction(ctx, action, index) {
   if (dwellBefore) await sleep(dwellBefore * 1000);
 
   const entry = { i: index, kind: action.kind, target: action.target, t0: ctx.clock() };
+  ctx.point = null;
   try {
     await handler(ctx, action);
     entry.ok = true;
@@ -506,6 +513,7 @@ export async function runAction(ctx, action, index) {
     throw new Error(`action ${index} (${action.kind}${action.target ? ` "${action.target}"` : ''}): ${err.message}`);
   } finally {
     entry.t1 = ctx.clock();
+    if (ctx.point) Object.assign(entry, { x: Math.round(ctx.point.x), y: Math.round(ctx.point.y) });
     ctx.log.push(entry);
   }
 
