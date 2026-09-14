@@ -132,6 +132,22 @@ if [[ -n "$FCP_APP" ]]; then
     | sed -E 's/.*FCPXMLv1_([0-9]+)\.dtd/\1/' | sort -n | tail -1)
   ok "$(basename "$FCP_APP" .app) $(defaults read "$FCP_APP/Contents/Info.plist" CFBundleShortVersionString 2>/dev/null), imports FCPXML up to 1.${FCP_DTD:-?}"
   if command -v xmllint >/dev/null 2>&1; then ok "xmllint (validates the export against FCP's own DTD)"; else warn "xmllint not found — exports go unvalidated"; fi
+  # Motion templates dress the FCP finish: FCP's own, and MotionVFX elements from mExtension.
+  if TEMPLATES=$(node "$PLUGIN_ROOT/scripts/fcp-templates.mjs" --json 2>/dev/null); then
+    node -e '
+      const s = JSON.parse(process.argv[1]);
+      const k = s.kinds;
+      const say = (mark, text) => console.log(`  ${mark} ${text}`);
+      say("\x1b[32m✓\x1b[0m", `Motion templates: ${k.title.builtIn + k.title.installed} titles, ${k.generator.builtIn + k.generator.installed} generators, ${k.transition.builtIn + k.transition.installed} transitions, ${k.effect.builtIn + k.effect.installed} effects ready`);
+      const mx = s.motionvfx;
+      if (!mx.mextension) say("\x1b[33m!\x1b[0m", "MotionVFX mExtension not installed — optional; its DesignStudio elements are the richest source of FCP graphics");
+      else {
+        say("\x1b[32m✓\x1b[0m", `MotionVFX: ${mx.downloaded} elements downloaded, ${mx.placeholders} listed but not downloaded (placeholders)`);
+        if (mx.packs.length) say("\x1b[32m✓\x1b[0m", `MotionVFX theme packs: ${mx.packs.join(", ")}`);
+      }' "$TEMPLATES"
+  else
+    warn "could not read the installed Motion templates — run scripts/fcp-templates.mjs to see why"
+  fi
 else
   warn "Final Cut Pro not installed — needed only for the FCP finish"
 fi

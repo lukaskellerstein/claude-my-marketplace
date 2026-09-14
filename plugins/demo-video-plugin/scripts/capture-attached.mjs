@@ -27,7 +27,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { installOverlay, runAction, sleep } from './lib/actions.mjs';
+import { installOverlay, runAction, sleep, viewportOf } from './lib/actions.mjs';
 import { loadPlaywright } from './lib/playwright.mjs';
 import { createRecorder, saveClip } from './lib/recorders.mjs';
 
@@ -130,6 +130,7 @@ for (const section of sections) {
   let browser = null;
   let saved = null;
   let error = null;
+  let viewport = null;
 
   try {
     if (section.resetBefore) {
@@ -163,6 +164,7 @@ for (const section of sections) {
       await runAction({ ...ctx, log: [] }, action, i);
     }
 
+    viewport = await viewportOf(page);
     await recorder.prepare();
     await recorder.start();
     recording = true;
@@ -179,7 +181,7 @@ for (const section of sections) {
       saved = saveClip({ rawPath, id: section.id, captureDir, fps });
       writeFileSync(
         join(captureDir, `${section.id}.actions.json`),
-        `${JSON.stringify({ id: section.id, clock: 'seconds on the recording, pauses removed', actions: log }, null, 2)}\n`
+        `${JSON.stringify({ id: section.id, clock: 'seconds on the recording, pauses removed', viewport, actions: log }, null, 2)}\n`
       );
     }
   } catch (err) {

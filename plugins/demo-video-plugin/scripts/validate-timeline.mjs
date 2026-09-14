@@ -146,6 +146,16 @@ sections.forEach((s, i) => {
     if (c.endFrame <= c.startFrame) errors.push(`${at}.captions[${j}]: endFrame must be after startFrame.`);
     if (c.endFrame > s.durationInFrames + 2) warnings.push(`${at}.captions[${j}]: extends past the section end.`);
   });
+
+  (s.fcp?.overlays ?? []).forEach((o, j) => {
+    const oat = `${at}.fcp.overlays[${j}]`;
+    if (!Number.isInteger(o.inFrame) || o.inFrame < 0 || o.inFrame >= s.durationInFrames) {
+      errors.push(`${oat}: inFrame must be a frame inside the section (0-${s.durationInFrames - 1}).`);
+    }
+    if (o.durationFrames !== undefined && (!Number.isInteger(o.durationFrames) || o.durationFrames < 1 || o.inFrame + o.durationFrames > s.durationInFrames)) {
+      errors.push(`${oat}: durationFrames must be a positive integer that ends inside the section.`);
+    }
+  });
 });
 
 if (tl.music?.src) checkMedia(tl.music.src, null, 'music');

@@ -202,6 +202,95 @@ function fitVideo(clipSeconds, neededSeconds, id) {
   return out;
 }
 
+// ── Final Cut Pro graphics: storyboard intent -> section frames ────────────────
+// sections[].fcp names Motion templates (MotionVFX and others) for the FCP export. Remotion
+// ignores it. Template names are resolved at export time, on the Mac that has them; here only
+// the timing is decided, like everything else.
+
+const readJsonIfAny = (abs) => {
+  if (!existsSync(abs)) return null;
+  try {
+    return JSON.parse(readFileSync(abs, 'utf8'));
+  } catch {
+    return null;
+  }
+};
+
+/** Seconds on the clip's own clock -> a frame of the section, through the fit chosen above. */
+const clipFrame = (video, seconds) => {
+  const frame = Math.round((seconds * fps - (video.trimBefore ?? 0)) / video.playbackRate);
+  return Math.max(0, Math.min(frame, video.videoFrames - 1));
+};
+
+/** A point in the recorded viewport (0-1) -> output pixels, with the clip fitted into the frame. */
+function outputPoint(nx, ny, clipRel) {
+  const sidecar = readJsonIfAny(join(demoDir, clipRel.replace(/\.[a-z0-9]+$/i, '.json')));
+  const cw = Number(sidecar?.width) || width;
+  const ch = Number(sidecar?.height) || height;
+  const scale = Math.min(width / cw, height / ch);
+  return [
+    Math.round((width - cw * scale) / 2 + nx * cw * scale),
+    Math.round((height - ch * scale) / 2 + ny * ch * scale),
+  ];
+}
+
+function sectionFcp(s, section) {
+  const { overlays = [], ...rest } = s.fcp;
+  const out = { ...rest };
+  const log = readJsonIfAny(join(demoDir, 'capture', `${s.id}.actions.json`));
+  const resolved = overlays.map((o, j) => {
+    const at = `${s.id}.fcp.overlays[${j}]`;
+    let inFrame = 0;
+    let action = null;
+    if (typeof o.at === 'number') {
+      inFrame = f(o.at);
+    } else if (o.at && typeof o.at === 'object') {
+      if (!section.video) {
+        errors.push(`${at}: "at" on the clip's clock needs a captured clip — give "at" in section seconds instead.`);
+        return null;
+      }
+      let seconds = o.at.clip;
+      if (o.at.action !== undefined) {
+        action = log?.actions?.find((a) => a.i === o.at.action && a.ok !== false);
+        if (!action) {
+          errors.push(
+            `${at}: action ${o.at.action} is not in demo/capture/${s.id}.actions.json. The script capture paths ` +
+              'write that log when OBS records; with another recorder give "at" in section seconds instead.'
+          );
+          return null;
+        }
+        seconds = o.at.edge === 'end' ? action.t1 : action.t0;
+      }
+      inFrame = clipFrame(section.video, Number(seconds));
+    }
+    if (inFrame >= section.durationInFrames) {
+      errors.push(`${at}: starts at frame ${inFrame}, but the section is only ${section.durationInFrames} frames long.`);
+      return null;
+    }
+    const overlay = { template: o.template, inFrame, maxFrames: section.durationInFrames - inFrame };
+    if (o.seconds) overlay.durationFrames = Math.max(1, Math.min(f(o.seconds), overlay.maxFrames));
+    if (o.position === 'action') {
+      if (!action || action.x === undefined || !log?.viewport?.width) {
+        errors.push(
+          `${at}: position "action" needs "at": { "action": N } on an action that moved the pointer, in a log ` +
+            'that records the viewport — re-capture the section with the current capture scripts.'
+        );
+        return null;
+      }
+      overlay.position = outputPoint(action.x / log.viewport.width, action.y / log.viewport.height, section.video.src);
+      if (section.camera.kind !== 'static') {
+        warnings.push(`${at}: position "action" does not follow the ${section.camera.kind} camera move — check the overlay in FCP.`);
+      }
+    } else if (o.position !== undefined) {
+      overlay.position = o.position;
+    }
+    if (o.text) overlay.text = o.text;
+    return overlay;
+  });
+  if (resolved.some(Boolean)) out.overlays = resolved.filter(Boolean);
+  return out;
+}
+
 // ── Build the timeline ─────────────────────────────────────────────────────────
 const sections = [];
 let cursor = 0;
@@ -323,6 +412,7 @@ let cursor = 0;
   if (s.surface === 'still') section.still = s.still;
   if (s.surface === 'code') section.code = s.code;
   if (s.surface === 'titlecard') section.titlecard = { title: s.title, subtitle: s.onScreenText };
+  if (s.fcp) section.fcp = sectionFcp(s, section);
 
   sections.push(section);
   cursor = startFrame + durationInFrames;

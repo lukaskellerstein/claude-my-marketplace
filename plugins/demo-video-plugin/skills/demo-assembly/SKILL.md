@@ -22,10 +22,11 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/render.sh --final            # -> demo/out/de
 | Final Cut Pro | `node ${CLAUDE_PLUGIN_ROOT}/scripts/timeline-to-fcpxml.mjs --project .` | `demo/out/demo.fcpxml`, finished and shared by a person in FCP |
 
 Both read the same reconciled timeline, so the cut, the narration timing and the ducking are
-identical; only titles, lower thirds and hand polish differ. Offer the FCP finish when the
-user cares about FCP's title templates or wants to fine-tune by hand. Say plainly that its
-last step is theirs. Mapping, template choice, what does not carry over, and the import
-checklist: [final-cut-pro.md](${CLAUDE_PLUGIN_ROOT}/skills/demo-assembly/references/final-cut-pro.md).
+identical; only graphics and hand polish differ. Offer the FCP finish when the user cares
+about designed graphics — MotionVFX elements, FCP's title templates — or wants to fine-tune
+by hand. Say plainly that its last step is theirs. Choosing the templates is the
+`demo-graphics` skill; mapping, what does not carry over, and the import checklist:
+[final-cut-pro.md](${CLAUDE_PLUGIN_ROOT}/skills/demo-assembly/references/final-cut-pro.md).
 
 ## Do not hand-write the timeline
 
@@ -37,6 +38,7 @@ To change the cut, change the input:
 | Section length | The narration text, or `targetSeconds` |
 | What is on screen | Re-capture the clip |
 | A transition, camera move, or label | `storyboard.json` (`transitionIn`, `camera`, `onScreenText`) |
+| FCP graphics: templates, overlays, effects | `storyboard.json` (`meta.fcp`, `sections[].fcp`) — `demo-graphics` |
 | Timing *rules* | `scripts/reconcile.mjs` |
 | How anything *looks* | `demo/studio/src` |
 

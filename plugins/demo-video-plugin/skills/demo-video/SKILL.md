@@ -1,6 +1,6 @@
 ---
 name: demo-video
-description: Orchestrates building a narrated demo video of a project — reads the codebase, writes a storyboard, prepares deterministic app state, drives the UI with Playwright to record clips (web and Electron, recorded by Playwright or by OBS), generates ElevenLabs voiceover, reconciles measured durations into a timeline, and renders the final cut with Remotion or exports it as a Final Cut Pro project. Use whenever the user asks for a demo video, screencast, product walkthrough, feature showcase, release video, or narrated recording of an app; also load this before touching anything under demo/ so the pipeline's contracts and stage gates are respected.
+description: Orchestrates building a narrated demo video of a project — reads the codebase, writes a storyboard, prepares deterministic app state, drives the UI with Playwright to record clips (web and Electron, recorded by Playwright or by OBS), generates ElevenLabs voiceover, reconciles measured durations into a timeline, and renders the final cut with Remotion or exports it as a Final Cut Pro project dressed with Motion templates such as MotionVFX DesignStudio. Use whenever the user asks for a demo video, screencast, product walkthrough, feature showcase, release video, or narrated recording of an app; also load this before touching anything under demo/ so the pipeline's contracts and stage gates are respected.
 ---
 
 # Demo Video
@@ -37,9 +37,10 @@ section plus the narration cut to it.
 | 7 | Reconcile | `demo-assembly` | `demo/timeline.json` |
 | 8 | Draft render | `demo-assembly` | `demo/out/demo-draft.mp4` → **GATE 3** |
 | 9 | Review | `demo-review` (+ `demo-frame-critic`) | findings, fixes, re-takes |
-| 10 | Final render | `demo-assembly` | `demo/out/demo.mp4`, and/or `demo/out/demo.fcpxml` for a Final Cut Pro finish |
+| 10 | Graphics (FCP finish only) | `demo-graphics` (+ `demo-graphics-scout`) | `meta.fcp` + `sections[].fcp`, downloads done → **GATE 4** |
+| 11 | Final render | `demo-assembly` | `demo/out/demo.mp4`, and/or `demo/out/demo.fcpxml` for a Final Cut Pro finish |
 
-Stages 4–10 are individually re-runnable. In practice one section gets re-cut several
+Stages 4–11 are individually re-runnable. In practice one section gets re-cut several
 times while the rest stays untouched — never re-run the whole pipeline to fix one section.
 
 ### Defaults when the request is vague
@@ -72,6 +73,11 @@ ambiguous, and what the real timings were. If the app is not demo-ready, say so 
 
 **GATE 3, after the draft render.** A 0.6-scale draft renders in a fraction of the time.
 The user watches it before the final. Never go straight to a final render.
+
+**GATE 4, after choosing graphics (FCP finish only).** Show the look, one template per slot
+with its contact sheet, and the list of MotionVFX elements still to download. Only the user
+can download them in mExtension, and the export will not write a file that names a
+placeholder.
 
 ## Artifact contract
 
@@ -132,15 +138,19 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/render.sh --draft
 bash ${CLAUDE_PLUGIN_ROOT}/scripts/extract-frames.sh demo/out/demo-draft.mp4
 bash ${CLAUDE_PLUGIN_ROOT}/scripts/render.sh --final
 
-# 10, optional: the same timeline as a Final Cut Pro project
+# 10-11, optional: the same timeline as a Final Cut Pro project, with Motion templates
+node ${CLAUDE_PLUGIN_ROOT}/scripts/fcp-templates.mjs --check --project .
 node ${CLAUDE_PLUGIN_ROOT}/scripts/timeline-to-fcpxml.mjs --project .
 ```
 
 **Two finishes.** Remotion renders without a person and re-renders for free. The Final Cut
-Pro export turns the same measured timeline into an FCP project for hand-finishing with FCP
-titles and lower thirds — the last step there is a person pressing Share. Ask at GATE 1
-which finish the user wants when `brief.md` does not say; details in
-[final-cut-pro.md](${CLAUDE_PLUGIN_ROOT}/skills/demo-assembly/references/final-cut-pro.md).
+Pro export turns the same measured timeline into an FCP project dressed with Motion
+templates — MotionVFX DesignStudio elements when mExtension is installed, FCP's own
+otherwise — and the last step there is a person pressing Share. Ask at GATE 1 which finish
+the user wants when `brief.md` does not say. When `fcp-templates.mjs` reports MotionVFX
+elements, say so then: it is the main reason to pick the FCP finish. Details in
+[final-cut-pro.md](${CLAUDE_PLUGIN_ROOT}/skills/demo-assembly/references/final-cut-pro.md)
+and the `demo-graphics` skill.
 
 ## Subagents
 
@@ -156,6 +166,8 @@ Delegate these; they are high-volume work with a small conclusion:
   template. Render and typecheck loops are noisy.
 - **`demo-frame-critic`** — stage 9. Reads extracted frames and grades them against each
   section's `successCriteria`.
+- **`demo-graphics-scout`** — stage 10. Reads contact sheets of Motion templates next to
+  frames of the moments they cover, and returns one pick per slot plus the download list.
 
 Keep in the main thread: the brief, the storyboard, and the narration text. They need
 whole-demo coherence and the user's input.

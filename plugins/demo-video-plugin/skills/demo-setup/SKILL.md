@@ -1,6 +1,6 @@
 ---
 name: demo-setup
-description: Checks and installs everything the demo-video pipeline needs — ffmpeg, Playwright browsers, the Remotion plugin, uvx, and the ElevenLabs key, plus the optional OBS recorder (websocket reachable, able to pause) and Final Cut Pro finish — and scaffolds demo/ in the target project. Use before the first demo video on a machine, when any pipeline stage reports missing tooling, when MCP video tools are absent from /mcp, when OBS will not connect, or when the user asks to set up, doctor, or install the demo toolchain.
+description: Checks and installs everything the demo-video pipeline needs — ffmpeg, Playwright browsers, the Remotion plugin, uvx, and the ElevenLabs key, plus the optional OBS recorder (websocket reachable, able to pause) and Final Cut Pro finish with its Motion templates and MotionVFX mExtension elements — and scaffolds demo/ in the target project. Use before the first demo video on a machine, when any pipeline stage reports missing tooling, when MCP video tools are absent from /mcp, when OBS will not connect, or when the user asks to set up, doctor, or install the demo toolchain.
 ---
 
 # Demo pipeline setup
@@ -17,7 +17,9 @@ This changes nothing. It reports on: node ≥18, ffmpeg/ffprobe, uvx, Playwright
 importable `playwright` module for the script capture paths, `ELEVENLABS_API_KEY`, whether
 the Remotion plugin and agent skills are present, and the two optional pieces: OBS (installed,
 Node 22+, `OBS_WEBSOCKET_PASSWORD` set, the websocket answering, pausing possible) and Final
-Cut Pro (installed, the newest FCPXML it imports, `xmllint`).
+Cut Pro (installed, the newest FCPXML it imports, `xmllint`, the Motion templates ready, and
+MotionVFX: how many elements are downloaded, how many are only placeholders, which theme
+packs are downloaded).
 
 Show the user the report.
 
@@ -98,8 +100,15 @@ machine where OBS is also used for other work. Full guide: `demo-capture/referen
 ## 6. Final Cut Pro (optional — the hand finish)
 
 Nothing to install beyond FCP itself. `setup.sh` reports the newest FCPXML version it
-imports; `node ${CLAUDE_PLUGIN_ROOT}/scripts/fcp-templates.mjs` lists the title templates
-`meta.fcp` can name. Guide: `demo-assembly/references/final-cut-pro.md`.
+imports; `node ${CLAUDE_PLUGIN_ROOT}/scripts/fcp-templates.mjs` lists the titles, generators,
+transitions and effects `meta.fcp` can name. Guide: `demo-assembly/references/final-cut-pro.md`.
+
+**MotionVFX (optional, recommended for the FCP finish).** mExtension is MotionVFX's free FCP
+extension; with a DesignStudio subscription it downloads elements into FCP's template folders.
+The plugin installs nothing here and never drives mExtension — downloads are the user's, in
+FCP, up to 500 a day. If `setup.sh` shows many placeholders and few downloads, that is normal:
+the whole catalog is listed, and only what the user downloaded can be used. The
+`demo-graphics` skill says which elements to download for a given demo.
 
 ## 7. Scaffold (optional)
 

@@ -21,7 +21,9 @@ image, whole-video pacing — then individual frames for anything suspicious.
 
 A Final Cut Pro finish is reviewed the same way, from the file the user exported
 (`demo/out/demo-fcp.mp4`). Its frames can differ from the timeline wherever the user edited by
-hand, so grade it against `successCriteria`, not against the Remotion draft.
+hand, so grade it against `successCriteria`, not against the Remotion draft. Its graphics come
+from `sections[].fcp`: sample densely around every overlay's frame range, and check the
+graphics items in the rubric.
 
 Delegate the frame reading to the **`demo-frame-critic`** subagent. Image tokens are heavy and
 the useful output is a short findings list.
@@ -40,6 +42,8 @@ Grade in this order; earlier failures make later ones irrelevant. Full checks in
 - Narration cut off mid-sentence, or narration describing something not on screen.
 - An empty state or spinner occupying a meaningful part of a section.
 - A clip that is obviously a failed take (blank, half-loaded, mid-navigation).
+- *"The file is missing, please re-download the element"* in any frame — a MotionVFX placeholder
+  reached the film.
 
 **2. Serious — fix before shipping**
 - A/V desync: the picture reaches the result noticeably before or after the voice says it.
@@ -47,6 +51,8 @@ Grade in this order; earlier failures make later ones irrelevant. Full checks in
 - Clipped or overlapping text, captions covering the UI element being discussed.
 - Placeholder data visible (`test@test.com`, `asdf`, Lorem Ipsum).
 - A section that fails its own `successCriteria`.
+- A graphic covering the thing the narration names; a template still showing its sample text
+  ("Marcus Glover", "Title") or "DROP ZONE" art; a black band where the footage should be.
 
 **3. Quality — worth one iteration**
 - Pacing: any section that feels longer than its content.
@@ -54,6 +60,7 @@ Grade in this order; earlier failures make later ones irrelevant. Full checks in
 - Music competing with the voice.
 - A transition that reads as a glitch.
 - First or last frame not deliberate.
+- Graphics that do not belong together, or more element kinds than the story needs.
 
 ## Grading against successCriteria
 
@@ -99,7 +106,7 @@ Fix the narrowest thing that resolves the finding:
 | Clip content wrong or fumbled | re-capture that section |
 | Narration wording | edit storyboard → regenerate that section (demo-voiceover) |
 | Timing, holds, trims | reconcile (after fixing the input that caused it) |
-| Look of overlays | `demo/studio/src` |
+| Look of overlays | `demo/studio/src` (Remotion); `demo-graphics` → re-export (FCP) |
 | Narrative order or emphasis | back to `demo-scripting` — and be honest that this is a rewrite |
 
 **Always re-run reconcile after re-capturing or re-voicing anything.** Then re-render the
