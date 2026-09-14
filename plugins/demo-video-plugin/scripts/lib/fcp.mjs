@@ -114,21 +114,32 @@ function walk(root, kind, source) {
 
 let catalog = null;
 
-/** Every Motion template on this Mac, built-in first. Scanned once per process. */
-export function listTemplates({ kind } = {}) {
-  if (!catalog) {
-    const seen = new Set();
-    catalog = [];
-    for (const k of Object.keys(KINDS)) {
-      const builtIn = findFcpApps().flatMap((app) => walk(join(app, PE_DIR, KINDS[k].dir), k, 'built-in'));
-      const user = walk(join(USER_TEMPLATES_DIR, KINDS[k].dir), k, 'user');
-      for (const t of [...builtIn, ...user]) {
-        if (seen.has(t.uid)) continue;
-        seen.add(t.uid);
-        catalog.push(t);
-      }
+function scan(apps, userRoot) {
+  const seen = new Set();
+  const found = [];
+  for (const k of Object.keys(KINDS)) {
+    const builtIn = apps.flatMap((app) => walk(join(app, PE_DIR, KINDS[k].dir), k, 'built-in'));
+    const user = walk(join(userRoot, KINDS[k].dir), k, 'user');
+    for (const t of [...builtIn, ...user]) {
+      if (seen.has(t.uid)) continue;
+      seen.add(t.uid);
+      found.push(t);
     }
   }
+  return found;
+}
+
+/**
+ * Every Motion template on this Mac, built-in first. Scanned once per process.
+ * `apps` and `userRoot` exist so tests can scan a folder they built themselves; leave them out.
+ */
+export function listTemplates({ kind, apps, userRoot } = {}) {
+  const custom = apps !== undefined || userRoot !== undefined;
+  if (custom) {
+    const found = scan(apps ?? findFcpApps(), userRoot ?? USER_TEMPLATES_DIR);
+    return kind ? found.filter((t) => [kind].flat().includes(t.kind)) : found;
+  }
+  if (!catalog) catalog = scan(findFcpApps(), USER_TEMPLATES_DIR);
   return kind ? catalog.filter((t) => [kind].flat().includes(t.kind)) : catalog;
 }
 
@@ -137,10 +148,10 @@ export function listTemplates({ kind } = {}) {
  * its name without the code when exactly one downloaded template has it. A downloaded
  * template wins over a placeholder of the same name.
  */
-export function findTemplate(query, { kind } = {}) {
+export function findTemplate(query, { kind, templates } = {}) {
   const q = String(query ?? '').trim();
   if (!q) return null;
-  const all = listTemplates({ kind });
+  const all = templates ? templates.filter((t) => !kind || [kind].flat().includes(t.kind)) : listTemplates({ kind });
   const rank = (t) => (t.status === 'ready' ? 0 : 1);
   const best = (hits) => hits.sort((a, b) => rank(a) - rank(b))[0] ?? null;
   const sameBase = all.filter((t) => t.status === 'ready' && t.code && t.base.toLowerCase() === q.toLowerCase());
@@ -153,8 +164,8 @@ export function findTemplate(query, { kind } = {}) {
 }
 
 /** ready | placeholder | missing, with the template when there is one. */
-export function resolveTemplate(query, { kind } = {}) {
-  const template = findTemplate(query, { kind });
+export function resolveTemplate(query, { kind, templates } = {}) {
+  const template = findTemplate(query, { kind, templates });
   return { template, status: template?.status ?? 'missing' };
 }
 
@@ -212,8 +223,10 @@ export function inspectTemplate(path) {
   // own frame ("Title Background") cannot be moved as a whole without dragging the footage along;
   // MotionVFX's mOSC plugin gives most of those a Content Position that moves only the element.
   const moscObject = /<target object="(\d+)" channel="\.\/2\/1\/13" name="Content Position"\/>/.exec(publish)?.[1];
-  const mosc = Boolean(moscObject) && new RegExp(`<scenenode [^>]*\\bid="${moscObject}"[^>]*pluginName="mOSC"`).test(xml);
-  const drawsBackground = /<(layer|scenenode) name="Title Background"/.test(xml);
+  // Attribute order is not guaranteed, so read the whole tag for that object and look inside it.
+  const moscTag = moscObject ? new RegExp(`<scenenode\\b[^>]*\\bid="${moscObject}"[^>]*>`).exec(xml)?.[0] : null;
+  const mosc = Boolean(moscTag && moscTag.includes('pluginName="mOSC"'));
+  const drawsBackground = /<(layer|scenenode)\b[^>]*\bname="Title Background"/.test(xml);
 
   return {
     name: basename(path).replace(/\.(moti|motn|motr|moef)$/, ''),

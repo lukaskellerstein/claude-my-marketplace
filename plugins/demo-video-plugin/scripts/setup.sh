@@ -144,6 +144,7 @@ if [[ -n "$FCP_APP" ]]; then
       else {
         say("\x1b[32m✓\x1b[0m", `MotionVFX: ${mx.downloaded} elements downloaded, ${mx.placeholders} listed but not downloaded (placeholders)`);
         if (mx.packs.length) say("\x1b[32m✓\x1b[0m", `MotionVFX theme packs: ${mx.packs.join(", ")}`);
+        say("\x1b[32m✓\x1b[0m", "The ones not downloaded can still be looked at: scripts/motionvfx-catalog.mjs --search \"lower third\" --out DIR --sheet DIR/s.png");
       }' "$TEMPLATES"
   else
     warn "could not read the installed Motion templates — run scripts/fcp-templates.mjs to see why"

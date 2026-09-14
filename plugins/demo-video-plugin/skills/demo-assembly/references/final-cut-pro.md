@@ -124,6 +124,11 @@ The export prints a `note` for each:
 
 ## Importing and finishing
 
+0. Import the probe first: `timeline-to-fcpxml.mjs --project . --probe` writes
+   `demo/out/probe.fcpxml` — ten seconds of real footage with every named template and a
+   sentinel in every text layer. Import it into a throwaway library. **Any warning is a failed
+   test.** Then File → Export XML from that project and read it back: that is the only honest
+   source for which text layer got which sentinel, and which parameters FCP kept.
 1. File → Import → XML, or `open -a "<Final Cut Pro app name>" demo/out/demo.fcpxml`, and
    choose a library.
 2. Media is referenced in place by absolute path. Do not move `demo/` after exporting, or
@@ -131,6 +136,40 @@ The export prints a `note` for each:
 3. Finish what the export cannot set — generator text, drop zones, colours — then fine-tune.
 4. Share → Export File (or a YouTube preset) to `demo/out/demo-fcp.mp4`.
 5. Review it like any render: `bash ${CLAUDE_PLUGIN_ROOT}/scripts/extract-frames.sh demo/out/demo-fcp.mp4`.
+6. Write the handoff down: `fcp-finish-manifest.mjs --project .` hashes every input and output,
+   lists each template with its text layers and drop zones, and keeps the review status at
+   `pending-human-watch-listen` until a person has watched and listened.
+
+## Driving Final Cut Pro from here
+
+FCP has no headless renderer, but its window can be driven and read. What cost time before:
+
+- **A window on another Space cannot be screenshot.** Focus that Space first and check, rather
+  than assuming that activating the app moved the desktop.
+- **Re-read the accessibility tree after every import, dialog or restart.** Window ids and
+  element references go stale, and a stale element returns nothing rather than an error.
+- **Clicking a clip selects it; it does not move the playhead.** Move the playhead separately
+  and read the displayed timecode before judging a frame. Typing a timecode needs Return to
+  commit — a synthetic key code 36 did not.
+- **Check the export dialog's Source.** Selecting a library row in the sidebar can change the
+  selection without changing focus, and Share then exports the project you had before.
+- **Save dialogs remember their own directory.** Verify the whole destination path, not the
+  folder's name.
+- **A movie exists before Share has finished writing it**, and `ffprobe` will happily report a
+  partial duration. Wait for the expected duration *and* the expected decoded frame count.
+- **Caption burn-in does not happen by accident.** An iTT sidecar is not burned in. Select
+  Roles → Closed Captions → Burn in captions, re-read the selection, then check the exported
+  pixels at a timestamp where a caption is active.
+- **Current FCP exports XML as a `.fcpxmld` bundle** with `Info.fcpxml` inside. Read both that
+  and a plain `.fcpxml`.
+- **Selecting a title can switch the inspector to Text.** A missing media-well control often
+  means the wrong inspector tab, not a broken template.
+- **Deselect before judging a frame.** A selected MotionVFX title draws its mOSC on-screen
+  control — a thin circle with a handle — in the viewer. It is not in the render, but it looks
+  like a graphic that is.
+- **The inspector's numbers are not the file's numbers.** A `Content Position` written as
+  `0.1599 0.2222` shows in the inspector as X −0,6 Y −0,28. Read the exported XML, not the
+  inspector, when checking what the export wrote.
 
 ## Rules
 
@@ -143,5 +182,10 @@ The export prints a `note` for each:
   proves the file is well-formed FCPXML; only FCP proves it means what the timeline means.
 - **A DTD-valid file can still import wrong.** Anchoring inside the connected storyline, an
   empty `text-style`, and `adjust-transform` on a template that draws the footage all pass the
-  DTD and all broke in FCP. When the export changes, import it and look at frames: FCP's
+  DTD and all broke in FCP. When the export changes, import the probe and look at frames: FCP's
   File → Export XML of the imported project shows what FCP kept.
+- **The finished library is the editable deliverable, not the XML.** A logo assigned to a
+  template's media well does not survive that project's own XML export. Keep the library.
+- **A draft cannot approve this finish.** Set `meta.authoritativeRenderer` to `final-cut-pro`
+  when the native look is what the user is approving. The Remotion draft then approves footage,
+  narration and timing only, and the review gate needs the film exported from FCP.

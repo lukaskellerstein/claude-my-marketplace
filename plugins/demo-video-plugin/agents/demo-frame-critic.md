@@ -53,6 +53,9 @@ bash <plugin>/scripts/extract-frames.sh demo/out/demo-draft.mp4 demo/out/frames 
    picture is behind the voice.
 6. **Sample densely** (`extract-frames.sh … 40`) where you cannot verify a criterion. Never
    pass a section you could not verify.
+7. **In an FCP finish, sample every title three times** — entrance, settled hold, exit — and
+   sample a logo's whole hold. One good frame does not prove a title was readable, and one
+   frame of a wide logo does not prove the mask did not clip it.
 
 Frames inside a 0.4s crossfade show two sections blended. That is not a defect — check the
 timeline before reporting one.
@@ -68,7 +71,8 @@ re-download the element"* (a MotionVFX placeholder in an FCP finish).
 text; captions covering the element being discussed; placeholder data (`test@`, `asdf`, Lorem
 Ipsum); a section failing its `successCriteria`; total length far off target; in an FCP
 finish, a graphic covering what the narration names, a template still showing its sample
-text or "DROP ZONE" art, or a black band where the footage should be.
+text or "DROP ZONE" art, a black band where the footage should be, a title with no readable
+hold, a logo clipped by its mask, or missing caption burn-in where captions were asked for.
 
 **QUALITY** — pacing; teleporting cursor or clicks with no dwell; a transition that reads as a
 glitch; a first or last frame that is not deliberate; a `wow` beat that does not land.

@@ -21,9 +21,8 @@
 // Kinds: title, generator, transition, effect. Roles: lower-third, title, intro, module,
 // background, callout, cursor, frame, infographic, ui, text, caption-style, transition, effect.
 
-import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import {
   fcpxmlVersions,
   findFcpApps,
@@ -35,6 +34,7 @@ import {
   storyboardTemplateRefs,
 } from './lib/fcp.mjs';
 import { DAILY_DOWNLOAD_LIMIT, mextension, packs } from './lib/motionvfx.mjs';
+import { cellsOf, contactSheet } from './lib/sheet.mjs';
 
 const args = process.argv.slice(2);
 const VALUE_FLAGS = new Set(['--kind', '--role', '--pack', '--vendor', '--match', '--category', '--limit', '--offset', '--project', '--find', '--inspect', '--sheet']);
@@ -96,25 +96,17 @@ function filtered() {
 function sheet(out, templates) {
   const pics = templates.filter((t) => t.thumb);
   const skipped = templates.filter((t) => !t.thumb);
-  if (!pics.length) fail('none of these templates has a thumbnail — placeholders have none until downloaded in mExtension.');
-  const cols = Math.min(4, pics.length);
-  const rows = Math.ceil(pics.length / cols);
-  const inputs = pics.flatMap((t) => ['-i', t.thumb]);
-  const pad = cols * rows - pics.length;
-  for (let i = 0; i < pad; i++) inputs.push('-f', 'lavfi', '-i', 'color=c=0x303030:s=480x270:d=1');
-  const cells = [...Array(cols * rows).keys()];
-  const graph =
-    cells.map((i) => `[${i}:v]scale=480:270:force_original_aspect_ratio=decrease,pad=480:270:(ow-iw)/2:(oh-ih)/2:color=0x303030,setsar=1[v${i}]`).join(';') +
-    `;${cells.map((i) => `[v${i}]`).join('')}xstack=inputs=${cells.length}:layout=${cells
-      .map((i) => `${(i % cols) * 480}_${Math.floor(i / cols) * 270}`)
-      .join('|')}`;
-  mkdirSync(dirname(resolve(out)), { recursive: true });
-  execFileSync('ffmpeg', ['-v', 'error', '-y', ...inputs, '-filter_complex', graph, '-frames:v', '1', resolve(out)], { stdio: 'pipe' });
-  const legend = pics.map((t, i) => ({ cell: i + 1, row: Math.floor(i / cols) + 1, col: (i % cols) + 1, ...brief(t) }));
+  if (!pics.length)
+    fail(
+      'none of these templates has a thumbnail — a placeholder has none until it is downloaded. ' +
+        'Look at them in the public catalog instead: motionvfx-catalog.mjs --preview CODE,CODE --out DIR'
+    );
+  const { sheet: path, cols, rows } = contactSheet(out, pics.map((t) => t.thumb));
+  const legend = cellsOf(pics.map(brief), cols);
   emit(
-    { sheet: resolve(out), cols, rows, legend, skipped: skipped.map(brief) },
+    { sheet: path, cols, rows, legend, skipped: skipped.map(brief) },
     [
-      `${resolve(out)}  (${cols}×${rows}, cells numbered left to right, top to bottom)`,
+      `${path}  (${cols}×${rows}, cells numbered left to right, top to bottom)`,
       ...legend.map((l) => `  ${String(l.cell).padStart(2)}  ${l.name.padEnd(40)} ${l.kind.padEnd(10)} ${l.role}`),
       ...(skipped.length ? [`  skipped, no thumbnail: ${skipped.map((t) => t.name).join(', ')}`] : []),
     ].join('\n')

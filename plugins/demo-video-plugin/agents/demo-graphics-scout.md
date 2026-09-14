@@ -37,7 +37,14 @@ Load the **demo-graphics** skill for the slots, the rules, and the storyboard fi
 ## Method
 
 1. **Inventory.** `node <plugin>/scripts/fcp-templates.mjs`, then `--roles` and `--packs`.
-   Downloaded templates are `ready`; placeholders have no thumbnail and cannot be exported.
+   Downloaded templates are `ready`; placeholders have no thumbnail on disk and cannot be
+   exported until the user downloads them.
+1b. **The catalog, when nothing downloaded fits.** `motionvfx-catalog.mjs --search "cursor
+   click" --kind titles --limit 12 --out DIR --sheet DIR/sheet.png` fetches MotionVFX's own
+   preview stills and movies for the whole catalog, downloaded or not, with real lengths. Use
+   it to judge a placeholder before asking the user to spend a download on it, and
+   `--preview CODE,CODE` for a named shortlist. Say in your output which picks you judged this
+   way rather than from an installed thumbnail.
 2. **Frames of the moments.** For each slot, extract the frame the graphic will cover. From a
    draft render, at `(section.startFrame + inFrame) / fps` seconds; or from the clip, at the
    action's `t0`:
@@ -49,7 +56,9 @@ Load the **demo-graphics** skill for the slots, the rules, and the storyboard fi
    `fcp-templates.mjs --sheet demo/out/graphics/<slot>.png --role <role> [--pack <pack>]`.
    Read the legend: cells run left to right, top to bottom.
 4. **Judge** each sheet against its frame:
-   - colour and contrast against the app — readable at 1080p, not fighting the product;
+   - colour and contrast against the app — readable at 1080p, not fighting the product. Judge
+     it over a real frame, never over grey: vendor defaults are made for a vendor's reel, and
+     near-black text or a plain white bar can disappear on this footage;
    - it leaves the subject visible — beside the named thing, never on it;
    - it matches the other picks — one pack or one visual family;
    - designed at the centre of its frame, if it will be positioned (cursor, click, callout).
@@ -57,8 +66,9 @@ Load the **demo-graphics** skill for the slots, the rules, and the storyboard fi
    text layers and their order, generator or title, `position` (a callout placed on a click
    needs `yes`), and drop zones (reject unless the user fills them: empty ones show "DROP ZONE"
    art). A card with its own solid ground makes a background pick pointless.
-6. **Placeholders** only when nothing downloaded fits: pick by name, mark it *unseen*, and put
-   it on the download list.
+6. **Placeholders** only when nothing downloaded fits. Look at it in the public catalog first
+   (step 1b) and say so; pick by name alone only when the catalog has no preview, and mark that
+   one *unseen*. Either way it goes on the download list.
 
 ## Output
 
@@ -73,7 +83,7 @@ transition        Next-Gen Transition STAQ      all crossfades        transition
 click callout     Cursor Click 4G9Y             03-search action 2    position "action"
 result callout    Descriptive Callout U4TZ      03-search @ 6.0s      ["Ranked by meaning"], [1480, 320]
 
-DOWNLOAD  Film Burn Wipe EGQ5 (unseen — picked by name)
+DOWNLOAD  Film Burn Wipe EGQ5 (seen in the MotionVFX catalog, 1.2s, not downloaded here)
 SHEETS    demo/out/graphics/lower-thirds.png, demo/out/graphics/callouts.png
 BY HAND   Next-Gen Technology Intro HJKD is a generator: its text is set in FCP.
 ```

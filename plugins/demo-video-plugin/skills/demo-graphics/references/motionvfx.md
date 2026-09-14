@@ -7,9 +7,9 @@ facts lives in one file, `scripts/lib/motionvfx.mjs`; change both together.
 
 MotionVFX's free FCP extension (`/Applications/motionVFX/Plugins/mExtension.app`, data in
 `~/Movies/.mExtension`). Inside FCP it is a web view of motionvfx.com: the user browses
-collections and elements and downloads them. There is no API and no readable catalog — its
-own metadata is encrypted — so the plugin reads what mExtension writes into FCP's template
-folders instead.
+collections and elements and downloads them. Its own local metadata is encrypted, so the
+plugin reads what mExtension writes into FCP's template folders — and, for anything not
+downloaded, the public catalog below.
 
 - Subscription: DesignStudio (motion design) and CineStudio. Downloads are capped at
   **500 elements a day**.
@@ -70,8 +70,32 @@ Two shapes of collection:
 | Theme pack | Next-Gen, New Technologies, AI Development, Keynote, Business Growth, Conference, Typography | `<Pack> Title`, `<Pack> Lower3rd`, five to seven `<Pack> Module`, `<Pack> Transition`, and one generator intro — a matched set |
 | Element collection | mHowTo, mInfographics 2, mToolbar, mKeynote 2, mEdu | many single-purpose elements: cursors, clicks, callouts, UI mock-ups, charts, lists |
 
-The collection an element came from is not on disk; mExtension keeps it in its encrypted
-catalog. Packs are recognised by their shared name prefix (`fcp-templates.mjs --packs`).
+The collection an element came from is not on disk. Packs are recognised by their shared name
+prefix (`fcp-templates.mjs --packs`), and the real membership comes from the public catalog
+(`motionvfx-catalog.mjs --collections`).
+
+## The public catalog
+
+`https://www.motionvfx.com/design-studio/api/v2` answers without a login, a key, or a cookie,
+and covers the whole catalog rather than what this Mac downloaded. `scripts/lib/motionvfx.mjs`
+is the only code that calls it, and only when a command asks.
+
+| Path | Gives |
+|---|---|
+| `/elements/<CODE>` | one element: name, `extra_data.duration` + `frameRate`, styles, tags, preview still and preview movie in several widths |
+| `/elements?q=<text>&per_page=&page=` | search. **The parameter is `q`** — `search`, `query` and every other name are ignored, and the answer is then the whole catalog, which looks like a working search |
+| `/collections?per_page=100&page=` | the ~113 collections |
+| `/collections/<slug>/elements` | a collection's elements, each with `token` and `fcp_kind` |
+
+- The 4-character code is the element's `token`; the folder name on disk is `<name> <code>`.
+- `grid_prev_img_data` and `grid_prev_video_data` are keyed by width (3840 … 480); pick the
+  largest that is not wider than you need.
+- There is no server-side kind filter. `fcp_kind` (`titles`, `generators`, `transitions`,
+  `effects`) comes back in search results and is filtered here.
+- `is_available_for_user` is about the caller's subscription, not about this Mac. Whether an
+  element is downloaded is a local question, answered by `fcp-templates.mjs`.
+- Node's `fetch` ignores `HTTPS_PROXY`, so in a sandboxed session the first request fails and
+  the library falls back to `curl`. That is expected, not an error.
 
 What fits a software demo:
 

@@ -25,6 +25,19 @@ hand, so grade it against `successCriteria`, not against the Remotion draft. Its
 from `sections[].fcp`: sample densely around every overlay's frame range, and check the
 graphics items in the rubric.
 
+**Review the film the storyboard calls authoritative.** With
+`meta.authoritativeRenderer: "final-cut-pro"`, a Remotion draft cannot pass this stage: it
+renders none of the Motion templates the user is approving. Say which file you reviewed.
+
+**Check the file before the frames.** A Share export exists on disk before it is finished, and
+ffprobe will report the partial duration without complaining. Compare the decoded frame count
+against the timeline:
+
+```bash
+ffprobe -v error -count_frames -select_streams v:0 -show_entries stream=nb_read_frames \
+  -of csv=p=0 demo/out/demo-fcp.mp4        # must equal timeline.durationInFrames
+```
+
 Delegate the frame reading to the **`demo-frame-critic`** subagent. Image tokens are heavy and
 the useful output is a short findings list.
 
@@ -53,6 +66,12 @@ Grade in this order; earlier failures make later ones irrelevant. Full checks in
 - A section that fails its own `successCriteria`.
 - A graphic covering the thing the narration names; a template still showing its sample text
   ("Marcus Glover", "Title") or "DROP ZONE" art; a black band where the footage should be.
+- A title that is never readable: sample its entrance, its settled hold and its exit. A short
+  template can spend its whole life animating.
+- A logo clipped by its mask. Sample it densely — one frame of a partly hidden wide mark looks
+  like a deliberate reveal.
+- Captions asked for but not burned in. Check a frame at a timestamp where a caption is active,
+  not the file's caption track.
 
 **3. Quality — worth one iteration**
 - Pacing: any section that feels longer than its content.
