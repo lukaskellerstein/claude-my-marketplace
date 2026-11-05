@@ -1,0 +1,53 @@
+feature: "007"
+slug: csv-export
+title: Export open tasks as CSV
+brief: specs/007-csv-export/brief.md
+goal: Users move their open tasks into a spreadsheet without copying them by hand.
+out_of_scope:
+  - Import from CSV.
+  - Export of finished tasks.
+interfaces:
+  - {id: cli, kind: cli, contract: specs/007-csv-export/contracts/cli.md}
+questions:
+  - id: Q1
+    ask: Does the export include tasks from archived lists?
+    why: It changes which rows the acceptance test expects.
+    options:
+      - {key: A, text: Active lists only, recommended: true}
+      - {key: B, text: All lists}
+    answer: A
+    by: human
+unknowns:
+  - id: U1
+    ask: Which library quotes RFC 4180 CSV in Node 20?
+    decision: csv-stringify 6.x, because the repo already depends on it.
+    ref: research.md#u1
+requirements:
+  - id: REQ-007-001
+    type: event-driven
+    text: When a user runs `todo export --csv`, the CLI shall write every open task of the active lists to stdout as RFC 4180 CSV.
+    scope: export
+    applies_to: [cli]
+    verification: {mode: isolated-interface, method: test}
+    acceptance:
+      - id: AC-1
+        given: active list "home" with open tasks "buy milk" and "fix tap, kitchen"
+        when: the user runs `todo export --csv`
+        then: 'stdout is `title,list`, `buy milk,home`, `"fix tap, kitchen",home` and the exit code is 0'
+    priority: must
+    status: draft
+    source: brief#L4
+  - id: REQ-007-002
+    type: unwanted-behavior
+    text: If the output file exists and `--force` is absent, then the CLI shall exit with code 3 without changing the file.
+    scope: export
+    applies_to: [cli]
+    verification: {mode: isolated-interface, method: test}
+    acceptance:
+      - id: AC-1
+        given: a file `out.csv` that contains "old"
+        when: the user runs `todo export --csv -o out.csv`
+        then: the exit code is 3 and `out.csv` still contains "old"
+    priority: must
+    status: draft
+    source: Q1

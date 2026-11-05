@@ -1,0 +1,169 @@
+# nex examples/specs/FEAT-142/requirements.yaml, converted: applies_to flattened to interface ids,
+# scopes[0] became scope, provenance and created became source, file-level status became per record.
+feature: FEAT-142
+slug: guest-checkout
+title: Guest checkout
+brief: specs/FEAT-142-guest-checkout/brief.md
+goal: A shopper in a region with guest checkout buys without creating an account, and can claim the order later.
+out_of_scope:
+  - Guest checkout for regions where the flag is off.
+interfaces:
+  - id: storefront-api
+    kind: http-api
+    contract: contracts/storefront-api/openapi.yaml
+  - id: web-ui
+    kind: ui
+requirements:
+  - id: REQ-FEAT-142-001
+    type: optional-feature
+    text: Where guest checkout is enabled for the shopper's region, the web UI shall allow a shopper to reach the payment step without creating an account.
+    scope: checkout
+    applies_to: [web-ui]
+    verification: {mode: isolated-interface, method: test}
+    acceptance:
+      - id: AC-001
+        given: region DE has guest_checkout=true and the shopper is not signed in
+        when: the shopper opens /checkout with a non-empty cart
+        then: the page shows "Continue as guest" and it leads to /checkout/payment without a sign-in form
+      - id: AC-002
+        given: region FR has guest_checkout=false and the shopper is not signed in
+        when: the shopper opens /checkout
+        then: the page shows only "Sign in" and "Create account"; no guest path is reachable by URL either
+    priority: must
+    status: approved
+    source: brief#issue-142
+
+  - id: REQ-FEAT-142-002
+    type: event-driven
+    text: When a guest shopper submits an order with a syntactically valid email address, the storefront API shall create the order with customer_type=guest and no account reference.
+    scope: checkout
+    applies_to: [storefront-api]
+    verification: {mode: isolated-interface, method: test}
+    acceptance:
+      - id: AC-001
+        given: a cart with 2 line items and no session account
+        when: 'POST /orders with {"email": "ana@example.com", "guest": true}'
+        then: 201 with customer_type "guest", account_id null, and the stock reservation recorded for both lines
+    priority: must
+    status: approved
+    source: brief#issue-142
+    relationships:
+      - type: depends-on
+        target: REQ-CHECKOUT-004
+
+  - id: REQ-FEAT-142-003
+    type: unwanted-behavior
+    text: If a guest shopper submits an order with an email address that fails RFC 5322 syntax validation, then the storefront API shall reject the request with HTTP 422.
+    scope: checkout
+    applies_to: [storefront-api]
+    verification: {mode: isolated-interface, method: test}
+    acceptance:
+      - id: AC-001
+        given: a cart with 1 line item, stock 5
+        when: 'POST /orders with {"email": "not-an-email", "guest": true}'
+        then: 422 with error code invalid_email
+    priority: must
+    status: approved
+    source: brief#issue-142
+    relationships:
+      - type: related-to
+        target: REQ-FEAT-142-007
+
+  - id: REQ-FEAT-142-004
+    type: event-driven
+    text: When a guest order transitions to confirmed, the storefront API shall send the confirmation email containing a single-use conversion link within 60 seconds.
+    scope: checkout
+    applies_to: [storefront-api]
+    verification: {mode: isolated-interface, method: test}
+    acceptance:
+      - id: AC-001
+        given: a guest order in state payment-pending
+        when: the payment provider authorizes the charge
+        then: the email outbox has 1 message to the guest email with one link matching /account/claim/<token>
+        measure: {metric: email_latency, operator: "<=", value: 60, unit: s}
+    priority: must
+    status: approved
+    source: brief#issue-142
+
+  - id: REQ-FEAT-142-005
+    type: state-driven
+    text: While a conversion token is unused and younger than 30 days, the storefront API shall accept it exactly once to attach the guest order to a newly created account.
+    scope: accounts
+    applies_to: [storefront-api]
+    verification: {mode: isolated-interface, method: property-test}
+    acceptance:
+      - id: AC-001
+        given: a guest order with an unused token issued 29 days ago
+        when: POST /account/claim/<token> with a new password, twice
+        then: the first call returns 201 and links the order; the second returns 410 token_used
+      - id: AC-002
+        given: a token issued 31 days ago
+        when: POST /account/claim/<token>
+        then: 410 token_expired and the order stays customer_type guest
+    priority: must
+    status: approved
+    source: assumption
+    rationale: 30 days is an assumption the triage agent made; the product manager confirmed it in the spec PR.
+
+  - id: REQ-FEAT-142-006
+    type: ubiquitous
+    text: The storefront API shall store a guest's email address only on the order record.
+    scope: project
+    applies_to: [storefront-api]
+    verification:
+      mode: implementation-aware
+      rationale: Where a value is stored cannot be observed through the public interface; the test must query the database.
+      method: test
+    acceptance:
+      - id: AC-001
+        given: a guest order for ana@example.com
+        when: the order is created and confirmed
+        then: the order row holds ana@example.com and no other table holds it
+    priority: must
+    status: approved
+    source: brief#issue-142
+    relationships:
+      - type: related-to
+        target: REQ-FEAT-142-008
+
+  - id: REQ-FEAT-142-007
+    type: unwanted-behavior
+    text: If the storefront API rejects a guest order, then the storefront API shall not reserve stock for any line of that order.
+    scope: checkout
+    applies_to: [storefront-api]
+    verification:
+      mode: implementation-aware
+      rationale: A reservation is internal state; the public interface shows it only as a later stock count, so the test reads the reservations table.
+      method: test
+    acceptance:
+      - id: AC-001
+        given: a cart with 1 line item, stock 5
+        when: 'POST /orders with {"email": "not-an-email", "guest": true} returns 422'
+        then: available stock is still 5 and no reservation row exists for the cart
+    priority: must
+    status: approved
+    source: brief#issue-142
+    relationships:
+      - type: related-to
+        target: REQ-FEAT-142-003
+
+  - id: REQ-FEAT-142-008
+    type: ubiquitous
+    text: The storefront API shall not create a customer profile for a guest.
+    scope: project
+    applies_to: [storefront-api]
+    verification:
+      mode: implementation-aware
+      rationale: The absence of a profile row cannot be observed through the public interface; the test must query the customers table.
+      method: test
+    acceptance:
+      - id: AC-001
+        given: an empty customers table
+        when: a guest order is created and confirmed
+        then: the customers table is still empty
+    priority: must
+    status: approved
+    source: brief#issue-142
+    relationships:
+      - type: related-to
+        target: REQ-FEAT-142-006

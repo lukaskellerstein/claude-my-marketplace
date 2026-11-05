@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://spex.local/schemas/config.schema.json",
+  "title": "specs/spex.yaml",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "acceptance_dir": { "type": "string", "minLength": 1 },
+    "acceptance_cmd": { "type": "string", "description": "Shell command. {ids} becomes REQ_007_001|REQ_007_002; {ids_k} becomes REQ_007_001 or REQ_007_002 (pytest -k)." },
+    "fast_checks": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "source_dirs": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "protected": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "scopes": { "type": "array", "items": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" } },
+    "banned_words": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "task_files": { "type": "integer", "minimum": 1 },
+        "instructions_bytes": { "type": "integer", "minimum": 100 },
+        "approach_bytes": { "type": "integer", "minimum": 100 },
+        "context_kb": { "type": "integer", "minimum": 1 },
+        "diff_kb": { "type": "integer", "minimum": 1 },
+        "file_kb": { "type": "integer", "minimum": 1 },
+        "tests_scenarios": { "type": "integer", "minimum": 1, "description": "How many scenarios one /spex:tests run covers at most; the batch picker stops there." },
+        "verify_minutes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "review_rounds": { "type": "integer", "minimum": 1 }
+  }
+}

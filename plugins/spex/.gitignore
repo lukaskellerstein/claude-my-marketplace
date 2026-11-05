@@ -1,0 +1,2 @@
+node_modules/
+# scripts/spex.mjs is the built artifact and is committed on purpose: the plugin works with no install step.

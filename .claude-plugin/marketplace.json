@@ -1,6 +1,6 @@
 {
   "name": "claude-my-marketplace",
-  "version": "1.15.0",
+  "version": "1.17.0",
   "description": "A marketplace for Claude Code plugins focused on ME",
   "owner": {
     "name": "Lukas Kellerstein",
@@ -10,6 +10,10 @@
     {
       "name": "dev-tools-plugin",
       "source": "./plugins/dev-tools-plugin"
+    },
+    {
+      "name": "spex",
+      "source": "./plugins/spex"
     },
     {
       "name": "office-plugin",

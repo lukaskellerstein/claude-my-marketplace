@@ -1,0 +1,23 @@
+# A built feature from before: the cross-feature target of REQ-FEAT-142-002's depends-on.
+feature: CHECKOUT
+slug: checkout
+title: Checkout
+goal: A shopper pays for the cart and stock is reserved only while the payment can still succeed.
+interfaces:
+  - id: storefront-api
+    kind: http-api
+requirements:
+  - id: REQ-CHECKOUT-004
+    type: unwanted-behavior
+    text: If a payment fails, then the storefront API shall release every stock reservation of that order.
+    scope: checkout
+    applies_to: [storefront-api]
+    verification: {mode: isolated-interface, method: test}
+    acceptance:
+      - id: AC-001
+        given: an order with 2 reserved lines in state payment-pending
+        when: the payment provider declines the charge
+        then: both reservations are released and available stock is back to its previous value
+    priority: must
+    status: built
+    source: brief#issue-98

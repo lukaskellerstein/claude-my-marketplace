@@ -1,0 +1,35 @@
+{
+  "name": "spex",
+  "version": "1.1.0",
+  "description": "Spec-driven development in small, checkable files. A brief becomes EARS requirement records, the records become tasks sized for one agent run, and a bundled script — not the model — checks the spec, gates every stage and decides when a task is done. Replaces GitHub spec-kit with about a tenth of the context per run. Every skill is user-invoked only.",
+  "author": {
+    "name": "Lukas Kellerstein"
+  },
+  "keywords": [
+    "spec",
+    "specification",
+    "spec-driven",
+    "ears",
+    "requirements",
+    "acceptance-tests",
+    "tasks",
+    "plan",
+    "tdd",
+    "spec-kit",
+    "agent-workflow",
+    "dex"
+  ],
+  "skills": [
+    "./skills/init",
+    "./skills/specify",
+    "./skills/clarify",
+    "./skills/research",
+    "./skills/plan",
+    "./skills/tests",
+    "./skills/implement",
+    "./skills/review",
+    "./skills/quick",
+    "./skills/sync",
+    "./skills/archive"
+  ]
+}

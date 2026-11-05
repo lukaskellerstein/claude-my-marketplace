@@ -1,0 +1,27 @@
+{
+  "name": "spex",
+  "version": "1.1.0",
+  "private": true,
+  "description": "Spec-driven development in small, checkable files: EARS records, one task per agent run, a script that decides when a step is done.",
+  "type": "module",
+  "bin": {
+    "spex": "scripts/spex.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node build.mjs && chmod +x scripts/spex.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run build && node --test \"tests/*.test.mjs\"",
+    "check": "npm run typecheck && npm test"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "esbuild": "^0.28.2",
+    "typescript": "^5.9.0",
+    "yaml": "^2.9.1"
+  }
+}

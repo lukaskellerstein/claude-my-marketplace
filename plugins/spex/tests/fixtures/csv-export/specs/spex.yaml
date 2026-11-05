@@ -1,0 +1,10 @@
+# The example repo from the README, with a real (tiny) acceptance runner so run/done can be tested.
+acceptance_dir: tests/acceptance
+acceptance_cmd: node --test --test-name-pattern="{ids}" "tests/acceptance/**/*.test.mjs"
+fast_checks: []
+source_dirs: [src]
+protected: [specs/, tests/acceptance/, .github/]
+scopes: [export]
+banned_words: []
+limits: {task_files: 12, instructions_bytes: 1500, approach_bytes: 1200, context_kb: 24, diff_kb: 120, file_kb: 40, verify_minutes: 2}
+review_rounds: 3

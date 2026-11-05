@@ -1,13 +1,13 @@
 # claude-my-marketplace
 
 [![GitHub](https://img.shields.io/github/stars/lukaskellerstein/claude-my-marketplace?style=flat&logo=github)](https://github.com/lukaskellerstein/claude-my-marketplace)
-[![Plugins](https://img.shields.io/badge/plugins-11-blue?logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0id2hpdGUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE0IiBoZWlnaHQ9IjE0IiByeD0iMiIvPjwvc3ZnPg==)](plugins/)
-[![Skills](https://img.shields.io/badge/skills-44-8a2be2)](plugins/)
+[![Plugins](https://img.shields.io/badge/plugins-12-blue?logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0id2hpdGUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3QgeD0iMyIgeT0iMyIgd2lkdGg9IjE0IiBoZWlnaHQ9IjE0IiByeD0iMiIvPjwvc3ZnPg==)](plugins/)
+[![Skills](https://img.shields.io/badge/skills-55-8a2be2)](plugins/)
 [![Claude Code](https://img.shields.io/badge/Claude%20Code-compatible-orange?logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0id2hpdGUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMTAiIGN5PSIxMCIgcj0iOCIvPjwvc3ZnPg==)](https://code.claude.com/docs)
 
 > A curated collection of [Claude Code](https://code.claude.com/docs) plugins for design, development, documentation, media generation, video production, and infrastructure management.
 
-This marketplace bundles **11 plugins** contributing **44 skills**, **19 agents**, **4 commands**, **9 MCP servers**, and **4 LSP servers** — capabilities spanning the software development lifecycle from design direction through implementation, documentation, deployment, and demo video production. Every plugin installs and works on its own; the two that build on others declare it, so their dependencies install automatically.
+This marketplace bundles **12 plugins** contributing **55 skills**, **19 agents**, **4 commands**, **9 MCP servers**, and **4 LSP servers** — capabilities spanning the software development lifecycle from design direction through implementation, documentation, deployment, and demo video production. Every plugin installs and works on its own; the two that build on others declare it, so their dependencies install automatically.
 
 ## Features
 
@@ -15,6 +15,7 @@ This marketplace bundles **11 plugins** contributing **44 skills**, **19 agents*
 - **Media generation** — images, video, music, speech, icons, charts and diagrams behind a single visual-planning gate (`media-plugin`)
 - **Automated demo videos** — repo → storyboard → recorded UI take (Playwright or OBS) → voiceover → rendered cut or Final Cut Pro project with MotionVFX graphics (`demo-video-plugin`)
 - **Developer workflow** — read-only thinking and Q&A, autonomous multi-repo PR flow, dead-code sweeps, dependency upgrades, docs and README generation (`dev-tools-plugin`)
+- **Spec-driven development** — a brief becomes EARS requirement records, the records become tasks sized for one agent run, and a bundled script checks the spec, gates every stage and decides when a task is done; replaces spec-kit at about a tenth of the context per run (`spex`)
 - **Infrastructure** — Kubernetes/GKE, Istio, Helm, Terraform, Traefik and Keycloak/OAuth2-proxy auth (`infra-plugin`)
 - **Office documents** — PowerPoint, Word and Excel generation (`office-plugin`)
 - **Opt-in code intelligence** — per-language LSP navigation loaded per session, never globally (`lsp-python`, `lsp-typescript`, `lsp-go`, `lsp-bash`)
@@ -25,7 +26,8 @@ This marketplace bundles **11 plugins** contributing **44 skills**, **19 agents*
 |---|---|---|---|---|
 | [media-plugin](plugins/media-plugin) | `v1.15.1` | Image, video, music, speech, icon and data-viz generation | 10 | 1 |
 | [web-design-plugin](plugins/web-design-plugin) | `v1.6.0` | Brief → working React/Vite site | 4 | 11 |
-| [dev-tools-plugin](plugins/dev-tools-plugin) | `v1.7.0` | Thinking/Q&A, git, code hygiene, deps, docs — all user-invoked | 9 | 2 |
+| [dev-tools-plugin](plugins/dev-tools-plugin) | `v1.8.0` | Thinking/Q&A, git, code hygiene, deps, docs — all user-invoked | 9 | 2 |
+| [spex](plugins/spex) | `v1.1.0` | Brief → EARS records → one-run tasks, script-gated | 11 | — |
 | [demo-video-plugin](plugins/demo-video-plugin) | `v1.3.0` | Repo → narrated demo video | 9 | 5 |
 | [infra-plugin](plugins/infra-plugin) | `v1.1.0` | K8s, Istio, Helm, Terraform, auth | 6 | — |
 | [design-plugin](plugins/design-plugin) | `v1.3.0` | Creative direction and design review | 4 | 1 |
@@ -55,15 +57,23 @@ End-to-end website/webapp design and implementation — from brief to working Re
 - **MCP:** Playwright
 - **Depends on:** design-plugin, media-plugin — installed automatically
 
-### [dev-tools-plugin](plugins/dev-tools-plugin) `v1.7.0`
+### [dev-tools-plugin](plugins/dev-tools-plugin) `v1.8.0`
 
-General developer tooling — git workflows, code hygiene, dependency management, spec-kit synchronization and project documentation generation. `git-pr` runs the whole commit → PR → squash-merge → back-to-main round trip across every repo in a folder, autonomously and with no permission prompts: every step goes through one guarded script (`skills/git-pr/scripts/git-pr.sh`) that the skill pre-approves in `allowed-tools`. The script never force-pushes, resets, rebases or merges with `--admin`, and it stops for a human on anything doubtful — a new file that looks like a secret, a diverged branch, a failed merge.
+General developer tooling — git workflows, code hygiene, dependency management, spec-kit synchronization and project documentation generation. `git-pr` runs the whole commit → PR → squash-merge → back-to-main round trip across every repo in a folder — or in the `claude -w` worktree you are in — with no permission prompts: every step goes through one guarded script (`skills/git-pr/scripts/git-pr.sh`) that the skill pre-approves in `allowed-tools`. It asks one question per run — PR + merge, or PR only — and when the PR would conflict with the base branch it merges the base in and resolves the conflicts before merging (`abort` backs out when it can't do that with confidence). In a worktree, where git won't check out the base branch a second time, it fast-forwards the base in the main checkout and parks the worktree on the latest base. The script never force-pushes, resets, rebases or merges with `--admin`, and it stops for a human on anything doubtful — a new file that looks like a secret, a diverged branch, a merge GitHub blocks.
 
 Every skill here is **invoked by you only** — none is ever auto-selected, so none costs context until you type it. That is deliberate: these skills commit and merge, rewrite lockfiles, and regenerate whole doc trees, and when that happens should be your call, not an inference. `/brainstorm` is for when there's a decision to make: options, trade-offs, a recommendation. `/question` is for when there's a fact to find: it investigates the current state, answers with citations, and never writes anything.
 
 - **Skills (all user-invoked):** brainstorm, question, git-pr, dead-code, update-dependencies, sync-spec-kit, update-docs, update-feature-docs, update-readme
 - **Agents:** dead-code-analyzer, sync-spec-kit-agent
 - **MCP:** Mermaid (diagram validation for `update-docs` and `update-feature-docs`)
+
+### [spex](plugins/spex) `v1.1.0`
+
+Spec-driven development in small, checkable files, built to replace GitHub spec-kit. `/spex:specify` turns a brief into `specs/NNN-slug/requirements.yaml` — EARS requirement records with real-valued scenarios, questions for a person, unknowns for research — and `/spex:plan` turns the approved records into `tasks.yaml`: an approach, boundaries, a design block and one task per agent run, each with a write allowlist, a capped read list and exact signatures. The bundled script `scripts/spex.mjs` (Node 20+, no install) owns everything a program can check: 33 rules with a `fix` text each, the stage gates, red-first acceptance tests written one batch of tasks at a time, `spex done` that runs every verify command itself and flips the status only on a pass at that moment (no gate ever reads a file an agent could have written), and a computed index of the living requirements across features. An implement run reads about 1–3 KB of spec instead of spec-kit's 190 KB, measured on a 12-phase Dex feature. Every skill is user-invoked only and at most 6,000 bytes, and no skill reads the plugin README. Dex adopts it as spec 017. See its [README](plugins/spex/README.md) for the design, the file formats, the rules and the sources (spec-kit, BMAD, Superpowers, OpenSpec, nex).
+
+- **Skills:** init, specify, clarify, research, plan, tests, implement, review, quick, sync, archive
+- **Script:** `spex init | new | check | approve | gate | show | next | run | done | block | coverage | index | archive | report`, every command with `--json`
+- **Tests:** `npm test` in the plugin folder — 71 rule, lifecycle and skill-size tests on two fixtures (the README example and nex FEAT-142 converted)
 
 ### [demo-video-plugin](plugins/demo-video-plugin) `v1.3.0`
 
@@ -139,7 +149,7 @@ graph TD
 - **design-plugin** provides creative direction, consumed by web-design-plugin for styleguides and design review
 - **media-plugin** generates the assets for design-plugin and web-design-plugin
 - **office-plugin** works alone; if media-plugin is installed, it uses it for charts, diagrams and images
-- **dev-tools-plugin**, **demo-video-plugin**, **infra-plugin** and the **LSP plugins** are standalone
+- **dev-tools-plugin**, **spex**, **demo-video-plugin**, **infra-plugin** and the **LSP plugins** are standalone
 
 ### Commands
 
@@ -152,7 +162,7 @@ graph TD
 
 Every skill is also invocable as `/<plugin-name>:<skill-name>` — e.g. `/design-plugin:styleguide`, `/demo-video-plugin:demo-video`. Plugin commands and skills are always namespaced; the rest of this README uses the short name (`/git-pr`) for readability.
 
-The nine `dev-tools-plugin` skills are invocable **only** that way. They set `disable-model-invocation: true`, so Claude never selects them on its own and their descriptions cost no context: `/git-pr` merges when you say so, not when your work looks finished.
+The nine `dev-tools-plugin` skills and the eleven `spex` skills are invocable **only** that way. They set `disable-model-invocation: true`, so Claude never selects them on its own and their descriptions cost no context: `/git-pr` merges when you say so, not when your work looks finished, and `/spex:implement` never starts a task you did not name.
 
 ### MCP server integrations
 

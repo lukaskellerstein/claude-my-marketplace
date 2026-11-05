@@ -1,0 +1,48 @@
+feature: "007"
+approach: |
+  Add an `export` subcommand next to `list` in src/cli/commands/. Read tasks
+  through TaskStore.openTasks() and format them with csv-stringify (U1). Write
+  to stdout, or to -o after an existence check that runs before any write.
+boundaries:
+  always:
+    - Read tasks through TaskStore; never open the database file directly.
+  never:
+    - Change the TaskStore API.
+design:
+  modules:
+    - id: M1
+      path: src/cli/commands/export.ts
+      role: the export subcommand and its CSV formatting
+  decisions:
+    - id: D1
+      text: Rows follow list order, then task order.
+      why: The brief shows the spreadsheet grouped by list.
+tasks:
+  - id: T01
+    title: "`todo export --csv` writes open tasks to stdout"
+    kind: story
+    requirements: [REQ-007-001]
+    paths: [src/cli/commands/export.ts, src/cli/index.ts, tests/unit/export.test.ts]
+    context: [src/cli/commands/list.ts, "src/store/TaskStore.ts:40-90"]
+    design: [D1]
+    interfaces:
+      produces: ["exportCsv(store: TaskStore, out: Writable): Promise<number>"]
+    instructions: |
+      The header row is exactly `title,list`. Row order is D1. Use
+      csv-stringify defaults for quoting.
+    done_when: The REQ-007-001 acceptance test passes.
+    status: todo
+  - id: T02
+    title: "`-o` refuses to overwrite without `--force`"
+    kind: story
+    requirements: [REQ-007-002]
+    depends_on: [T01]
+    paths: [src/cli/commands/export.ts, src/cli/exit.ts, tests/unit/export.test.ts]
+    context: [src/cli/commands/export.ts, src/cli/exit.ts]
+    interfaces:
+      consumes: ["exportCsv(store: TaskStore, out: Writable): Promise<number>"]
+    instructions: |
+      Add `OutputExists = 3` to ExitCode in src/cli/exit.ts. Check that the file
+      exists before opening it for writing.
+    done_when: The REQ-007-002 acceptance test passes.
+    status: todo

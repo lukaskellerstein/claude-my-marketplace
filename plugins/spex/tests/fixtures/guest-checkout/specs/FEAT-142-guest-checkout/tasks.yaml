@@ -1,0 +1,125 @@
+# nex examples/specs/FEAT-142/tasks.yaml, converted: the slice is gone (parallel_group and
+# depends_on carry the order), budgets became limits, and the plan's data shapes moved into design.
+feature: FEAT-142
+approach: |
+  Add a guest path to checkout behind the existing per-region flag service.
+  Orders get customer_type and a nullable account_id. Conversion uses a
+  single-use token table with a 30-day TTL. Reuse the stock reservation and
+  payment flow unchanged; only the order creation and the confirmation email
+  change.
+boundaries:
+  always:
+    - Reuse FlagService.is_enabled(region, "guest_checkout"); do not add a new flag store.
+    - Keep REQ-CHECKOUT-004 behavior (stock release on failed payment) untouched.
+  never:
+    - Create a customer profile for a guest (REQ-FEAT-142-008).
+    - Change the payment adapter contract.
+design:
+  modules:
+    - id: M1
+      path: src/checkout/api.py
+      role: POST /orders, the guest branch and the email validation
+    - id: M2
+      path: src/accounts/claim.py
+      role: POST /account/claim/<token>
+  entities:
+    - id: E1
+      name: Order
+      fields: ["customer_type: account | guest (default account)", "account_id: nullable fk"]
+    - id: E2
+      name: conversion_tokens
+      fields: ["token_hash: pk", "order_id: fk", "created_at", "used_at: nullable"]
+  decisions:
+    - id: D1
+      text: Store only a SHA-256 hash of the conversion token.
+      why: A leaked table must not give away live links.
+    - id: D2
+      text: Validate the email before StockService.reserve is called.
+      why: REQ-FEAT-142-007 forbids a reservation on a rejected order.
+tasks:
+  - id: T001
+    kind: foundational
+    title: Order model gets customer_type and nullable account_id, plus the conversion_tokens table
+    requirements: [REQ-FEAT-142-002, REQ-FEAT-142-005, REQ-FEAT-142-006]
+    paths:
+      - src/orders/models.py
+      - src/orders/migrations/0012_guest_orders.py
+      - tests/unit/orders/test_models.py
+    context: [src/orders/models.py, src/orders/migrations/0011_reservations.py]
+    design: [E1, E2, D1]
+    instructions: |
+      Add E1's fields to Order and create E2. Store only the hash (D1).
+      The migration must be reversible.
+    verify: ["make test-unit PKG=orders"]
+    done_when: Migration applies and rolls back; unit tests for the new fields pass.
+    status: todo
+
+  - id: T002
+    kind: story
+    title: POST /orders accepts guest orders and validates the email
+    requirements: [REQ-FEAT-142-002, REQ-FEAT-142-003, REQ-FEAT-142-006, REQ-FEAT-142-007, REQ-FEAT-142-008]
+    depends_on: [T001]
+    parallel_group: api
+    paths:
+      - src/checkout/api.py
+      - src/checkout/schemas.py
+      - src/checkout/validation.py
+      - tests/unit/checkout/**
+    context: [src/checkout/api.py, src/common/validation.py, contracts/storefront-api/openapi.yaml]
+    design: [E1, D2]
+    interfaces:
+      produces: ["create_guest_order(cart: Cart, email: str) -> Order"]
+    instructions: |
+      Accept {"email", "guest": true} when no session account exists.
+      Validate the email with the RFC 5322 regex already in
+      src/common/validation.py. On invalid email return 422
+      {"error": "invalid_email"} before StockService.reserve (D2).
+      Never call CustomerService.create for a guest.
+    verify: ["make test-unit PKG=checkout"]
+    done_when: Acceptance tests for REQ-002, REQ-003, REQ-006, REQ-007 and REQ-008 pass; the OpenAPI contract is updated.
+    status: todo
+
+  - id: T003
+    kind: story
+    title: Confirmation email with a single-use conversion link; claim endpoint
+    requirements: [REQ-FEAT-142-004, REQ-FEAT-142-005]
+    depends_on: [T001]
+    parallel_group: api
+    paths:
+      - src/notifications/order_confirmed.py
+      - src/accounts/claim.py
+      - src/accounts/router.py
+      - templates/email/order_confirmed_guest.html
+      - tests/unit/accounts/**
+      - tests/unit/notifications/**
+    context: [src/notifications/order_confirmed.py, src/accounts/router.py]
+    design: [E2, D1]
+    instructions: |
+      On OrderConfirmed for a guest order, create a token (32 random bytes,
+      urlsafe), store its hash (D1), and render the guest template with
+      /account/claim/<token>. Add POST /account/claim/<token>: 201 and
+      link order on first valid use; 410 token_used on reuse; 410
+      token_expired after 30 days. Use the outbox pattern already used by
+      password reset so the 60 s budget holds under the existing worker.
+    verify: ["make test-unit PKG=accounts,notifications"]
+    done_when: Acceptance tests for REQ-004 and REQ-005 pass, including the property test on token reuse.
+    status: todo
+
+  - id: T004
+    kind: story
+    title: Web UI shows the guest path only when the region flag is on
+    requirements: [REQ-FEAT-142-001]
+    depends_on: [T002]
+    paths:
+      - web/src/checkout/**
+      - web/src/flags/useRegionFlag.ts
+    context: [web/src/checkout/CheckoutGate.tsx, web/src/flags/useRegionFlag.ts]
+    interfaces:
+      consumes: ["create_guest_order(cart: Cart, email: str) -> Order"]
+    instructions: |
+      Add "Continue as guest" to CheckoutGate when useRegionFlag("guest_checkout")
+      is true. Route guards must also block /checkout/payment for guests when
+      the flag is off (AC-002 checks the URL path, not only the button).
+    verify: ["make test-web"]
+    done_when: Both AC scenarios for REQ-001 pass in the e2e runner.
+    status: todo
