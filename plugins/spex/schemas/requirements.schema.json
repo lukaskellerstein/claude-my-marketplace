@@ -2,58 +2,159 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://spex.local/schemas/requirements.schema.json",
   "title": "specs/<feature>/requirements.yaml",
-  "description": "One file per feature: EARS requirement records with scenarios, plus the questions and unknowns that shaped them.",
+  "description": "One file per feature: EARS requirement records with scenarios (the claim), plus the questions and unknowns that shaped them. How a record is proved lives in tests.yaml.",
   "type": "object",
-  "required": ["feature", "slug", "title", "goal", "requirements"],
+  "required": [
+    "feature",
+    "slug",
+    "title",
+    "goal",
+    "requirements"
+  ],
   "additionalProperties": false,
   "properties": {
-    "feature": { "type": "string", "pattern": "^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$", "description": "The feature id, quoted: \"007\" or FEAT-142. Unquoted 007 is the number 7." },
-    "slug": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
-    "title": { "type": "string", "minLength": 3, "maxLength": 120 },
-    "brief": { "type": "string", "minLength": 1 },
-    "goal": { "type": "string", "minLength": 10 },
-    "out_of_scope": { "type": "array", "items": { "type": "string", "minLength": 3 } },
+    "feature": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$",
+      "description": "The feature id, quoted: \"007\" or FEAT-142. Unquoted 007 is the number 7."
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 120
+    },
+    "spec": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The spec in words, only when it is not spec.md in this folder (a document kept elsewhere, as Dex does)."
+    },
+    "goal": {
+      "type": "string",
+      "minLength": 10
+    },
+    "out_of_scope": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 3
+      }
+    },
     "interfaces": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "kind"],
+        "required": [
+          "id",
+          "kind"
+        ],
         "additionalProperties": false,
         "properties": {
-          "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
-          "kind": { "enum": ["http-api", "cli", "ui", "ipc", "event", "library", "job"] },
-          "contract": { "type": "string", "minLength": 1 }
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "kind": {
+            "enum": [
+              "http-api",
+              "cli",
+              "ui",
+              "ipc",
+              "event",
+              "library",
+              "job"
+            ]
+          },
+          "contract": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     },
-    "glossary": { "type": "object", "additionalProperties": { "type": "string" } },
+    "glossary": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
     "questions": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "ask", "why", "options"],
+        "required": [
+          "id",
+          "ask",
+          "why",
+          "options"
+        ],
         "additionalProperties": false,
         "properties": {
-          "id": { "type": "string", "pattern": "^Q[0-9]+$" },
-          "ask": { "type": "string", "minLength": 5 },
-          "why": { "type": "string", "minLength": 5 },
+          "id": {
+            "type": "string",
+            "pattern": "^Q[0-9]+$"
+          },
+          "ask": {
+            "type": "string",
+            "minLength": 5
+          },
+          "why": {
+            "type": "string",
+            "minLength": 5
+          },
           "options": {
             "type": "array",
             "minItems": 2,
             "maxItems": 5,
             "items": {
               "type": "object",
-              "required": ["key", "text"],
+              "required": [
+                "key",
+                "text"
+              ],
               "additionalProperties": false,
               "properties": {
-                "key": { "type": "string", "pattern": "^[A-E]$" },
-                "text": { "type": "string", "minLength": 1 },
-                "recommended": { "type": "boolean" }
+                "key": {
+                  "type": "string",
+                  "pattern": "^[A-E]$"
+                },
+                "text": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "recommended": {
+                  "type": "boolean"
+                }
               }
             }
           },
-          "answer": { "type": "string", "minLength": 1 },
-          "by": { "enum": ["human", "default"] }
+          "answer": {
+            "type": "string",
+            "minLength": 1
+          },
+          "by": {
+            "enum": [
+              "human",
+              "default",
+              "agent"
+            ]
+          },
+          "evidence": {
+            "type": "string",
+            "minLength": 3,
+            "description": "For by: agent \u2014 the design section, file and line, or finding the answer rests on."
+          },
+          "confidence": {
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ],
+            "description": "For by: agent \u2014 high: the material states it; medium: it follows from the material; low: a guess, which a person reads at approval."
+          }
         }
       }
     },
@@ -61,37 +162,85 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "ask"],
+        "required": [
+          "id",
+          "ask"
+        ],
         "additionalProperties": false,
         "properties": {
-          "id": { "type": "string", "pattern": "^U[0-9]+$" },
-          "ask": { "type": "string", "minLength": 5 },
-          "decision": { "type": "string", "minLength": 5 },
-          "ref": { "type": "string", "minLength": 1 }
+          "id": {
+            "type": "string",
+            "pattern": "^U[0-9]+$"
+          },
+          "ask": {
+            "type": "string",
+            "minLength": 5
+          },
+          "decision": {
+            "type": "string",
+            "minLength": 5
+          },
+          "ref": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     },
-    "requirements": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/requirement" } }
+    "requirements": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/requirement"
+      }
+    }
   },
   "definitions": {
     "requirement": {
       "type": "object",
-      "required": ["id", "type", "text", "scope", "applies_to", "verification", "acceptance", "priority", "status", "source"],
+      "required": [
+        "id",
+        "type",
+        "text",
+        "scope",
+        "applies_to",
+        "acceptance",
+        "priority",
+        "status",
+        "source"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "type": "string", "pattern": "^REQ-[A-Z0-9]+(-[A-Z0-9]+)*-[0-9]{3}$", "description": "REQ-<feature>-<nnn>. Never renumbered." },
-        "type": { "enum": ["ubiquitous", "event-driven", "state-driven", "optional-feature", "unwanted-behavior", "complex"] },
-        "text": { "type": "string", "minLength": 20, "description": "One EARS sentence with one shall." },
-        "scope": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
-        "applies_to": { "type": "array", "minItems": 1, "items": { "type": "string", "pattern": "^[a-z0-9-]+$" } },
-        "verification": {
-          "type": "object",
-          "required": ["mode", "method"],
-          "additionalProperties": false,
-          "properties": {
-            "mode": { "enum": ["isolated-interface", "implementation-aware"] },
-            "method": { "enum": ["test", "property-test", "measure", "inspection"] },
-            "rationale": { "type": "string", "minLength": 10 }
+        "id": {
+          "type": "string",
+          "pattern": "^REQ-[A-Z0-9]+(-[A-Z0-9]+)*-[0-9]{3}$",
+          "description": "REQ-<feature>-<nnn>. Never renumbered."
+        },
+        "type": {
+          "enum": [
+            "ubiquitous",
+            "event-driven",
+            "state-driven",
+            "optional-feature",
+            "unwanted-behavior",
+            "complex"
+          ]
+        },
+        "text": {
+          "type": "string",
+          "minLength": 20,
+          "description": "One EARS sentence with one shall."
+        },
+        "scope": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+        },
+        "applies_to": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
           }
         },
         "acceptance": {
@@ -99,44 +248,116 @@
           "minItems": 1,
           "items": {
             "type": "object",
-            "required": ["id", "given", "when", "then"],
+            "required": [
+              "id",
+              "given",
+              "when",
+              "then"
+            ],
             "additionalProperties": false,
             "properties": {
-              "id": { "type": "string", "pattern": "^AC-[0-9]+$" },
-              "given": { "type": "string" },
-              "when": { "type": "string" },
-              "then": { "type": "string" },
+              "id": {
+                "type": "string",
+                "pattern": "^AC-[0-9]+$"
+              },
+              "given": {
+                "type": "string"
+              },
+              "when": {
+                "type": "string"
+              },
+              "then": {
+                "type": "string"
+              },
               "measure": {
                 "type": "object",
-                "required": ["metric", "operator", "value", "unit"],
+                "required": [
+                  "metric",
+                  "operator",
+                  "value",
+                  "unit"
+                ],
                 "additionalProperties": false,
                 "properties": {
-                  "metric": { "type": "string", "minLength": 1 },
-                  "operator": { "enum": ["<", "<=", "==", ">=", ">"] },
-                  "value": { "type": "number" },
-                  "unit": { "type": "string", "minLength": 1 },
-                  "percentile": { "type": "number", "minimum": 0, "maximum": 100 }
+                  "metric": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "operator": {
+                    "enum": [
+                      "<",
+                      "<=",
+                      "==",
+                      ">=",
+                      ">"
+                    ]
+                  },
+                  "value": {
+                    "type": "number"
+                  },
+                  "unit": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "percentile": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  }
                 }
               }
             }
           }
         },
-        "priority": { "enum": ["must", "should", "could"] },
-        "status": { "enum": ["draft", "approved", "built", "retired"] },
-        "source": { "type": "string", "minLength": 1, "description": "brief#L12, Q1, U1, assumption, review, bug" },
+        "priority": {
+          "enum": [
+            "must",
+            "should",
+            "could"
+          ]
+        },
+        "status": {
+          "enum": [
+            "draft",
+            "approved",
+            "built",
+            "retired"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "description": "spec#L12, Q1, U1, assumption, review, bug"
+        },
         "relationships": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["type", "target"],
+            "required": [
+              "type",
+              "target"
+            ],
             "additionalProperties": false,
             "properties": {
-              "type": { "enum": ["depends-on", "related-to", "conflicts-with", "supersedes"] },
-              "target": { "type": "string", "pattern": "^REQ-[A-Z0-9]+(-[A-Z0-9]+)*-[0-9]{3}$" }
+              "type": {
+                "enum": [
+                  "depends-on",
+                  "related-to",
+                  "conflicts-with",
+                  "supersedes"
+                ]
+              },
+              "target": {
+                "type": "string",
+                "pattern": "^REQ-[A-Z0-9]+(-[A-Z0-9]+)*-[0-9]{3}$"
+              }
             }
           }
         },
-        "rationale": { "type": "string", "minLength": 5 }
+        "rationale": {
+          "type": "string",
+          "minLength": 5
+        }
       }
     }
   }

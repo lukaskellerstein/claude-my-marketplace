@@ -1,6 +1,6 @@
 {
   "name": "spex",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "private": true,
   "description": "Spec-driven development in small, checkable files: EARS records, one task per agent run, a script that decides when a step is done.",
   "type": "module",

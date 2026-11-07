@@ -1,52 +1,60 @@
 ---
 name: tests
-description: Write the acceptance tests for a batch of spex tasks before their code exists — one test per scenario, the requirement id in the test name — and prove each task's tests fail with spex run --expect fail. Use when the user says "tests", "tests T01 T02", "spex tests", "write the acceptance tests", or with --fix REQ-007-002/AC-1 to rewrite one wrong test. It never reads the source folders.
+description: Write the test code the proof plan (tests.yaml) asks for — every script test without a file, batch after batch, through test-developer subagents that never read the source and prove each test red with spex run --test --expect fail — before any code exists. Use when the user says "tests", "spex tests", "write the tests", "tests TS03", or when a NEXT block names /spex:tests.
 disable-model-invocation: true
-allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *)
+allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Agent
 ---
 
 # spex tests
 
 `SPEX` = `node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs`, from the repo root.
 
-One run covers a batch of tasks, not one task: the tasks in plan order that still have no
-test, up to `limits.tests_scenarios` scenarios (12 by default). That keeps the run small and
-the number of fresh agents low.
+The plan is in `tests.yaml` (the test analyst's); this skill turns its script tests into
+files. One run covers every script test without a file, one batch at a time: a batch is the
+tests in plan order, up to `limits.tests_scenarios` (12 by default). Session tests have no
+file: a tester performs them at `/spex:verify`. Shell tests have no file: their steps run.
+Your context holds the batch and the results, never a test body: the test developers write.
 
 ## Steps
 
-1. `SPEX show <dir> --tests` with the task ids the user gave, or with none to get the batch
-   the script picks. The first line names the tasks. If it says every task has its tests,
-   stop. Then `SPEX gate tests <dir> <ids…>`; if it is refused, report why and stop.
-2. The show output is your input: the records and scenarios, the feature goal, the expected
-   test names, the names and values from each task's plan, the contracts, the glossary, the
-   existing acceptance test files, and the tests to retire.
-3. Read one or two existing acceptance tests for the conventions, and the contracts it
-   listed. Never read the source folders (`source_dirs` in `specs/spex.yaml`): the tests
-   describe the interface, not the implementation.
-4. Write the tests under `acceptance_dir`, in the repo's test framework:
-   - One test per scenario, at least. Its name carries the ids exactly as printed:
-     `REQ_007_002_AC_1_refuses_overwrite`. `spex coverage` finds it by that name.
-   - Use the scenario's real values and the names from the plan, nothing invented.
-   - Shape by EARS type. Event-driven: cause the trigger, observe the response. Unwanted
-     behavior: cause the failure, assert the handling and that nothing else happened.
-     Optional feature: run with the feature on and off. State-driven: set up the state, then
-     act. `method: property-test`: a property over generated inputs. `measure`: assert the
-     number with its operator and unit.
-   - Retire every test the output listed under "tests to retire": its record is superseded.
-5. One red run per task in the batch: `SPEX run <dir> <task> --expect fail`. Each must print
-   `ok: … red as expected`.
-   - `RUN-GREEN`: a test passes before the feature exists. It asserts nothing new. Fix it.
-   - `RUN-NO-TESTS`: the run crashed or never collected the tests. Fix the import, the file
-     name or the runner pattern until the ids appear in the output.
-   The implement gate runs this same check again by itself, so a test that turns green
-   before its task starts is caught there too.
-6. With `--fix REQ-x/AC-n` (from a review `test-bug` finding or an implementer's concern):
-   rewrite that one test only, then step 5 for its task.
-7. `SPEX report <dir> tests --status <done|concerns|blocked> --summary "…"`, with the task
-   ids in the summary.
+1. `SPEX gate tests <dir> [TS…]`, with the ids the user gave or none for the batch. Refused:
+   report its `fix` text and stop. Its `tests:` line names the batch; an empty one means
+   every script has its file: go to step 6.
+2. `SPEX show <dir> --tests <ids…>` once, to group the batch: tests that name the same
+   `file` go to one developer; the rest by driver, two or three per developer.
+3. Say `Write: TS01 TS02 → 1 developer, TS03 → 1 developer`, then start one
+   `spex:test-developer` per group, all in one message. The brief is one line:
+   `<dir> TS01 TS02. Write them; the orchestrator checks.` Nothing else: the subagent reads
+   its brief with `spex show`.
+4. When they return: `SPEX check <dir>` and `SPEX coverage <dir>`. Every test of the batch
+   must be `ok` under `## files`. Then one `SPEX run <dir> --test <TS> --expect fail` per
+   test: each must print `red as expected`.
+   - `RUN-GREEN`: the test passes before the code exists. With a `mutation` proof in the
+     developer's report the record is met already: keep the test and report
+     `--concern "<TS> already green: <evidence>"`; `/spex:develop` closes that task.
+     Without one it asserts nothing new: a fresh developer takes that one test again with
+     the finding in its brief.
+   - `RUN-SKIPPED` or `RUN-NO-TESTS`: a fresh developer with the finding; a test that skips
+     is neither red nor green.
+   - `STATUS: blocked` from a developer: its `why` names a step no script can do, or a
+     value no interface gives. That is the plan's fault, not the developer's: start one
+     `spex:test-analyst` with `<dir> <TS>: <why>`; it rewrites that record (a session, a
+     `needs`, another value). Then step 3 for that test, once.
+5. `SPEX next <dir>`. While its stage is still `tests`, go back to step 1 for the next batch.
+   The run ends when the stage changes, so the NEXT block never names this skill again.
+6. `SPEX report <dir> tests --status <done|concerns|blocked> --summary "…"`, with the test
+   ids of every batch in the summary.
+
+Never ask the user. A call these steps do not cover goes to one `spex:decider`: the
+question, the options, your pick, and the files that decide it. Take its verdict, write it
+as a `--concern` in the report, and go on. You never write or edit a test yourself, and
+never `tests.yaml`: the wall between the claim, its plan and its code holds here too.
 
 ## Reply
 
-At most 15 lines. `STATUS:` first, then the tasks covered, the test file(s), one line per
-test name, and each red run's result.
+At most 15 lines. `STATUS:` first, then one line per batch: the tests, their files, each
+red run's result, and the records the analyst rewrote. Last, the output of `SPEX next
+<dir>`, as printed.
+
+The NEXT block is copied as `SPEX next` printed it, the two rules included, never rewritten
+into prose or shortened, and it does not count toward the line cap.

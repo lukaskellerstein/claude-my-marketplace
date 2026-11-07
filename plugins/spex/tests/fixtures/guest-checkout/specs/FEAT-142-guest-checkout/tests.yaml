@@ -1,0 +1,140 @@
+# tests.yaml — the proof plan, written by spex update from the scenarios and the verify commands (format 1 → 2).
+# The test analyst completes it: a name per script, a file once written, sessions where a script cannot judge.
+feature: FEAT-142
+tests:
+  - id: TS01
+    covers:
+      - REQ-FEAT-142-001/AC-001
+    kind: script
+    name: REQ_FEAT_142_001_AC_001
+    steps:
+      - given region DE has guest_checkout=true and the shopper is not signed in
+      - when the shopper opens /checkout with a non-empty cart
+    expect:
+      - the page shows "Continue as guest" and it leads to /checkout/payment without a sign-in form
+  - id: TS02
+    covers:
+      - REQ-FEAT-142-001/AC-002
+    kind: script
+    name: REQ_FEAT_142_001_AC_002
+    steps:
+      - given region FR has guest_checkout=false and the shopper is not signed in
+      - when the shopper opens /checkout
+    expect:
+      - the page shows only "Sign in" and "Create account"; no guest path is reachable by URL either
+  - id: TS03
+    covers:
+      - REQ-FEAT-142-002/AC-001
+    kind: script
+    name: REQ_FEAT_142_002_AC_001
+    steps:
+      - given a cart with 2 line items and no session account
+      - 'when POST /orders with {"email": "ana@example.com", "guest": true}'
+    expect:
+      - 201 with customer_type "guest", account_id null, and the stock reservation recorded for both lines
+  - id: TS04
+    covers:
+      - REQ-FEAT-142-003/AC-001
+    kind: script
+    name: REQ_FEAT_142_003_AC_001
+    steps:
+      - given a cart with 1 line item, stock 5
+      - 'when POST /orders with {"email": "not-an-email", "guest": true}'
+    expect:
+      - 422 with error code invalid_email
+  - id: TS05
+    covers:
+      - REQ-FEAT-142-004/AC-001
+    kind: script
+    name: REQ_FEAT_142_004_AC_001
+    steps:
+      - given a guest order in state payment-pending
+      - when the payment provider authorizes the charge
+    expect:
+      - the email outbox has 1 message to the guest email with one link matching /account/claim/<token>
+  - id: TS06
+    covers:
+      - REQ-FEAT-142-005/AC-001
+    kind: script
+    name: REQ_FEAT_142_005_AC_001
+    steps:
+      - given a guest order with an unused token issued 29 days ago
+      - when POST /account/claim/<token> with a new password, twice
+    expect:
+      - the first call returns 201 and links the order; the second returns 410 token_used
+  - id: TS07
+    covers:
+      - REQ-FEAT-142-005/AC-002
+    kind: script
+    name: REQ_FEAT_142_005_AC_002
+    steps:
+      - given a token issued 31 days ago
+      - when POST /account/claim/<token>
+    expect:
+      - 410 token_expired and the order stays customer_type guest
+  - id: TS08
+    covers:
+      - REQ-FEAT-142-006/AC-001
+    kind: script
+    name: REQ_FEAT_142_006_AC_001
+    steps:
+      - given a guest order for ana@example.com
+      - when the order is created and confirmed
+    expect:
+      - the order row holds ana@example.com and no other table holds it
+  - id: TS09
+    covers:
+      - REQ-FEAT-142-007/AC-001
+    kind: script
+    name: REQ_FEAT_142_007_AC_001
+    steps:
+      - given a cart with 1 line item, stock 5
+      - 'when POST /orders with {"email": "not-an-email", "guest": true} returns 422'
+    expect:
+      - available stock is still 5 and no reservation row exists for the cart
+  - id: TS10
+    covers:
+      - REQ-FEAT-142-008/AC-001
+    kind: script
+    name: REQ_FEAT_142_008_AC_001
+    steps:
+      - given an empty customers table
+      - when a guest order is created and confirmed
+    expect:
+      - the customers table is still empty
+  - id: TS11
+    covers:
+      - T001
+    kind: script
+    driver: shell
+    steps:
+      - make test-unit PKG=orders
+    expect:
+      - every command exits 0
+  - id: TS12
+    covers:
+      - T002
+    kind: script
+    driver: shell
+    steps:
+      - make test-unit PKG=checkout
+    expect:
+      - every command exits 0
+  - id: TS13
+    covers:
+      - T003
+    kind: script
+    driver: shell
+    steps:
+      - make test-unit PKG=accounts,notifications
+    expect:
+      - every command exits 0
+  - id: TS14
+    covers:
+      - T004
+    kind: script
+    driver: shell
+    steps:
+      - make test-web
+    expect:
+      - every command exits 0

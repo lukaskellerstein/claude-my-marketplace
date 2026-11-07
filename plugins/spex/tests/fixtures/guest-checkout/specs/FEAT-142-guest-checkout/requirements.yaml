@@ -3,7 +3,6 @@
 feature: FEAT-142
 slug: guest-checkout
 title: Guest checkout
-brief: specs/FEAT-142-guest-checkout/brief.md
 goal: A shopper in a region with guest checkout buys without creating an account, and can claim the order later.
 out_of_scope:
   - Guest checkout for regions where the flag is off.
@@ -19,7 +18,6 @@ requirements:
     text: Where guest checkout is enabled for the shopper's region, the web UI shall allow a shopper to reach the payment step without creating an account.
     scope: checkout
     applies_to: [web-ui]
-    verification: {mode: isolated-interface, method: test}
     acceptance:
       - id: AC-001
         given: region DE has guest_checkout=true and the shopper is not signed in
@@ -31,14 +29,13 @@ requirements:
         then: the page shows only "Sign in" and "Create account"; no guest path is reachable by URL either
     priority: must
     status: approved
-    source: brief#issue-142
+    source: spec#issue-142
 
   - id: REQ-FEAT-142-002
     type: event-driven
     text: When a guest shopper submits an order with a syntactically valid email address, the storefront API shall create the order with customer_type=guest and no account reference.
     scope: checkout
     applies_to: [storefront-api]
-    verification: {mode: isolated-interface, method: test}
     acceptance:
       - id: AC-001
         given: a cart with 2 line items and no session account
@@ -46,7 +43,7 @@ requirements:
         then: 201 with customer_type "guest", account_id null, and the stock reservation recorded for both lines
     priority: must
     status: approved
-    source: brief#issue-142
+    source: spec#issue-142
     relationships:
       - type: depends-on
         target: REQ-CHECKOUT-004
@@ -56,7 +53,6 @@ requirements:
     text: If a guest shopper submits an order with an email address that fails RFC 5322 syntax validation, then the storefront API shall reject the request with HTTP 422.
     scope: checkout
     applies_to: [storefront-api]
-    verification: {mode: isolated-interface, method: test}
     acceptance:
       - id: AC-001
         given: a cart with 1 line item, stock 5
@@ -64,7 +60,7 @@ requirements:
         then: 422 with error code invalid_email
     priority: must
     status: approved
-    source: brief#issue-142
+    source: spec#issue-142
     relationships:
       - type: related-to
         target: REQ-FEAT-142-007
@@ -74,23 +70,21 @@ requirements:
     text: When a guest order transitions to confirmed, the storefront API shall send the confirmation email containing a single-use conversion link within 60 seconds.
     scope: checkout
     applies_to: [storefront-api]
-    verification: {mode: isolated-interface, method: test}
     acceptance:
       - id: AC-001
         given: a guest order in state payment-pending
         when: the payment provider authorizes the charge
         then: the email outbox has 1 message to the guest email with one link matching /account/claim/<token>
-        measure: {metric: email_latency, operator: "<=", value: 60, unit: s}
+        measure: { metric: email_latency, operator: "<=", value: 60, unit: s }
     priority: must
     status: approved
-    source: brief#issue-142
+    source: spec#issue-142
 
   - id: REQ-FEAT-142-005
     type: state-driven
     text: While a conversion token is unused and younger than 30 days, the storefront API shall accept it exactly once to attach the guest order to a newly created account.
     scope: accounts
     applies_to: [storefront-api]
-    verification: {mode: isolated-interface, method: property-test}
     acceptance:
       - id: AC-001
         given: a guest order with an unused token issued 29 days ago
@@ -110,10 +104,6 @@ requirements:
     text: The storefront API shall store a guest's email address only on the order record.
     scope: project
     applies_to: [storefront-api]
-    verification:
-      mode: implementation-aware
-      rationale: Where a value is stored cannot be observed through the public interface; the test must query the database.
-      method: test
     acceptance:
       - id: AC-001
         given: a guest order for ana@example.com
@@ -121,7 +111,7 @@ requirements:
         then: the order row holds ana@example.com and no other table holds it
     priority: must
     status: approved
-    source: brief#issue-142
+    source: spec#issue-142
     relationships:
       - type: related-to
         target: REQ-FEAT-142-008
@@ -131,10 +121,6 @@ requirements:
     text: If the storefront API rejects a guest order, then the storefront API shall not reserve stock for any line of that order.
     scope: checkout
     applies_to: [storefront-api]
-    verification:
-      mode: implementation-aware
-      rationale: A reservation is internal state; the public interface shows it only as a later stock count, so the test reads the reservations table.
-      method: test
     acceptance:
       - id: AC-001
         given: a cart with 1 line item, stock 5
@@ -142,7 +128,7 @@ requirements:
         then: available stock is still 5 and no reservation row exists for the cart
     priority: must
     status: approved
-    source: brief#issue-142
+    source: spec#issue-142
     relationships:
       - type: related-to
         target: REQ-FEAT-142-003
@@ -152,10 +138,6 @@ requirements:
     text: The storefront API shall not create a customer profile for a guest.
     scope: project
     applies_to: [storefront-api]
-    verification:
-      mode: implementation-aware
-      rationale: The absence of a profile row cannot be observed through the public interface; the test must query the customers table.
-      method: test
     acceptance:
       - id: AC-001
         given: an empty customers table
@@ -163,7 +145,7 @@ requirements:
         then: the customers table is still empty
     priority: must
     status: approved
-    source: brief#issue-142
+    source: spec#issue-142
     relationships:
       - type: related-to
         target: REQ-FEAT-142-006

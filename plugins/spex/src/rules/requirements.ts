@@ -78,16 +78,13 @@ export function checkRequirements(ctx: RuleContext): Finding[] {
     // REQ-PLACEHOLDER on text
     if (PLACEHOLDER_WORDS.test(text) || hasAnglePlaceholder(text)) f('error', 'REQ-PLACEHOLDER', `${r.id}: text holds a placeholder`, 'Replace the placeholder with the real value. A literal like `<token>` goes in backticks.', r.id);
 
-    // REQ-IMPL-RATIONALE
-    if ((r.verification.mode === 'implementation-aware' || r.verification.method === 'inspection') && !(r.verification.rationale ?? '').trim()) f('error', 'REQ-IMPL-RATIONALE', `${r.id}: ${r.verification.mode === 'implementation-aware' ? 'implementation-aware' : 'inspection'} needs a rationale`, 'Say why the interface cannot show this and what the test reads instead.', r.id);
-
     // REQ-INTERFACE
     for (const iface of r.applies_to) {
       if (!interfaceIds.has(iface)) f('error', 'REQ-INTERFACE', `${r.id}: applies_to "${iface}" is not a declared interface`, 'Add the interface to `interfaces[]` (id, kind, optional contract), or fix the id.', r.id);
     }
 
     // REQ-SCOPE
-    if (knownScopes.size && !knownScopes.has(r.scope)) f('warning', 'REQ-SCOPE', `${r.id}: scope "${r.scope}" is not in specs/spex.yaml scopes[]`, `Use one of: ${[...knownScopes].join(', ')}, or add "${r.scope}" to scopes[] on purpose.`, r.id);
+    if (knownScopes.size && !knownScopes.has(r.scope)) f('warning', 'REQ-SCOPE', `${r.id}: scope "${r.scope}" is not in .spex/config.yaml scopes[]`, `Use one of: ${[...knownScopes].join(', ')}, or add "${r.scope}" to scopes[] on purpose.`, r.id);
 
     // REQ-REL-TARGET
     for (const rel of r.relationships ?? []) {
@@ -98,12 +95,18 @@ export function checkRequirements(ctx: RuleContext): Finding[] {
         const others = ctx.index.supersededBy(rel.target).filter((feat) => feat !== file.feature);
         if (others.length) f('error', 'REQ-SUPERSEDE-DUP', `${r.id} and feature ${others.join(', ')} both supersede ${rel.target}`, 'Two open features cannot replace the same behavior. A person decides which one wins; the other depends on it.', r.id);
       }
+      // REQ-DEP-SUPERSEDED: the behavior this record builds on is being replaced, on disk or on a branch
+      if (rel.type === 'depends-on') {
+        const by = ctx.index.supersededBy(rel.target).filter((feat) => feat !== file.feature);
+        if (by.length) f('warning', 'REQ-DEP-SUPERSEDED', `${r.id} depends on ${rel.target}, which feature ${by.join(', ')} supersedes`, 'Read the superseding record (`spex index --all`) and point depends-on at it, or keep the old target on purpose and say why in rationale.', r.id);
+      }
     }
   }
 
-  // REQ-QUESTION-OPEN (info)
+  // REQ-QUESTION-OPEN (info) · REQ-AGENT-EVIDENCE (warning): an agent's answer without the evidence it rests on is a guess
   for (const q of file.questions ?? []) {
     if (!q.answer) f('info', 'REQ-QUESTION-OPEN', `${q.id} has no answer: ${q.ask}`, 'Run /spex:clarify. With nobody to ask, the recommended option is taken as `by: default`.', q.id);
+    else if (q.by === 'agent' && !q.evidence) f('warning', 'REQ-AGENT-EVIDENCE', `${q.id} was answered by the decider agent without evidence`, 'Add `evidence:` (the design section, file and line, or finding the answer rests on), or ask a person and set `by: human`.', q.id);
   }
 
   // REQ-FROZEN

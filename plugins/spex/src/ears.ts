@@ -62,3 +62,15 @@ export function testId(reqId: string, scenarioId?: string): string {
   const base = reqId.replace(/-/g, '_');
   return scenarioId ? `${base}_${scenarioId.replace(/-/g, '_')}` : base;
 }
+
+/** T09 of feature 007 → TASK_007_09: the token a task test's name starts with. The feature is in it, so a search finds only this feature's tests. */
+export function taskTestId(feature: string, taskId: string): string {
+  return `TASK_${feature.replace(/-/g, '_')}_${taskId.replace(/^T/, '')}`;
+}
+
+/** The name token of one `covers` id: a scenario (REQ-007-001/AC-1), a record (REQ-007-001) or a task (T09). */
+export function coverToken(feature: string, id: string): string {
+  if (/^T[0-9]+$/.test(id)) return taskTestId(feature, id);
+  const [req, ac] = id.split('/');
+  return testId(req, ac);
+}

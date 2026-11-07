@@ -1,6 +1,6 @@
 // Test helpers: a throwaway git repo from a fixture, and a way to call the bundled script.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,11 +13,10 @@ export function gitIn(cwd, args) {
   return execFileSync('git', ['-c', 'user.name=spex-test', '-c', 'user.email=spex@test', '-c', 'commit.gpgsign=false', ...args], { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
 }
 
-/** Copy a fixture into a fresh git repo on branch main with one commit. */
+/** Copy a fixture into a fresh git repo on branch main with one commit. The fixture carries .spex/.gitignore, as spex init writes it. */
 export function makeRepo(fixture) {
   const dir = mkdtempSync(join(tmpdir(), `spex-${fixture}-`));
   cpSync(join(FIXTURES, fixture), dir, { recursive: true });
-  writeFileSync(join(dir, '.gitignore'), '.spex/\n');
   gitIn(dir, ['init', '-q', '-b', 'main']);
   gitIn(dir, ['add', '-A']);
   gitIn(dir, ['commit', '-q', '-m', 'fixture']);

@@ -1,0 +1,26 @@
+# The proof plan of the README example: one script test per scenario, found in its file by name.
+# The test analyst wrote it; the analyst who wrote the records and the tasks never touches it.
+feature: "007"
+tests:
+  - id: TS01
+    covers: [REQ-007-001/AC-1]
+    kind: script
+    name: REQ_007_001_AC_1_writes_open_tasks_as_csv
+    file: tests/acceptance/export.test.mjs
+    steps:
+      - create the list "home" with the open tasks "buy milk" and "fix tap, kitchen"
+      - run `todo export --csv`
+    expect:
+      - 'stdout is exactly `title,list`, `buy milk,home`, `"fix tap, kitchen",home`'
+      - the exit code is 0
+  - id: TS02
+    covers: [REQ-007-002/AC-1]
+    kind: script
+    name: REQ_007_002_AC_1_refuses_overwrite
+    file: tests/acceptance/export.test.mjs
+    steps:
+      - write "old" to `out.csv`
+      - run `todo export --csv -o out.csv`
+    expect:
+      - the exit code is 3
+      - '`out.csv` still contains "old"'

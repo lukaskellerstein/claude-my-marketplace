@@ -6,7 +6,7 @@ import { parse } from 'yaml';
 import { branchNames, isGitRepo, listAtRef, showAtRef } from './git.js';
 import { YAML_OPTS, fileExists, isDir, loadYaml, toPosix } from './io.js';
 import { validate } from './schema.js';
-import type { Feature, Finding, Requirement, RequirementsFile, TasksFile } from './types.js';
+import type { Feature, Finding, Requirement, RequirementsFile, TasksFile, TestsFile } from './types.js';
 
 export const SPECS_DIR = 'specs';
 
@@ -16,7 +16,7 @@ export function featureDirs(root: string): string[] {
   return readdirSync(specs, { withFileTypes: true })
     .filter((d) => d.isDirectory() && !d.name.startsWith('.'))
     .map((d) => `${SPECS_DIR}/${d.name}`)
-    .filter((dir) => fileExists(join(root, dir, 'requirements.yaml')) || fileExists(join(root, dir, 'tasks.yaml')))
+    .filter((dir) => ['spec.md', 'requirements.yaml', 'tasks.yaml', 'tests.yaml'].some((f) => fileExists(join(root, dir, f))))
     .sort();
 }
 
@@ -32,31 +32,30 @@ export function resolveFeatureDir(root: string, given: string): string {
   return toPosix(given).replace(/\/+$/, '');
 }
 
+function loadFile<T>(root: string, feature: Feature, path: string, schema: 'requirements' | 'tasks' | 'tests', code: string, fix: string): T | undefined {
+  const abs = join(root, path);
+  if (!fileExists(abs)) return undefined;
+  const { data, finding } = loadYaml(abs, `${code}-YAML`);
+  if (finding) {
+    feature.errors.push(finding);
+    return undefined;
+  }
+  const errs = validate(schema, data);
+  if (errs.length) {
+    for (const e of errs) feature.errors.push({ severity: 'error', code: `${code}-SCHEMA`, message: e, path, fix });
+    return undefined;
+  }
+  return data as T;
+}
+
 export function loadFeature(root: string, dir: string): Feature {
   const name = dir.split('/').pop() ?? dir;
-  const feature: Feature = { dir, name, requirementsPath: `${dir}/requirements.yaml`, tasksPath: `${dir}/tasks.yaml`, errors: [] };
-  const reqAbs = join(root, feature.requirementsPath);
-  if (fileExists(reqAbs)) {
-    const { data, finding } = loadYaml(reqAbs, 'REQ-YAML');
-    if (finding) feature.errors.push(finding);
-    else {
-      const errs = validate('requirements', data);
-      if (errs.length) {
-        for (const e of errs) feature.errors.push({ severity: 'error', code: 'REQ-SCHEMA', message: e, path: feature.requirementsPath, fix: 'Match the record to the fields in the README table for requirements.yaml.' });
-      } else feature.requirements = data as RequirementsFile;
-    }
-  }
-  const tasksAbs = join(root, feature.tasksPath);
-  if (fileExists(tasksAbs)) {
-    const { data, finding } = loadYaml(tasksAbs, 'TASK-YAML');
-    if (finding) feature.errors.push(finding);
-    else {
-      const errs = validate('tasks', data);
-      if (errs.length) {
-        for (const e of errs) feature.errors.push({ severity: 'error', code: 'TASK-SCHEMA', message: e, path: feature.tasksPath, fix: 'Match the task to the fields in the README table for tasks.yaml.' });
-      } else feature.tasks = data as TasksFile;
-    }
-  }
+  const feature: Feature = { dir, name, requirementsPath: `${dir}/requirements.yaml`, tasksPath: `${dir}/tasks.yaml`, testsPath: `${dir}/tests.yaml`, errors: [] };
+  feature.requirements = loadFile<RequirementsFile>(root, feature, feature.requirementsPath, 'requirements', 'REQ', 'Match the record to the fields in the README table for requirements.yaml.');
+  feature.tasks = loadFile<TasksFile>(root, feature, feature.tasksPath, 'tasks', 'TASK', 'Match the task to the fields in the README table for tasks.yaml.');
+  // A setup task may name no record: its proof is its own test. The rules read `requirements` as a list either way.
+  for (const t of feature.tasks?.tasks ?? []) t.requirements ??= [];
+  feature.tests = loadFile<TestsFile>(root, feature, feature.testsPath, 'tests', 'TEST', 'Match the test to the fields in the README table for tests.yaml.');
   return feature;
 }
 

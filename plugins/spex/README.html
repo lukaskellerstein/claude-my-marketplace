@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>spex in one picture</title>
+<meta name="description" content="The spex process as one animated scene: a feature travels eleven stops, four actors act, files appear and statuses flip, and whoever wrote a claim never writes its proof. Click a stop to see what is on disk there and what you type.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* One scene, like a control board: actor rows on top, the track in the middle, the folder shelf below.
+   Dark first, on purpose: the board is the page. Four actor colors carry every meaning: you amber, skill blue, script graphite, agent green. */
+:root {
+  --bg: #0a1020; --board: #101829; --panel: #151f33; --panel-2: #1b2740; --line: #233150; --line-strong: #3a4a6d;
+  --fg: #eef2fa; --muted: #8d9ab6;
+  --you: #f3b94d; --you-ink: #ffe3a6; --skill: #5ea8ff; --skill-ink: #cfe3ff; --script: #a4b1c9; --script-ink: #e2e8f4; --agent: #41d18f; --agent-ink: #c6f5df;
+  --bad: #ff6b6b; --good: #41d18f; --glow: rgba(94, 168, 255, 0.55);
+  --font: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f1f4f9; --board: #ffffff; --panel: #f4f6fb; --panel-2: #e8edf6; --line: #d7deea; --line-strong: #a9b6cc;
+    --fg: #15203a; --muted: #5f6d8a;
+    --you: #d99a1c; --you-ink: #5a3d00; --skill: #2f6fd6; --skill-ink: #123a7a; --script: #6b7a96; --script-ink: #2d3a55; --agent: #1f9d63; --agent-ink: #0f5a37;
+    --bad: #d9453a; --good: #1f9d63; --glow: rgba(47, 111, 214, 0.35);
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #f1f4f9; --board: #ffffff; --panel: #f4f6fb; --panel-2: #e8edf6; --line: #d7deea; --line-strong: #a9b6cc;
+  --fg: #15203a; --muted: #5f6d8a;
+  --you: #d99a1c; --you-ink: #5a3d00; --skill: #2f6fd6; --skill-ink: #123a7a; --script: #6b7a96; --script-ink: #2d3a55; --agent: #1f9d63; --agent-ink: #0f5a37;
+  --bad: #d9453a; --good: #1f9d63; --glow: rgba(47, 111, 214, 0.35);
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+a { color: var(--skill); }
+code { font-family: var(--mono); font-size: 0.9em; }
+button { font: inherit; }
+:focus-visible { outline: 2px solid var(--skill); outline-offset: 2px; }
+[hidden] { display: none !important; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+header.top { padding-block: 1.6rem 0.9rem; display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 0.8rem 2rem; }
+header.top h1 { margin: 0; font-size: clamp(1.5rem, 1.2vw + 1rem, 2.1rem); font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+header.top p { margin: 0.35rem 0 0; color: var(--muted); max-width: 62ch; font-size: 0.98rem; }
+.legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1.1rem; font-size: 0.85rem; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 0.4rem; white-space: nowrap; }
+.legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; box-shadow: 0 0 8px currentColor; }
+.legend .you i { background: var(--you); color: var(--you); } .legend .skill i { background: var(--skill); color: var(--skill); }
+.legend .script i { background: var(--script); color: var(--script); } .legend .agent i { background: var(--agent); color: var(--agent); }
+
+.board { background: var(--board); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35); overflow: hidden; }
+.scene { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.scene svg { display: block; width: 100%; min-width: 860px; height: auto; }
+.chapters { display: flex; gap: 0.25rem; padding: 0.6rem 0.8rem 0; overflow-x: auto; border-top: 1px solid var(--line); }
+.chapter { flex: 1 0 auto; border: 0; background: transparent; color: var(--muted); font-size: 0.8rem; font-weight: 600; padding: 0.5rem 0.55rem; border-radius: 8px; cursor: pointer; white-space: nowrap; }
+.chapter:hover { background: var(--panel-2); color: var(--fg); }
+.chapter.on { background: var(--panel-2); color: var(--fg); box-shadow: inset 0 -2px 0 var(--skill); }
+.chapter.you.on { box-shadow: inset 0 -2px 0 var(--you); }
+.caption-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1rem; align-items: center; padding: 0.9rem 1.1rem 0.4rem; }
+@media (max-width: 720px) { .caption-row { grid-template-columns: 1fr; } }
+.caption { min-width: 0; display: grid; gap: 0.3rem; min-height: 3.6em; }
+.caption .say { font-size: clamp(1.05rem, 0.6vw + 0.9rem, 1.35rem); font-weight: 600; letter-spacing: -0.01em; text-wrap: balance; }
+.caption .cmd { font-family: var(--mono); font-size: 0.92rem; color: var(--skill-ink); display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.caption .cmd.you { color: var(--you-ink); }
+.caption .cmd .k { font-size: 0.72rem; font-family: var(--font); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.controls { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.controls button { border: 1px solid var(--line-strong); background: var(--panel); color: var(--fg); border-radius: 10px; padding: 0.55rem 0.9rem; cursor: pointer; font-weight: 600; }
+.controls button:hover { background: var(--panel-2); }
+.controls button.play { background: var(--skill); border-color: var(--skill); color: #06162e; min-width: 6.2rem; }
+.controls button:disabled { opacity: 0.4; cursor: default; }
+.controls .n { font-family: var(--mono); font-size: 0.82rem; color: var(--muted); min-width: 4.2rem; text-align: center; }
+.scrub { padding: 0 1.1rem 1rem; }
+.scrub input { width: 100%; accent-color: var(--skill); }
+
+.here { margin-top: 1rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
+.here .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 0.95rem 1.1rem; display: grid; gap: 0.45rem; align-content: start; min-width: 0; }
+.here .k { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.here .v { font-size: 0.98rem; overflow-wrap: anywhere; }
+.here .v code { background: var(--panel-2); padding: 0.1em 0.4em; border-radius: 6px; }
+.here .files { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.pill { display: inline-flex; align-items: center; gap: 0.35rem; font-family: var(--mono); font-size: 0.78rem; border: 1px dashed var(--line-strong); color: var(--muted); border-radius: 999px; padding: 0.1rem 0.55rem; }
+.pill b { font-weight: 600; color: var(--fg); }
+.pill.on { border-style: solid; color: var(--fg); }
+.pill.on b { color: var(--skill-ink); }
+
+footer { padding-block: 1.4rem 2.4rem; color: var(--muted); font-size: 0.86rem; display: grid; gap: 0.5rem; }
+footer code { color: var(--fg); }
+.dirbox { display: inline-flex; align-items: center; gap: 0.5rem; }
+.dirbox input { font: inherit; font-family: var(--mono); font-size: 0.82rem; background: var(--panel); color: var(--fg); border: 1px solid var(--line-strong); border-radius: 8px; padding: 0.3rem 0.55rem; width: 11rem; }
+
+/* SVG parts */
+.rowlabel { font-family: var(--font); font-size: 13px; font-weight: 600; fill: var(--fg); }
+.rowsub { font-family: var(--font); font-size: 10.5px; fill: var(--muted); }
+.rowline { stroke: var(--line); stroke-width: 1; }
+.avatar { stroke-width: 2; fill: var(--panel); }
+.avatar.you { stroke: var(--you); } .avatar.skill { stroke: var(--skill); } .avatar.script { stroke: var(--script); } .avatar.agent { stroke: var(--agent); }
+.row.on .avatar.you { fill: var(--you); } .row.on .avatar.skill { fill: var(--skill); } .row.on .avatar.script { fill: var(--script); } .row.on .avatar.agent { fill: var(--agent); }
+.row.on .avatar { filter: drop-shadow(0 0 7px currentColor); }
+.row.you { color: var(--you); } .row.skill { color: var(--skill); } .row.script { color: var(--script); } .row.agent { color: var(--agent); }
+.bubble rect { rx: 9; fill: var(--panel-2); stroke-width: 1.4; }
+.bubble.you rect { stroke: var(--you); } .bubble.skill rect { stroke: var(--skill); } .bubble.script rect { stroke: var(--script); } .bubble.agent rect { stroke: var(--agent); }
+.bubble text { font-family: var(--mono); font-size: 12px; fill: var(--fg); }
+.track { stroke: var(--line-strong); stroke-width: 4; stroke-linecap: round; }
+.trail { stroke: var(--skill); stroke-width: 4; stroke-linecap: round; filter: drop-shadow(0 0 6px var(--glow)); }
+.station { cursor: pointer; }
+.station circle.ring { fill: var(--board); stroke-width: 2.5; }
+.station.you circle.ring { stroke: var(--you); } .station.skill circle.ring { stroke: var(--skill); }
+.station text.num { font-family: var(--mono); font-size: 11px; font-weight: 600; fill: var(--fg); }
+.station text.lab { font-family: var(--font); font-size: 12px; font-weight: 600; fill: var(--fg); }
+.station.passed circle.ring { fill: var(--panel-2); }
+.station.here circle.ring { stroke-width: 3.5; filter: drop-shadow(0 0 8px currentColor); }
+.station.here.you { color: var(--you); } .station.here.skill { color: var(--skill); }
+.station:hover text.lab { text-decoration: underline; }
+.sgate circle { fill: var(--board); stroke: var(--line-strong); stroke-width: 2; }
+.sgate.ok circle { stroke: var(--good); }
+.check { font-family: var(--mono); font-size: 11px; font-weight: 600; fill: var(--good); }
+.gate rect.bar { fill: var(--you); rx: 2; }
+.gate rect.post { fill: var(--line-strong); }
+.token { fill: var(--skill); stroke: var(--board); stroke-width: 3; filter: drop-shadow(0 0 10px var(--glow)); }
+.token-halo { fill: none; stroke: var(--skill); stroke-width: 1.5; opacity: 0.6; }
+.shelf rect.bg { fill: var(--panel); stroke: var(--line); rx: 14; }
+.shelf text.name { font-family: var(--mono); font-size: 12px; fill: var(--muted); }
+.file rect.card { rx: 10; fill: var(--board); stroke: var(--line-strong); stroke-width: 1.2; stroke-dasharray: 5 4; }
+.file.on rect.card { stroke-dasharray: none; }
+.file text.fname { font-family: var(--mono); font-size: 11px; font-weight: 600; fill: var(--fg); }
+.file text.by { font-family: var(--font); font-size: 10.5px; fill: var(--muted); }
+.file text.line { font-family: var(--mono); font-size: 10px; fill: var(--fg); }
+.status rect { rx: 9; }
+.status text { font-family: var(--mono); font-size: 11px; font-weight: 600; }
+.status.shaping rect, .status.draft rect, .status.todo rect { fill: var(--panel-2); } .status.shaping text, .status.draft text, .status.todo text { fill: var(--muted); }
+.status.ready rect, .status.approved rect, .status.built rect { fill: color-mix(in srgb, var(--good) 22%, transparent); } .status.ready text, .status.approved text, .status.built text { fill: var(--agent-ink); }
+.status.stale rect { fill: color-mix(in srgb, var(--you) 24%, transparent); } .status.stale text { fill: var(--you-ink); }
+.chip rect { rx: 6; stroke-width: 1.2; }
+.chip text { font-family: var(--mono); font-size: 10px; font-weight: 600; }
+.chip.todo rect, .chip.planned rect { fill: var(--panel-2); stroke: var(--line-strong); } .chip.todo text, .chip.planned text { fill: var(--muted); }
+.chip.running rect { fill: color-mix(in srgb, var(--skill) 25%, transparent); stroke: var(--skill); } .chip.running text { fill: var(--skill-ink); }
+.chip.done rect, .chip.green rect { fill: color-mix(in srgb, var(--good) 25%, transparent); stroke: var(--good); } .chip.done text, .chip.green text { fill: var(--agent-ink); }
+.chip.test-bug rect, .chip.red rect { fill: color-mix(in srgb, var(--bad) 25%, transparent); stroke: var(--bad); } .chip.test-bug text, .chip.red text { fill: var(--bad); }
+.chip.amber rect { fill: color-mix(in srgb, var(--you) 25%, transparent); stroke: var(--you); } .chip.amber text { fill: var(--you-ink); }
+.chip.pending rect { fill: transparent; stroke: var(--line-strong); stroke-dasharray: 3 2; } .chip.pending text { fill: var(--muted); }
+.chip.pass rect { fill: transparent; stroke: var(--good); stroke-dasharray: 3 2; } .chip.pass text { fill: var(--agent-ink); }
+.codeline { fill: var(--line-strong); rx: 2; }
+.codeline.lit { fill: var(--skill); }
+.codeline.test { fill: var(--agent); }
+.note { font-family: var(--font); font-size: 10.5px; fill: var(--muted); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>spex in one picture</h1>
+      <p>A feature travels eleven stops. Four actors move it, files appear in the folder, statuses flip, and whoever wrote a claim never writes its proof. Press play, or click any stop to see what is on disk there and what you type.</p>
+    </div>
+    <div class="legend" aria-label="Legend">
+      <span class="you"><i></i>you: read, then one command</span>
+      <span class="skill"><i></i>a skill: <code>/spex:…</code></span>
+      <span class="script"><i></i>the script: <code>spex …</code></span>
+      <span class="agent"><i></i>a subagent, seven kinds</span>
+    </div>
+  </header>
+
+  <div class="board">
+    <div class="scene"><svg id="scene" role="img" aria-label="The spex process: four actor rows, a track of eleven stops with three gates you open and seven the script opens, the feature folder where spec, records, proof plan and tasks appear, and the repo where test files, code and evidence appear"></svg></div>
+    <div class="chapters" id="chapters"></div>
+    <div class="caption-row">
+      <div class="caption" aria-live="polite">
+        <div class="say" id="say"></div>
+        <div class="cmd" id="cmd"></div>
+      </div>
+      <div class="controls">
+        <button type="button" id="prev" aria-label="Previous step">←</button>
+        <button type="button" id="play" class="play">Play</button>
+        <button type="button" id="next" aria-label="Next step">→</button>
+        <span class="n" id="n"></span>
+      </div>
+    </div>
+    <div class="scrub"><input id="scrub" type="range" min="0" max="1" value="0" step="1" aria-label="Step"></div>
+  </div>
+
+  <div class="here" id="here">
+    <div class="card"><div class="k">At this stop you type</div><div class="v" id="here-cmd"></div></div>
+    <div class="card"><div class="k">On disk before it</div><div class="files" id="here-files"></div></div>
+    <div class="card"><div class="k">The gate wants</div><div class="v" id="here-gate"></div></div>
+    <div class="card"><div class="k">Lost?</div><div class="v"><code>spex next &lt;dir&gt;</code> reads the files and prints the one command, whether to <code>/clear</code> first, and whether auto mode is on. A refusal prints a code and a fix: the fix is the answer. A blocked task names its reason file, and <code>/spex:develop &lt;dir&gt; &lt;task&gt;</code> unblocks it.</div></div>
+  </div>
+
+  <footer>
+    <div>Also: <code>/spex:init</code> once per repo · <code>/spex:update</code> after a plugin update, it moves old proof lines into <code>tests.yaml</code> · <code>/spex:clarify</code> and <code>/spex:research</code> are the way back in for a question or an unknown that opens later · <code>/spex:ship &lt;dir&gt; --merged</code> after a merge you made yourself.</div>
+    <div><span class="dirbox"><label for="dir">Your folder</label><input id="dir" type="text" value="specs/012-foo" spellcheck="false" autocomplete="off"></span> · spex 2.0.0 · the design, the rules and every refusal code: <a href="README.md">README.md</a> · ← → and space work too.</div>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script>
+(() => {
+  'use strict';
+  const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const G = typeof window.gsap !== 'undefined' && !reduced ? window.gsap : null;
+  const NS = 'http://www.w3.org/2000/svg';
+  const $ = (s, r = document) => r.querySelector(s);
+  const sv = (tag, attrs = {}, text) => { const n = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v); if (text !== undefined) n.textContent = text; return n; };
+  const el = (tag, attrs = {}, ...kids) => { const n = document.createElement(tag); for (const [k, v] of Object.entries(attrs)) { if (k === 'class') n.className = v; else n.setAttribute(k, v); } n.append(...kids); return n; };
+  let dir = 'specs/012-foo';
+  const D = (s) => s.replaceAll('<dir>', dir);
+
+  // ------------------------------------------------------------ the scene graph
+  const W = 1240, H = 630;
+  const ROWS = [
+    { id: 'you', name: 'You', sub: 'read, then approve', y: 62 },
+    { id: 'skill', name: 'Skill', sub: 'the command you type', y: 112 },
+    { id: 'script', name: 'Script', sub: 'gates and checks', y: 162 },
+    { id: 'agent', name: 'Agents', sub: 'started by a skill', y: 212 },
+  ];
+  const rowY = Object.fromEntries(ROWS.map((r) => [r.id, r.y]));
+  const TRACK_Y = 300, X0 = 180, XSTEP = 102;
+  const STATIONS = [
+    { id: 'shape', label: 'Shape', actor: 'skill', cmd: '/spex:new <idea>', gate: 'nothing: it is the first command', disk: {} },
+    { id: 'approve-spec', label: 'Read the spec', actor: 'you', cmd: '/spex:approve <dir>', gate: 'Why, What, Not this and Success have words', disk: { spec: 'shaping' } },
+    { id: 'analyze', label: 'Records', actor: 'skill', cmd: '/spex:requirements <dir>', gate: 'spec.md says status: ready', disk: { spec: 'ready' } },
+    { id: 'gate1', label: 'Gate 1', actor: 'you', cmd: '/spex:approve <dir>', gate: 'no question open, spex check clean, every scenario has a test in tests.yaml', disk: { spec: 'ready', req: 'draft', plan: 'planned' } },
+    { id: 'plan', label: 'Tasks', actor: 'skill', cmd: '/spex:tasks <dir>', gate: 'every record approved, every unknown decided', disk: { spec: 'ready', req: 'approved', plan: 'planned' } },
+    { id: 'approve-tasks', label: 'Read the plan', actor: 'you', cmd: '/spex:approve <dir>', gate: 'you read approach, design, tasks and the task tests; the script stores a hash of that text', disk: { spec: 'ready', req: 'approved', plan: 'planned', tasks: 'todo' } },
+    { id: 'tests', label: 'Tests', actor: 'skill', cmd: '/spex:tests <dir>', gate: 'tasks.yaml approved as it is now; the batch is every script test without a file', disk: { spec: 'ready', req: 'approved', plan: 'planned', tasks: 'approved' } },
+    { id: 'develop', label: 'Develop', actor: 'skill', cmd: '/spex:develop <dir>', gate: 'per task: its tests exist, its needs are met, and they are red before the code', disk: { spec: 'ready', req: 'approved', plan: 'red', tasks: 'approved', tfiles: 'red' } },
+    { id: 'verify', label: 'Verify', actor: 'skill', cmd: '/spex:verify <dir>', gate: 'every task done, every need of every test met (a token, a running system)', disk: { spec: 'ready', req: 'approved', plan: 'green', tasks: 'done', tfiles: 'green', code: 'done' } },
+    { id: 'review', label: 'Review', actor: 'skill', cmd: '/spex:review <dir>', gate: 'every task done, and spex verify green at this tree', disk: { spec: 'ready', req: 'approved', plan: 'green', tasks: 'done', tfiles: 'green', code: 'done', verify: 'green' } },
+    { id: 'ship', label: 'Ship', actor: 'skill', cmd: '/spex:ship <dir>', gate: 'no question open, verify green at this tree, the review report says done', disk: { spec: 'ready', req: 'approved', plan: 'green', tasks: 'done', tfiles: 'green', code: 'done', verify: 'green', review: 'clean' } },
+  ];
+  const sx = (i) => X0 + i * XSTEP;
+  const GATES = [1, 3, 5]; // the stops where you open a gate; every other stop after the first has a gate the script opens
+  const FILES = [
+    { id: 'spec', name: 'spec.md', by: 'by /spex:new', x: 36, from: 'skill' },
+    { id: 'req', name: 'requirements.yaml', by: 'by /spex:requirements', x: 178, from: 'skill' },
+    { id: 'research', name: 'research.md', by: 'by the researchers', x: 320, from: 'agent' },
+    { id: 'plan', name: 'tests.yaml', by: 'by the test analyst', x: 462, from: 'agent' },
+    { id: 'tasks', name: 'tasks.yaml', by: 'by /spex:tasks', x: 604, from: 'skill' },
+    { id: 'tfiles', name: 'tests/', by: 'by test developers', x: 784, from: 'agent' },
+    { id: 'code', name: 'src/', by: 'by the developers', x: 926, from: 'agent' },
+    { id: 'spex', name: '.spex/', by: 'by the script', x: 1068, from: 'script' },
+  ];
+  const TASKS = ['T01', 'T02', 'T03', 'T04', 'T05'];
+  const TESTS = ['TS01', 'TS02', 'TS03', 'TS04', 'TS05', 'TS06'];
+
+  // ------------------------------------------------------------ the film: each step is what changed, folded onto the state before it
+  const STEPS = [
+    { ch: 0, at: 0, rows: { you: 'types /spex:new "export tasks as CSV"' }, say: 'You type one command with your idea.', cmd: '/spex:new <idea>', cmdActor: 'skill' },
+    { ch: 0, rows: { skill: 'asks the open questions, round by round, writes spec.md' }, spec: 'shaping', say: 'The skill shapes it with you: every open question on one screen, a round at a time. The file is the memory.', cmd: 'say "done" when it is enough', cmdActor: 'you' },
+    { ch: 0, rows: { agent: 'researcher ×3 brings facts', you: 'answers, says done' }, say: 'Facts come from researchers, not from memory. You say done.', cmd: 'Research: 3 questions → 3 agents', cmdActor: 'skill' },
+    { ch: 1, at: 1, rows: { you: 'reads spec.md, types /spex:approve', script: 'spex approve: the four sections have words' }, spec: 'ready', gates: { 1: true }, say: 'You read the spec. Your command opens the first gate.', cmd: '/spex:approve <dir>', cmdActor: 'you' },
+    { ch: 2, at: 2, rows: { script: 'gate requirements: spec.md is ready ✓', skill: 'writes one record per behavior' }, checks: { 2: true }, req: 'draft', say: 'The script opens its gate from the file. The skill writes the records: the claims.', cmd: '/spex:requirements <dir>', cmdActor: 'skill' },
+    { ch: 2, rows: { agent: 'decider answers the questions · researcher ×2' }, research: true, say: 'Questions get answers with evidence. Unknowns get a decision. Nobody asks you.', cmd: 'auto mode: the decider answers, you read later', cmdActor: 'script' },
+    { ch: 2, rows: { agent: 'test analyst: one test per scenario, in tests.yaml' }, plan: { items: { TS01: 'planned', TS02: 'planned', TS03: 'planned', TS04: 'planned' } }, say: 'Another hand writes the proof plan. Whoever wrote a claim never writes its test.', cmd: 'Plan the tests → 1 analyst', cmdActor: 'skill' },
+    { ch: 3, at: 3, rows: { you: 'reads the records, the answers and the proof plan, types /spex:approve', script: 'draft → approved, tests.yaml stamped' }, req: 'approved', gates: { 3: true }, say: 'Gate 1. You read every record, every answer and the proof plan. One command.', cmd: '/spex:approve <dir>', cmdActor: 'you' },
+    { ch: 4, at: 4, rows: { script: 'gate tasks: approved, nothing open ✓', skill: 'writes approach, design, one task per run' }, checks: { 4: true }, tasks: { approval: 'todo', items: { T01: 'todo', T02: 'todo', T03: 'todo', T04: 'todo' } }, say: 'Each task is sized for one agent run, with a write list and exact signatures.', cmd: '/spex:tasks <dir>', cmdActor: 'skill' },
+    { ch: 4, rows: { agent: 'test analyst: one test per task, a session where no script can judge' }, plan: { items: { TS05: 'planned', TS06: 'pending' } }, say: 'The test analyst adds one test per task. A check only a browser can make becomes a session.', cmd: 'Plan the tests → 1 analyst', cmdActor: 'skill' },
+    { ch: 5, at: 5, rows: { you: 'reads tasks.yaml and the task tests, types /spex:approve', script: 'stores a hash of what you read' }, tasks: { approval: 'approved' }, gates: { 5: true }, say: 'You read the plan. The script remembers exactly what you read.', cmd: '/spex:approve <dir>', cmdActor: 'you' },
+    { ch: 6, at: 6, rows: { script: 'gate tests: TS01–TS04 have no file ✓', skill: 'Write: TS01 TS02 → 1 developer, TS03 TS04 → 1 developer' }, checks: { 6: true }, say: 'Test code first. The skill hands the plan to test developers, who never see the source.', cmd: '/spex:tests <dir>', cmdActor: 'skill' },
+    { ch: 6, rows: { agent: 'test developer ×2 writes each script from its record' }, tfiles: 4, say: 'One file per script test, written from the record alone.', cmd: 'Write: TS01 TS02 → 1 developer, TS03 TS04 → 1 developer', cmdActor: 'skill' },
+    { ch: 6, rows: { script: 'spex run --test TS01 … --expect fail: all red ✓' }, plan: { items: { TS01: 'red', TS02: 'red', TS03: 'red', TS04: 'red' } }, say: 'Every test must fail before its code exists. The script proves it.', cmd: 'red first', cmdActor: 'script' },
+    { ch: 7, at: 7, rows: { skill: 'spex next --all: T01 + T02 are one wave' }, checks: { 7: true }, say: 'Develop. The skill asks the script what is ready. Two tasks write different files: one wave.', cmd: '/spex:develop <dir>', cmdActor: 'skill' },
+    { ch: 7, rows: { agent: 'developer ×2, each reads its own brief with spex show', script: 'gate develop: tests exist, needs met, red ✓' }, tasks: { items: { T01: 'running', T02: 'running' } }, code: 2, say: 'One developer per task, in parallel. Your chat never holds the code.', cmd: 'Develop: T01 + T02 → 2 agents', cmdActor: 'skill' },
+    { ch: 7, rows: { agent: 'T01: done · T02: test-bug, TS02 asserts other than its claim' }, tasks: { items: { T02: 'test-bug' } }, code: 3, say: 'T02 found a wrong test. It did not touch it. It said so and stopped.', cmd: 'STATUS: test-bug', cmdActor: 'agent' },
+    { ch: 7, rows: { script: 'spex done T01: its tests pass now' }, tasks: { items: { T01: 'done' } }, plan: { items: { TS01: 'green' } }, spex: ['evidence/T01.json'], say: 'The script runs the task\'s tests itself. Only a pass at that moment writes done.', cmd: 'spex done <dir> T01', cmdActor: 'script' },
+    { ch: 7, rows: { agent: 'decider: the test, not the code or the spec · test developer rewrites TS02' }, plan: { items: { TS02: 'amber' } }, say: 'A judge picks: test, code or spec. A test developer rewrites that one test from its record.', cmd: 'Fix test: TS02 → 1 test developer', cmdActor: 'skill' },
+    { ch: 7, rows: { script: 'spex done T02 ✓' }, tasks: { items: { T02: 'done' } }, plan: { items: { TS02: 'green' } }, spex: ['evidence/T01.json', 'evidence/T02.json'], say: 'T02 closes. You were not asked.', cmd: 'spex done <dir> T02', cmdActor: 'script' },
+    { ch: 7, rows: { skill: 'next wave: T03 + T04', agent: 'developer ×2' }, tasks: { items: { T03: 'running', T04: 'running' } }, code: 5, say: 'The next wave, until nothing is ready.', cmd: 'Develop: T03 + T04 → 2 agents', cmdActor: 'skill' },
+    { ch: 7, rows: { script: 'spex done T03 ✓ · spex done T04 ✓ · no task ready' }, tasks: { items: { T03: 'done', T04: 'done' } }, plan: { items: { TS03: 'green', TS04: 'green', TS05: 'green' } }, code: 6, spex: ['evidence/T01.json', 'evidence/T02.json', 'evidence/T03.json', 'evidence/T04.json'], say: 'Every task is done by its own tests. The NEXT block names verify.', cmd: 'NEXT /clear · /spex:verify <dir>', cmdActor: 'script' },
+    { ch: 8, at: 8, rows: { script: 'gate verify ✓ · spex verify, round 1: 4 scripts green, TS03 red, TS06 pending' }, checks: { 8: true }, plan: { items: { TS03: 'red' } }, spex: ['evidence/T01…T04.json', 'verify-1.json: 1 red'], say: 'Now the whole feature at once: every script, every shell test, every session, at this tree.', cmd: '/spex:verify <dir>', cmdActor: 'skill' },
+    { ch: 8, rows: { agent: 'tester performs TS06 in a browser, records spex session --result pass' }, plan: { items: { TS06: 'pass' } }, spex: ['evidence/T01…T04.json', 'verify-1.json: 1 red', 'artifacts/TS06.png'], say: 'A check no script can judge: a tester performs it with Playwright, screenshots it, records what it saw.', cmd: 'Perform: TS06 → 1 tester', cmdActor: 'skill' },
+    { ch: 8, rows: { agent: 'decider: TS03, the code', skill: 'fix task T05 appended; TS03 now covers T05' }, tasks: { approval: 'stale', items: { T05: 'todo' } }, say: 'Each failure gets one verdict and one owner. The code was wrong: a fix task, covered by the test that found it.', cmd: 'Q1 — TS03: test, code or spec?', cmdActor: 'skill' },
+    { ch: 8, at: 5, rows: { you: 'reads the fix task, types /spex:approve' }, tasks: { approval: 'approved' }, say: 'Back on the track: tasks.yaml changed, so you read T05 and approve.', cmd: '/spex:approve <dir>', cmdActor: 'you' },
+    { ch: 8, at: 7, rows: { agent: 'developer: T05', script: 'spex done T05 ✓' }, tasks: { items: { T05: 'done' } }, say: 'One developer, one spex done.', cmd: '/spex:develop <dir>', cmdActor: 'skill' },
+    { ch: 8, at: 8, rows: { script: 'spex verify, round 2: every script green, TS06 pass at this tree' }, plan: { items: { TS03: 'green' } }, spex: ['evidence/T01…T05.json', 'verify-1.json: 1 red', 'artifacts/TS06.png', 'verify-2.json: green'], say: 'Round two: green at this tree. The NEXT block names the review.', cmd: 'NEXT /clear · /spex:review <dir>', cmdActor: 'script' },
+    { ch: 9, at: 9, rows: { script: 'gate review: verify green at this tree ✓ · show --review writes the diff', agent: 'reviewer ×5, one per task slice' }, checks: { 9: true }, spex: ['evidence/T01…T05.json', 'verify-1.json: 1 red', 'artifacts/TS06.png', 'verify-2.json: green', 'review/012-1.diff'], say: 'Review reads the diff for what no test sees. It reruns nothing: the script proved the tests.', cmd: '/spex:review <dir>', cmdActor: 'skill' },
+    { ch: 9, rows: { skill: 'clean: tasks.yaml stays byte for byte', script: 'report: done' }, review: 'clean', say: 'Clean. Nothing appended. A finding would have become a fix task, the way TS03 did.', cmd: 'NEXT /clear · /spex:ship <dir>', cmdActor: 'script' },
+    { ch: 10, at: 10, rows: { script: 'gate ship ✓ · spex ship: approved → built, commit, ship.cmd: push, open the request, merge' }, checks: { 10: true }, req: 'built', say: 'No click. The script marks the records built, commits, and ship.cmd merges the branch.', cmd: '/spex:ship <dir>', cmdActor: 'skill' },
+    { ch: 10, rows: { you: 'reads the answers nobody gave', script: 'spex next: shipped, nothing is next' }, say: 'Shipped. You read the answers the decider gave. Every file stays as proof of what was decided.', cmd: 'spex next <dir>', cmdActor: 'script' },
+  ];
+  const STATES = [];
+  {
+    let s = { at: 0, rows: {}, checks: {}, gates: {}, spec: null, req: null, research: false, plan: null, tasks: null, tfiles: 0, code: 0, spex: [], review: null };
+    for (const st of STEPS) {
+      s = { ...s, rows: st.rows || {}, say: st.say, cmd: st.cmd, cmdActor: st.cmdActor, ch: st.ch };
+      if (st.at !== undefined) s.at = st.at;
+      if (st.checks) s.checks = { ...s.checks, ...st.checks };
+      if (st.gates) s.gates = { ...s.gates, ...st.gates };
+      for (const k of ['spec', 'req', 'research', 'tfiles', 'code', 'spex', 'review']) if (st[k] !== undefined) s[k] = st[k];
+      if (st.plan) s.plan = { items: { ...(s.plan?.items ?? {}), ...st.plan.items } };
+      if (st.tasks) s.tasks = { approval: st.tasks.approval ?? s.tasks?.approval ?? 'todo', items: { ...(s.tasks?.items ?? {}), ...(st.tasks.items ?? {}) } };
+      STATES.push(s);
+    }
+  }
+  const chapterStart = STATIONS.map((_, i) => STEPS.findIndex((st) => st.ch === i));
+
+  // ------------------------------------------------------------ build the SVG
+  const svg = $('#scene');
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+  const rowEls = {}, bubbleEls = {}, avatarEls = {};
+  for (const r of ROWS) {
+    const g = sv('g', { class: `row ${r.id}` });
+    g.append(sv('line', { class: 'rowline', x1: 150, y1: r.y, x2: W - 24, y2: r.y }));
+    const av = sv('circle', { class: `avatar ${r.id}`, cx: 34, cy: r.y, r: 11 });
+    g.append(av);
+    g.append(sv('text', { class: 'rowlabel', x: 54, y: r.y + 4 }, r.name));
+    g.append(sv('text', { class: 'rowsub', x: 54, y: r.y + 18 }, r.sub));
+    svg.append(g); rowEls[r.id] = g; avatarEls[r.id] = av;
+    const b = sv('g', { class: `bubble ${r.id}`, opacity: 0 });
+    b.append(sv('rect', { x: 0, y: r.y - 14, width: 10, height: 28 }));
+    b.append(sv('text', { x: 0, y: r.y + 4 }));
+    svg.append(b); bubbleEls[r.id] = b;
+  }
+
+  const last = STATIONS.length - 1;
+  svg.append(sv('line', { class: 'track', x1: sx(0), y1: TRACK_Y, x2: sx(last), y2: TRACK_Y }));
+  const trail = sv('line', { class: 'trail', x1: sx(0), y1: TRACK_Y, x2: sx(0), y2: TRACK_Y });
+  svg.append(trail);
+  const stationEls = [], gateEls = {}, checkEls = {};
+  STATIONS.forEach((st, i) => {
+    const x = sx(i), gx = x - 40;
+    if (GATES.includes(i)) {
+      const g = sv('g', { class: 'gate' });
+      g.append(sv('rect', { class: 'post', x: gx - 3, y: TRACK_Y - 36, width: 6, height: 10 }));
+      const bar = sv('rect', { class: 'bar', x: gx - 2.5, y: TRACK_Y - 30, width: 5, height: 54 });
+      g.append(bar); svg.append(g); gateEls[i] = { bar, gx };
+      if (i === 1) svg.append(sv('text', { class: 'note', x: gx, y: TRACK_Y + 58, 'text-anchor': 'middle' }, 'a gate you open'));
+    } else if (i > 0) {
+      const g = sv('g', { class: 'sgate' });
+      g.append(sv('circle', { cx: gx, cy: TRACK_Y, r: 8 }));
+      const c = sv('text', { class: 'check', x: gx, y: TRACK_Y + 4, 'text-anchor': 'middle', opacity: 0 }, '✓');
+      g.append(c); svg.append(g); checkEls[i] = { c, g };
+      if (i === 2) svg.append(sv('text', { class: 'note', x: gx, y: TRACK_Y + 58, 'text-anchor': 'middle' }, 'a gate the script opens'));
+    }
+    const g = sv('g', { class: `station ${st.actor}`, tabindex: '0', role: 'button', 'aria-label': `Stop ${i + 1}: ${st.label}` });
+    g.append(sv('circle', { class: 'ring', cx: x, cy: TRACK_Y, r: 16 }));
+    g.append(sv('text', { class: 'num', x, y: TRACK_Y + 4, 'text-anchor': 'middle' }, String(i + 1)));
+    g.append(sv('text', { class: 'lab', x, y: TRACK_Y + 38, 'text-anchor': 'middle' }, st.label));
+    const go = () => { pause(); goto(chapterStart[i]); };
+    g.addEventListener('click', go);
+    g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+    svg.append(g); stationEls.push(g);
+  });
+  const halo = sv('circle', { class: 'token-halo', cx: sx(0), cy: TRACK_Y, r: 22 });
+  const token = sv('circle', { class: 'token', cx: sx(0), cy: TRACK_Y, r: 9 });
+  svg.append(halo, token);
+
+  const SHELF_Y = 388, SHELF_H = 222, CARD_W = 130, CARD_H = 150, CARD_Y = SHELF_Y + 48;
+  const shelf = sv('g', { class: 'shelf' });
+  shelf.append(sv('rect', { class: 'bg', x: 24, y: SHELF_Y, width: 736, height: SHELF_H }));
+  const shelfName = sv('text', { class: 'name', x: 44, y: SHELF_Y + 26 }, `${dir}/`);
+  shelf.append(shelfName);
+  shelf.append(sv('rect', { class: 'bg', x: 772, y: SHELF_Y, width: 444, height: SHELF_H }));
+  shelf.append(sv('text', { class: 'name', x: 792, y: SHELF_Y + 26 }, 'the repo'));
+  svg.append(shelf);
+  const fileEls = {};
+  for (const f of FILES) {
+    const g = sv('g', { class: 'file', opacity: 0.35 });
+    g.append(sv('rect', { class: 'card', x: f.x, y: CARD_Y, width: CARD_W, height: CARD_H }));
+    g.append(sv('text', { class: 'fname', x: f.x + 12, y: CARD_Y + 22 }, f.name));
+    g.append(sv('text', { class: 'by', x: f.x + 12, y: CARD_Y + 38 }, f.by));
+    const body = sv('g', { class: 'body' });
+    g.append(body);
+    svg.append(g); fileEls[f.id] = { g, body, f };
+  }
+  const statusPill = (x, y, cls, text) => {
+    const g = sv('g', { class: `status ${cls}` });
+    g.append(sv('rect', { x, y: y - 12, width: text.length * 6.7 + 16, height: 22 }));
+    g.append(sv('text', { x: x + 8, y: y + 4 }, text));
+    return g;
+  };
+  const chip = (x, y, cls, text) => {
+    const g = sv('g', { class: `chip ${cls}` });
+    g.append(sv('rect', { x, y, width: 32, height: 18 }));
+    g.append(sv('text', { x: x + 16, y: y + 13, 'text-anchor': 'middle' }, text));
+    return g;
+  };
+  const by = (x, y, text) => sv('text', { class: 'by', x, y }, text);
+
+  // ------------------------------------------------------------ render one state
+  let idx = -1, timer = null;
+  const say = $('#say'), cmd = $('#cmd'), nEl = $('#n'), scrub = $('#scrub');
+  scrub.max = String(STEPS.length - 1);
+  const dur = 0.55;
+  const tw = (target, vars) => { if (G) G.to(target, { duration: dur, ease: 'power2.inOut', ...vars }); else { for (const [k, v] of Object.entries(vars.attr ?? {})) target.setAttribute(k, v); if (vars.opacity !== undefined) target.setAttribute('opacity', vars.opacity); } };
+
+  function render(i, back) {
+    const s = STATES[i];
+    const x = sx(s.at);
+    // the token moves, the trail grows, a ripple marks the arrival
+    tw(token, { attr: { cx: x } }); tw(halo, { attr: { cx: x } }); tw(trail, { attr: { x2: x } });
+    if (G && !back) G.fromTo(halo, { attr: { r: 22 }, opacity: 0.7 }, { attr: { r: 36 }, opacity: 0, duration: 0.9, ease: 'power1.out', delay: dur });
+    stationEls.forEach((g, k) => { g.classList.toggle('here', k === s.at); g.classList.toggle('passed', k < s.at || (k === s.at && i === STEPS.length - 1)); });
+    // the gates you open swing; the script's gates get a check
+    for (const [k, { bar, gx }] of Object.entries(gateEls)) {
+      const open = !!s.gates[k];
+      if (G) G.to(bar, { duration: dur, rotation: open ? -78 : 0, svgOrigin: `${gx} ${TRACK_Y - 30}`, ease: 'power2.inOut' });
+      else bar.setAttribute('transform', open ? `rotate(-78 ${gx} ${TRACK_Y - 30})` : '');
+    }
+    for (const [k, { c, g }] of Object.entries(checkEls)) { g.classList.toggle('ok', !!s.checks[k]); tw(c, { opacity: s.checks[k] ? 1 : 0 }); }
+    // the actors: a lit avatar and one line of what it does
+    for (const r of ROWS) {
+      const text = s.rows[r.id];
+      const was = rowEls[r.id].classList.contains('on');
+      rowEls[r.id].classList.toggle('on', !!text);
+      const b = bubbleEls[r.id];
+      if (!text) { tw(b, { opacity: 0 }); continue; }
+      if (G && !was && !back) G.fromTo(avatarEls[r.id], { scale: 1 }, { scale: 1.4, duration: 0.22, yoyo: true, repeat: 1, transformOrigin: '50% 50%' });
+      const t = D(text), w = Math.min(t.length * 7.3 + 22, 760);
+      const bx = Math.max(160, Math.min(W - 24 - w, x - w / 2));
+      b.querySelector('rect').setAttribute('x', bx); b.querySelector('rect').setAttribute('width', w);
+      b.querySelector('text').setAttribute('x', bx + 11); b.querySelector('text').textContent = t;
+      if (G && !back) G.fromTo(b, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.4, delay: 0.25 }); else tw(b, { opacity: 1 });
+    }
+    // the files: a card flies in from the row that writes it, a changed card blinks
+    renderFile('spec', s.spec !== null, (body, f) => { body.append(statusPill(f.x + 12, CARD_Y + 70, s.spec, s.spec)); body.append(by(f.x + 12, CARD_Y + 102, s.spec === 'ready' ? 'four sections filled' : 'open questions, a round at a time')); });
+    renderFile('req', s.req !== null, (body, f) => { body.append(statusPill(f.x + 12, CARD_Y + 70, s.req, s.req)); body.append(by(f.x + 12, CARD_Y + 102, 'EARS + scenarios')); body.append(by(f.x + 12, CARD_Y + 118, s.req === 'draft' ? 'answers: the decider' : s.req === 'built' ? 'built at ship' : 'approved at gate 1')); });
+    renderFile('research', s.research, (body, f) => { body.append(statusPill(f.x + 12, CARD_Y + 70, 'approved', 'with sources')); body.append(by(f.x + 12, CARD_Y + 102, 'for people')); });
+    renderFile('plan', s.plan !== null, (body, f) => {
+      let scripts = 0, sessions = 0;
+      TESTS.forEach((t, k) => {
+        const st = s.plan.items[t]; if (!st) return;
+        if (st === 'pending' || st === 'pass') sessions++; else scripts++;
+        body.append(chip(f.x + 12 + (k % 3) * 35, CARD_Y + 54 + Math.floor(k / 3) * 24, st, t));
+      });
+      body.append(by(f.x + 12, CARD_Y + 118, `${scripts} scripts${sessions ? `, ${sessions} session` : ''}`));
+      body.append(by(f.x + 12, CARD_Y + 134, Object.values(s.plan.items).some((v) => v === 'red') ? 'red before the code' : Object.values(s.plan.items).every((v) => v === 'green' || v === 'pass') ? 'every claim proved' : 'one test per claim'));
+    });
+    renderFile('tasks', s.tasks !== null, (body, f) => {
+      const ap = s.tasks.approval;
+      body.append(statusPill(f.x + 12, CARD_Y + 70, ap === 'approved' ? 'approved' : ap === 'stale' ? 'stale' : 'todo', ap === 'approved' ? 'approved' : ap === 'stale' ? 'read it again' : 'waits for you'));
+      TASKS.forEach((t, k) => { const st = s.tasks.items[t]; if (st) body.append(chip(f.x + 12 + (k % 3) * 35, CARD_Y + 88 + Math.floor(k / 3) * 24, st, t)); });
+    });
+    renderFile('tfiles', s.tfiles > 0, (body, f) => {
+      for (let k = 0; k < 4; k++) body.append(sv('rect', { class: `codeline${k < s.tfiles ? ' test' : ''}`, x: f.x + 12, y: CARD_Y + 58 + k * 13, width: [104, 76, 96, 62][k], height: 6, opacity: k < s.tfiles ? 1 : 0.35 }));
+      const red = s.plan && Object.values(s.plan.items).some((v) => v === 'red');
+      body.append(by(f.x + 12, CARD_Y + 128, red ? 'red before the code' : 'one file per script'));
+    });
+    renderFile('code', s.code > 0, (body, f) => {
+      for (let k = 0; k < 6; k++) body.append(sv('rect', { class: `codeline${k < s.code ? ' lit' : ''}`, x: f.x + 12, y: CARD_Y + 56 + k * 12, width: [104, 70, 88, 56, 96, 66][k], height: 6, opacity: k < s.code ? 1 : 0.35 }));
+      body.append(by(f.x + 12, CARD_Y + 136, s.req === 'built' ? 'merged by ship.cmd' : s.review === 'clean' ? 'reviewed: clean' : 'inside task paths'));
+    });
+    renderFile('spex', s.spex.length > 0, (body, f) => { s.spex.forEach((line, k) => body.append(sv('text', { class: 'line', x: f.x + 12, y: CARD_Y + 62 + k * 15 }, line))); });
+    // words
+    say.textContent = D(s.say);
+    cmd.replaceChildren(el('span', { class: 'k' }, s.cmdActor === 'you' ? 'you' : s.cmdActor === 'script' ? 'the script' : s.cmdActor === 'agent' ? 'an agent' : 'you type'), document.createTextNode(D(s.cmd)));
+    cmd.className = `cmd ${s.cmdActor === 'you' ? 'you' : ''}`;
+    for (const c of $('#chapters').children) c.classList.toggle('on', Number(c.dataset.i) === s.ch);
+    nEl.textContent = `${i + 1} / ${STEPS.length}`;
+    scrub.value = String(i);
+    $('#prev').disabled = i === 0; $('#next').disabled = i === STEPS.length - 1;
+    renderHere(s.at);
+  }
+  function renderFile(id, on, fill) {
+    const { g, body, f } = fileEls[id];
+    const was = g.classList.contains('on');
+    const before = body.innerHTML;
+    g.classList.toggle('on', on);
+    body.replaceChildren();
+    if (on) fill(body, f);
+    if (G) G.killTweensOf([g, body]);
+    if (on && !was && G) G.fromTo(g, { opacity: 0, y: rowY[f.from] - CARD_Y, scale: 0.3, transformOrigin: '50% 0%' }, { opacity: 1, y: 0, scale: 1, duration: 0.65, ease: 'power2.out' });
+    else if (on && was && G && before !== body.innerHTML) G.fromTo(body, { opacity: 0.15 }, { opacity: 1, duration: 0.45 });
+    else if (G) G.set(g, { opacity: on ? 1 : 0.35, y: 0, scale: 1 }); // GSAP owns style.opacity once it touched the card, so the attribute alone would not dim it again
+    else g.setAttribute('opacity', on ? 1 : 0.35);
+  }
+  function renderHere(at) {
+    const st = STATIONS[at];
+    $('#here-cmd').replaceChildren(el('code', {}, D(st.cmd)));
+    const files = $('#here-files'); files.replaceChildren();
+    const d = st.disk;
+    const pill = (name, on, status) => el('span', { class: `pill${on ? ' on' : ''}` }, name, ...(status ? [el('b', {}, status)] : []));
+    files.append(pill('spec.md', !!d.spec, d.spec), pill('requirements.yaml', !!d.req, d.req), pill('tests.yaml', !!d.plan, d.plan), pill('tasks.yaml', !!d.tasks, d.tasks), pill('test files', !!d.tfiles, d.tfiles), pill('src/', !!d.code, d.code), pill('verify', !!d.verify, d.verify), pill('review', !!d.review, d.review));
+    $('#here-gate').textContent = st.gate;
+  }
+
+  // ------------------------------------------------------------ controls
+  function goto(i, back) { if (i < 0 || i >= STEPS.length) return; back = back ?? i < idx; idx = i; render(i, back); try { history.replaceState(null, '', `#s${i + 1}`); } catch (e) { /* a viewer without history */ } }
+  function play() { if (idx >= STEPS.length - 1) goto(0); $('#play').textContent = 'Pause'; timer = setInterval(() => { if (idx >= STEPS.length - 1) pause(); else goto(idx + 1); }, 2400); }
+  function pause() { clearInterval(timer); timer = null; $('#play').textContent = 'Play'; }
+  $('#play').addEventListener('click', () => (timer ? pause() : play()));
+  $('#prev').addEventListener('click', () => { pause(); goto(idx - 1); });
+  $('#next').addEventListener('click', () => { pause(); goto(idx + 1); });
+  scrub.addEventListener('input', () => { pause(); goto(Number(scrub.value)); });
+  document.addEventListener('keydown', (e) => { if (e.target.tagName === 'INPUT') return; if (e.key === 'ArrowRight') { pause(); goto(idx + 1); } else if (e.key === 'ArrowLeft') { pause(); goto(idx - 1); } else if (e.key === ' ') { e.preventDefault(); if (timer) pause(); else play(); } });
+  const chaptersBox = $('#chapters');
+  STATIONS.forEach((st, i) => chaptersBox.append(el('button', { class: `chapter ${st.actor}`, type: 'button', 'data-i': String(i) }, `${i + 1} ${st.label}`)));
+  chaptersBox.addEventListener('click', (e) => { const b = e.target.closest('.chapter'); if (b) { pause(); goto(chapterStart[Number(b.dataset.i)]); } });
+  $('#dir').addEventListener('input', (e) => { dir = e.target.value.trim() || 'specs/012-foo'; shelfName.textContent = `${dir}/`; render(idx, true); });
+
+  // ------------------------------------------------------------ boot: #s14 starts at step 14
+  const m = /^#s(\d+)$/.exec(location.hash);
+  goto(m ? Math.min(STEPS.length, Math.max(1, Number(m[1]))) - 1 : 0);
+})();
+</script>
+</body>
+</html>

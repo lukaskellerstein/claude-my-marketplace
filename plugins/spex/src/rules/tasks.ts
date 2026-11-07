@@ -1,11 +1,14 @@
-// The task rules: order, allowlists, context, limits, pointers, and coverage.
+// The task rules: order, allowlists, context, limits, pointers, coverage, and no person's step.
 
 import { join } from 'node:path';
-import { testId } from '../ears.js';
+import { testDirs } from '../config.js';
 import { patternsOverlap, pathMatches, underAny } from '../glob.js';
-import { bytes, fileExists, lineCount, readText, walk } from '../io.js';
-import type { Config, Feature, Finding, Task, TasksFile } from '../types.js';
+import { bytes, fileExists, lineCount, readText } from '../io.js';
+import { personActor } from '../tests.js';
+import type { Finding, Task, TasksFile } from '../types.js';
 import type { RuleContext } from './requirements.js';
+
+const clip = (text: string, max = 100): string => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
 
 export function checkTasks(ctx: RuleContext): Finding[] {
   const { feature, config } = ctx;
@@ -18,7 +21,7 @@ export function checkTasks(ctx: RuleContext): Finding[] {
   };
   const reqs = feature.requirements;
   if (!reqs) {
-    f('error', 'TASK-REQ', `${path} has no requirements.yaml next to it`, 'Every plan answers a spec. Run /spex:specify or /spex:quick first.');
+    f('error', 'TASK-REQ', `${path} has no requirements.yaml next to it`, 'Every plan answers a spec. Run /spex:requirements first.');
     return out;
   }
   if (file.feature !== reqs.feature) f('error', 'TASK-REQ', `tasks.yaml feature "${file.feature}" differs from requirements.yaml feature "${reqs.feature}"`, 'Use the same feature id in both files.');
@@ -47,6 +50,7 @@ export function checkTasks(ctx: RuleContext): Finding[] {
   if (bytes(file.approach) > config.limits.approach_bytes) f('error', 'TASK-LIMITS', `approach is ${bytes(file.approach)} bytes, above limits.approach_bytes ${config.limits.approach_bytes}`, 'The approach is the shape of the solution, not the design. Move detail into design.modules, design.entities and design.decisions.');
 
   const covered = new Map<string, string[]>();
+  const noTests = [...config.protected, ...testDirs(config).map((d) => `${d}/`)];
   for (const t of file.tasks) {
     // TASK-REQ
     for (const r of t.requirements) {
@@ -55,10 +59,15 @@ export function checkTasks(ctx: RuleContext): Finding[] {
     }
     // TASK-DONE-WHEN
     if (!t.done_when.trim()) f('error', 'TASK-DONE-WHEN', `${t.id}: done_when is empty`, 'One observable sentence: which test passes, which command prints what.', t.id);
+    // TASK-PERSON: the claim names no person as an actor
+    for (const text of [t.instructions, t.done_when]) {
+      const hit = personActor(text, config.people);
+      if (hit) f('error', 'TASK-PERSON', `${t.id}: "${hit}" makes a step a person's step: ${clip(text)}`, 'The process has no manual step. A go-ahead is the approval of tasks.yaml; a merge is an API call in a test; a credential goes to needs[] of the test. Rewrite the sentence without the person.', t.id);
+    }
     // TASK-PROTECTED
     for (const p of t.paths) {
-      const hit = underAny(p, config.protected);
-      if (hit) f('error', 'TASK-PROTECTED', `${t.id}: path ${p} is under protected ${hit}`, 'A task never writes specs, acceptance tests or CI. Remove the path. Acceptance tests are written by /spex:tests.', t.id);
+      const hit = underAny(p, noTests);
+      if (hit) f('error', 'TASK-PROTECTED', `${t.id}: path ${p} is under protected ${hit}`, 'A task never writes specs, tests or CI. Remove the path. Tests are written by the test developer (/spex:tests).', t.id);
     }
     // TASK-LIMITS
     if (t.paths.length > config.limits.task_files) f('error', 'TASK-LIMITS', `${t.id}: ${t.paths.length} paths, above limits.task_files ${config.limits.task_files}`, 'Split the task. Never shrink scope: two tasks, each inside the limit.', t.id);
@@ -92,30 +101,12 @@ export function checkTasks(ctx: RuleContext): Finding[] {
     }
   }
 
-  // TASK-QUICK
-  if (file.quick) {
-    const distinct = new Set(file.tasks.flatMap((t) => t.paths));
-    if (file.tasks.length > 2) f('error', 'TASK-QUICK', `quick path with ${file.tasks.length} tasks`, 'The quick path is one or two tasks. A bigger change goes through /spex:specify.');
-    if (distinct.size > 3) f('error', 'TASK-QUICK', `quick path writes ${distinct.size} paths`, 'The quick path fits in three files. A bigger change goes through /spex:specify.');
-    if ((reqs.questions ?? []).some((q) => !q.answer)) f('error', 'TASK-QUICK', 'quick path with an open question', 'The quick path has no open questions. Answer it, or go through /spex:specify.');
-    if ((reqs.unknowns ?? []).length) f('error', 'TASK-QUICK', 'quick path with unknowns', 'The quick path needs no research. Decide, or go through /spex:specify.');
-  }
 
   // TASK-COVERAGE (gap)
   for (const r of liveReqs) {
     if (!covered.has(r.id)) out.push({ severity: 'gap', code: 'TASK-COVERAGE', message: `${r.id} is covered by no task`, fix: 'Add a task whose `requirements` names it, or retire the record.', path, id: r.id });
   }
 
-  // TEST-STALE
-  const supersedes = reqs.requirements.flatMap((r) => (r.relationships ?? []).filter((x) => x.type === 'supersedes').map((x) => x.target));
-  if (supersedes.length) {
-    const files = acceptanceFiles(ctx.root, config);
-    for (const old of supersedes) {
-      const needle = testId(old);
-      const hits = files.filter((p) => readText(join(ctx.root, p)).includes(needle));
-      if (hits.length) f('warning', 'TEST-STALE', `${old} is superseded by this feature but ${hits.join(', ')} still tests it`, 'When /spex:tests writes the superseding test, it retires the old one.', old);
-    }
-  }
 
   // FILE-SIZE
   const size = bytes(readText(join(ctx.root, path)));
@@ -225,6 +216,3 @@ function pointerCheck(t: Task, knownIds: Set<string>, path: string): Finding[] {
   return out;
 }
 
-export function acceptanceFiles(root: string, config: Config): string[] {
-  return walk(root, join(root, config.acceptance_dir)).filter((p) => /\.(ts|tsx|js|mjs|cjs|py|go|rs|java|kt|rb|php|feature|sh)$/.test(p));
-}

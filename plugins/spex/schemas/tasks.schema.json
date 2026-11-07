@@ -4,17 +4,49 @@
   "title": "specs/<feature>/tasks.yaml",
   "description": "The plan: approach, boundaries, design, and one task record per agent run.",
   "type": "object",
-  "required": ["feature", "approach", "tasks"],
+  "required": [
+    "feature",
+    "approach",
+    "tasks"
+  ],
   "additionalProperties": false,
   "properties": {
-    "feature": { "type": "string", "pattern": "^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$" },
-    "approach": { "type": "string", "minLength": 10 },
+    "feature": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$"
+    },
+    "approach": {
+      "type": "string",
+      "minLength": 10
+    },
+    "approvals": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Written by `spex approve`, never by a skill: the hash of this file as a person read it (statuses left out).",
+      "properties": {
+        "tasks": {
+          "type": "string"
+        }
+      }
+    },
     "boundaries": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "always": { "type": "array", "items": { "type": "string", "minLength": 3 } },
-        "never": { "type": "array", "items": { "type": "string", "minLength": 3 } }
+        "always": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 3
+          }
+        },
+        "never": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 3
+          }
+        }
       }
     },
     "design": {
@@ -25,12 +57,25 @@
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["id", "path", "role"],
+            "required": [
+              "id",
+              "path",
+              "role"
+            ],
             "additionalProperties": false,
             "properties": {
-              "id": { "type": "string", "pattern": "^M[0-9]+$" },
-              "path": { "type": "string", "minLength": 1 },
-              "role": { "type": "string", "minLength": 3 }
+              "id": {
+                "type": "string",
+                "pattern": "^M[0-9]+$"
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "role": {
+                "type": "string",
+                "minLength": 3
+              }
             }
           }
         },
@@ -38,13 +83,31 @@
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["id", "name"],
+            "required": [
+              "id",
+              "name"
+            ],
             "additionalProperties": false,
             "properties": {
-              "id": { "type": "string", "pattern": "^E[0-9]+$" },
-              "name": { "type": "string", "minLength": 1 },
-              "fields": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-              "schema": { "type": "string", "minLength": 1 }
+              "id": {
+                "type": "string",
+                "pattern": "^E[0-9]+$"
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "fields": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              },
+              "schema": {
+                "type": "string",
+                "minLength": 1
+              }
             }
           }
         },
@@ -52,66 +115,174 @@
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["id", "text"],
+            "required": [
+              "id",
+              "text"
+            ],
             "additionalProperties": false,
             "properties": {
-              "id": { "type": "string", "pattern": "^D[0-9]+$" },
-              "text": { "type": "string", "minLength": 5 },
-              "why": { "type": "string", "minLength": 3 }
+              "id": {
+                "type": "string",
+                "pattern": "^D[0-9]+$"
+              },
+              "text": {
+                "type": "string",
+                "minLength": 5
+              },
+              "why": {
+                "type": "string",
+                "minLength": 3
+              }
             }
           }
         }
       }
     },
-    "quick": {
-      "type": "object",
-      "required": ["reason"],
-      "additionalProperties": false,
-      "properties": { "reason": { "type": "string", "minLength": 5 } }
-    },
     "deferred": {
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["finding", "why", "by"],
+        "required": [
+          "finding",
+          "why",
+          "by"
+        ],
         "additionalProperties": false,
         "properties": {
-          "finding": { "type": "string", "minLength": 3 },
-          "why": { "type": "string", "minLength": 3 },
-          "by": { "type": "string", "minLength": 1 }
+          "finding": {
+            "type": "string",
+            "minLength": 3
+          },
+          "why": {
+            "type": "string",
+            "minLength": 3
+          },
+          "by": {
+            "type": "string",
+            "minLength": 1
+          }
         }
       }
     },
-    "tasks": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/task" } }
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/task"
+      }
+    }
   },
   "definitions": {
     "task": {
       "type": "object",
-      "required": ["id", "title", "kind", "requirements", "paths", "instructions", "done_when", "status"],
+      "required": [
+        "id",
+        "title",
+        "kind",
+        "paths",
+        "instructions",
+        "done_when",
+        "status"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "type": "string", "pattern": "^T[0-9]{2,3}$" },
-        "title": { "type": "string", "minLength": 5, "maxLength": 160 },
-        "kind": { "enum": ["setup", "foundational", "story", "polish", "fix"] },
-        "requirements": { "type": "array", "minItems": 1, "items": { "type": "string" } },
-        "depends_on": { "type": "array", "items": { "type": "string", "pattern": "^T[0-9]{2,3}$" } },
-        "parallel_group": { "type": "string", "minLength": 1 },
-        "paths": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
-        "context": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "design": { "type": "array", "items": { "type": "string", "pattern": "^[MED][0-9]+$" } },
+        "id": {
+          "type": "string",
+          "pattern": "^T[0-9]{2,3}$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 160
+        },
+        "kind": {
+          "enum": [
+            "setup",
+            "foundational",
+            "story",
+            "polish",
+            "fix"
+          ]
+        },
+        "requirements": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The records this task makes true. Absent or empty for a setup task whose proof is its own test in tests.yaml."
+        },
+        "depends_on": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^T[0-9]{2,3}$"
+          }
+        },
+        "parallel_group": {
+          "type": "string",
+          "minLength": 1
+        },
+        "paths": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "context": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "design": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[MED][0-9]+$"
+          }
+        },
         "interfaces": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "consumes": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-            "produces": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+            "consumes": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "produces": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
           }
         },
-        "instructions": { "type": "string", "minLength": 5 },
-        "verify": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-        "done_when": { "type": "string" },
-        "source": { "type": "string", "minLength": 1 },
-        "status": { "enum": ["todo", "done", "blocked"] }
+        "instructions": {
+          "type": "string",
+          "minLength": 5
+        },
+        "done_when": {
+          "type": "string",
+          "description": "The claim: one observable sentence. Its proof is a test in tests.yaml."
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "todo",
+            "done",
+            "blocked"
+          ]
+        }
       }
     }
   }

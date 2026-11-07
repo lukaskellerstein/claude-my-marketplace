@@ -5,6 +5,7 @@ import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { WORK_DIRS } from './config.js';
 
 export function git(root: string, args: string[], opts: { allowFail?: boolean; maxBuffer?: number } = {}): string {
   try {
@@ -31,9 +32,11 @@ export function head(root: string): string {
 export function treeId(root: string): string {
   const h = head(root);
   const hash = createHash('sha256');
-  const diff = h === 'empty' ? '' : git(root, ['diff', 'HEAD', '--', '.', ':(exclude).spex'], { allowFail: true });
+  // The config counts (it names the checks); the script's own work folders do not.
+  const excludes = WORK_DIRS.map((d) => `:(exclude)${d}`);
+  const diff = h === 'empty' ? '' : git(root, ['diff', 'HEAD', '--', '.', ...excludes], { allowFail: true });
   hash.update(diff);
-  const untracked = git(root, ['ls-files', '--others', '--exclude-standard', '--', '.', ':(exclude).spex'], { allowFail: true })
+  const untracked = git(root, ['ls-files', '--others', '--exclude-standard', '--', '.', ...excludes], { allowFail: true })
     .split('\n')
     .map((s) => s.trim())
     .filter(Boolean)

@@ -1,6 +1,6 @@
 {
   "name": "dev-tools-plugin",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "General developer tooling — read-only thinking and Q&A, git workflows, code hygiene, dependency management, and project documentation generation. Every skill is user-invoked only: Claude never starts a merge, an upgrade or a docs rewrite on its own.",
   "author": {
     "name": "Lukas Kellerstein"
@@ -17,9 +17,6 @@
     "dead-code",
     "dependencies",
     "cleanup",
-    "spec-kit",
-    "specification",
-    "sync-spec",
     "documentation",
     "docs",
     "readme",
@@ -33,7 +30,6 @@
     "./skills/git-pr",
     "./skills/dead-code",
     "./skills/update-dependencies",
-    "./skills/sync-spec-kit",
     "./skills/update-docs",
     "./skills/update-feature-docs",
     "./skills/update-readme"

@@ -1,0 +1,14 @@
+# tests.yaml — the proof plan, written by spex update from the scenarios and the verify commands (format 1 → 2).
+# The test analyst completes it: a name per script, a file once written, sessions where a script cannot judge.
+feature: CHECKOUT
+tests:
+  - id: TS01
+    covers:
+      - REQ-CHECKOUT-004/AC-001
+    kind: script
+    name: REQ_CHECKOUT_004_AC_001
+    steps:
+      - given an order with 2 reserved lines in state payment-pending
+      - when the payment provider declines the charge
+    expect:
+      - both reservations are released and available stock is back to its previous value

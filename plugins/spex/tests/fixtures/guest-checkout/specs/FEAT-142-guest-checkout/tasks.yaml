@@ -50,7 +50,6 @@ tasks:
     instructions: |
       Add E1's fields to Order and create E2. Store only the hash (D1).
       The migration must be reversible.
-    verify: ["make test-unit PKG=orders"]
     done_when: Migration applies and rolls back; unit tests for the new fields pass.
     status: todo
 
@@ -75,7 +74,6 @@ tasks:
       src/common/validation.py. On invalid email return 422
       {"error": "invalid_email"} before StockService.reserve (D2).
       Never call CustomerService.create for a guest.
-    verify: ["make test-unit PKG=checkout"]
     done_when: Acceptance tests for REQ-002, REQ-003, REQ-006, REQ-007 and REQ-008 pass; the OpenAPI contract is updated.
     status: todo
 
@@ -101,7 +99,6 @@ tasks:
       link order on first valid use; 410 token_used on reuse; 410
       token_expired after 30 days. Use the outbox pattern already used by
       password reset so the 60 s budget holds under the existing worker.
-    verify: ["make test-unit PKG=accounts,notifications"]
     done_when: Acceptance tests for REQ-004 and REQ-005 pass, including the property test on token reuse.
     status: todo
 
@@ -120,6 +117,5 @@ tasks:
       Add "Continue as guest" to CheckoutGate when useRegionFlag("guest_checkout")
       is true. Route guards must also block /checkout/payment for guests when
       the flag is off (AC-002 checks the URL path, not only the button).
-    verify: ["make test-web"]
     done_when: Both AC scenarios for REQ-001 pass in the e2e runner.
     status: todo

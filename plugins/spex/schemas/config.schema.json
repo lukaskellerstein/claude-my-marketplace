@@ -1,17 +1,33 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://spex.local/schemas/config.schema.json",
-  "title": "specs/spex.yaml",
+  "title": ".spex/config.yaml",
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "acceptance_dir": { "type": "string", "minLength": 1 },
-    "acceptance_cmd": { "type": "string", "description": "Shell command. {ids} becomes REQ_007_001|REQ_007_002; {ids_k} becomes REQ_007_001 or REQ_007_002 (pytest -k)." },
+    "format": { "type": "integer", "minimum": 1, "description": "The shape of the files in specs/ and .spex/, as one integer. Missing means 1. The script refuses a newer format and asks for `spex update` on an older one." },
+    "acceptance_dir": { "type": "string", "minLength": 1, "description": "Where the default driver's test files live. Every driver dir is protected: no task writes a test." },
+    "acceptance_cmd": { "type": "string", "description": "The default driver. Shell command; {ids} becomes the test names joined by |, {ids_k} the names joined by ' or ' (pytest -k)." },
+    "drivers": {
+      "type": "object",
+      "description": "More ways to run script tests, by name: `playwright: {cmd: 'npx playwright test --grep \"{ids}\"', dir: tests/e2e}`. A test names one with `driver:`; `shell` is built in and runs the steps as commands.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["cmd"],
+        "additionalProperties": false,
+        "properties": {
+          "cmd": { "type": "string", "minLength": 1 },
+          "dir": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
     "fast_checks": { "type": "array", "items": { "type": "string", "minLength": 1 } },
     "source_dirs": { "type": "array", "items": { "type": "string", "minLength": 1 } },
     "protected": { "type": "array", "items": { "type": "string", "minLength": 1 } },
     "scopes": { "type": "array", "items": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" } },
     "banned_words": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+    "live": { "type": "array", "items": { "type": "string", "minLength": 1 }, "description": "The real systems a test may write: github:org/repo, gitlab:group/project, cluster:laptop. The one-time yes; a test whose `touches` names anything else fails `spex check`." },
+    "people": { "type": "array", "items": { "type": "string", "minLength": 1 }, "description": "Names that must not appear as an actor in a task or a test step: the person at the keyboard. A step that needs them is a manual step, and the process has none." },
     "limits": {
       "type": "object",
       "additionalProperties": false,
@@ -22,10 +38,26 @@
         "context_kb": { "type": "integer", "minimum": 1 },
         "diff_kb": { "type": "integer", "minimum": 1 },
         "file_kb": { "type": "integer", "minimum": 1 },
-        "tests_scenarios": { "type": "integer", "minimum": 1, "description": "How many scenarios one /spex:tests run covers at most; the batch picker stops there." },
+        "tests_scenarios": { "type": "integer", "minimum": 1, "description": "How many script tests one /spex:tests batch writes at most; the skill takes batch after batch in one run." },
         "verify_minutes": { "type": "integer", "minimum": 1 }
       }
     },
-    "review_rounds": { "type": "integer", "minimum": 1 }
+    "review_rounds": { "type": "integer", "minimum": 1 },
+    "verify_rounds": { "type": "integer", "minimum": 1, "description": "How many whole-feature verify rounds the loop may take before a person reads it." },
+    "approvals": {
+      "type": "array",
+      "items": { "type": "string", "enum": ["tasks", "tests"] },
+      "description": "The stages past gate 1 that need a person's `spex approve`: tasks (tasks.yaml), tests (tests.yaml after it changed past gate 1). The spec and the records always do. Default: [tasks]."
+    },
+    "auto": { "type": "boolean", "description": "Auto mode: nobody is asked. The decider agent settles every question (by: agent, with evidence and confidence) and the person reads the answers at the gates. Default: false." },
+    "ship": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "How `spex ship` merges. commit: commit the working tree first. cmd: push, open the request and merge it (`gh pr create --fill && gh pr merge --squash`). Empty cmd: a person merges, then `spex ship --merged`.",
+      "properties": {
+        "commit": { "type": "boolean" },
+        "cmd": { "type": "string" }
+      }
+    }
   }
 }

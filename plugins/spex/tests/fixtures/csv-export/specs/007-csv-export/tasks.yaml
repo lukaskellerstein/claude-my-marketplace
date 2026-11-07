@@ -16,7 +16,7 @@ design:
   decisions:
     - id: D1
       text: Rows follow list order, then task order.
-      why: The brief shows the spreadsheet grouped by list.
+      why: The spec shows the spreadsheet grouped by list.
 tasks:
   - id: T01
     title: "`todo export --csv` writes open tasks to stdout"

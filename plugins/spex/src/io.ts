@@ -63,7 +63,7 @@ export function openDocument(path: string): Document.Parsed {
 }
 
 export function saveDocument(path: string, doc: Document): void {
-  writeText(path, doc.toString({ lineWidth: 0 }));
+  writeText(path, doc.toString({ lineWidth: 0, flowCollectionPadding: false }));
 }
 
 /** Walk a directory and return repo-relative file paths. Skips node_modules and dot folders. */
