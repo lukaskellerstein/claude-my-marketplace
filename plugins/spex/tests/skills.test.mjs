@@ -35,7 +35,7 @@ const AGENTS = {
   tester: { denied: 'Edit, Write, NotebookEdit, Agent', model: 'inherit', color: 'blue', script: true, returns: [/^STATUS: pass \| fail$/m, /^observed:/m, /^artifacts:/m, /browser_snapshot/, /SPEX session <dir> <TS> --result pass\|fail --observed/, /never fix anything/] },
   reviewer: { denied: 'Edit, Write, NotebookEdit, Agent', model: 'inherit', color: 'orange', script: true, returns: [/^verdict:/m, /^blocking:$/m, /You read; you change nothing/, /`LSP`/, /do not run the tests/] },
   // round 0 of a roadmap: the agent that wrote the stubs was their only reader, and nex's stubs left out 222 names
-  'roadmap-reviewer': { denied: 'Edit, Write, NotebookEdit, Agent', model: 'inherit', color: 'red', script: true, returns: [/^roadmap: <name>/m, /^  missing: #<anchor>/m, /^  tag: /m, /You read; you change nothing/, /never a verdict/, /Never judge the order, the cut or the size/] },
+  'roadmap-reviewer': { denied: 'Edit, Write, NotebookEdit, Agent', model: 'inherit', color: 'red', script: true, returns: [/^roadmap: <name>/m, /^  missing: #<anchor>/m, /^  tag: /m, /You read; you change nothing/, /never a verdict/, /Never judge the order, the cut or the size/, /^row: <file#anchor>/m, /every row that names no step/] },
 };
 const COLORS = ['red', 'blue', 'green', 'yellow', 'purple', 'orange', 'pink', 'cyan']; // the ones Claude Code shows
 const AGENT_CAP = 3300; // the test analyst and the decider carry the rules of the plan; the rest stay under 3000
@@ -157,11 +157,14 @@ test('every reply is in one frame: reply.md holds it, and every skill reads it a
   assert.ok(/`✅ ROADMAP WRITTEN`/.test(round0) && /`ok starts round 1 of <first step's folder>`/.test(round0) && reply.includes('new SHAPED (ROADMAP WRITTEN after round 0)'), 'the end of round 0 says what ok does next');
   assert.ok(/one `spex:roadmap-reviewer` per 10 stubs, in one message/.test(round0) && /Then step 3 again/.test(round0), 'a second reader checks the stubs against the design before reply 2');
   assert.ok(/convert it as the error says, and cite the copy/.test(round0), 'a design in another format is converted first');
+  // nex, second cut: the backlog row said built, and ADR-027's status line says "not built: the groom agent". No check read
+  // a row that names no step, so the work fell out silently. A built row names its builder; the reviewer reads those rows.
+  assert.ok(/A `built` row names what built it/.test(round0) && /not planned only by a question/.test(round0) && /one only the person settles is a question\s+of reply 2/.test(round0), 'a row that drops work is checked or asked');
   assert.ok(!/\bnex\b|nex-target|k3s|GHCR|promote\.py|docs\/my-specs/i.test(round0 + shaping + reply), 'the examples a skill reads come from no one project');
   assert.ok(/`ROADMAP-NAMES` lists/.test(round0) && /under Names\s+left out in the roadmap file with why/.test(round0), 'a name the design fixes goes into a stub, or the file says why not');
   assert.ok(/the person deleted: that is\s+their answer\. Cut fresh, never offer to restore them/.test(round0), 'folders the person deleted stay deleted');
   assert.ok(/`--number <n>` when the repo\s+numbers its specs elsewhere too/.test(round0), 'a number the repo uses elsewhere is a flag, not a hand-made folder');
-  assert.ok(Buffer.byteLength(round0, 'utf8') <= 6000, 'the roadmap round is small too');
+  assert.ok(Buffer.byteLength(round0, 'utf8') <= 6500, 'the roadmap round is small too: it is read once per round 0');
   assert.ok(/`SPEX outline <file>`/.test(round0) && /design's own list of work comes first/.test(round0), 'the steps start from the design\'s own units and order, so a second session cuts the same list');
   assert.ok(/A re-cut starts from what exists/.test(round0) && /`SPEX drop <dir> --reason/.test(round0) && /Never delete a folder by hand/.test(round0), 'a re-cut is keep, change, add, drop; a dropped step keeps its work');
   assert.ok(/`SPEX roadmap <name> --init --source/.test(round0) && /`SPEX roadmap <name> --coverage`/.test(round0), 'every design section gets a row: a step or a reason');

@@ -3,7 +3,8 @@ name: roadmap-reviewer
 description: >
   Reads the stubs of a spex roadmap against the design, read only, at the end of round 0: per
   step, what its design sections fix that the stub lacks or says otherwise, a [new] tag the code
-  contradicts, a Success no step builds, a design open item that is no Open question.
+  contradicts, a Success no step builds, a design open item that is no Open question, and a
+  built or not-planned row a status line contradicts.
   /spex:new starts one per 10 stubs, in parallel: the writer of the stubs never checks them alone.
 
   <example>
@@ -35,7 +36,11 @@ stubs, so read them as the agent that shapes the step later will: what will it n
 4. Success: one that needs what neither this step nor its `depends_on` builds.
 5. Open: a proposal, a pick or a TBD of the design for this step that is no Open question
    with the design's pick; an Open question with no pick and no way named to settle it.
-6. Never judge the order, the cut or the size: the person chose those in round 0.
+6. Rows, when your folders hold the roadmap's first step: every row that names no step. A
+   `built` row that a status line contradicts ("not built", "built in part", "designed"),
+   in the section, in a document it names (an ADR) or in the code; a `not planned` row for
+   what the design lists to build, with no person's answer under Decisions.
+7. Never judge the order, the cut or the size: the person chose those in round 0.
 
 ## What you return
 
@@ -48,4 +53,5 @@ roadmap: <name>  steps: <first>…<last>  clean: <folders with no finding, or no
   tag: `<name>` [new], in the code at <file:line>
   success: <the Success> needs <what no step builds>
   open: #<anchor> "<the design's open item>" is no Open question
+row: <file#anchor> <its Where> — <the status line or code that contradicts it, with its file>
 ```

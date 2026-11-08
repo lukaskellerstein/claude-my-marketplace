@@ -11,6 +11,7 @@ design says for its step, so no later round has to find it again.
 2. The design's own list of work comes first, when it has one: a gaps table, phases, a "what is left"
    or today-against-target table, the "designed, not built" Status lines of its ADRs. So does its own
    order of work. Mark each unit from those and from the code: built, partly built (what is left), new.
+   A `built` row names what built it; what a status line calls built in part is a step for the rest.
 3. One unit is one step by default. Merge two only when one cannot show a Success alone. Split a unit
    with more than 3 new parts or more than 2 scopes (`limits.step_introduces` counts the names).
 4. Order: the design's own order, then the dependencies. Each change to it, each merge and each
@@ -33,7 +34,7 @@ any answer. One table: number, slug, goal in one line, `depends_on`, the section
 Each question says what its other options change in it (`B drops 012–015`). "ok" takes the
 picks and the table; the next reply writes it (§ 4). Round 0 is these two replies. Under it:
 
-- **Not planned**, each with its reason.
+- **Not planned**, each with its reason. What the design lists to build is not planned only by a question.
 - **Outside**: what a Success needs that no step builds (a service, a test suite, a test account, an
   environment, code in a repository that is not in `repos` of `.spex/config.yaml`): where it lives,
   who does it, which step waits for it. Code in a repo of `repos` is a step: its tasks name the repo.
@@ -61,7 +62,8 @@ the steps or outside. The same answers must give the same list.
    left out in the roadmap file with why (built, an example); a `file#section` there leaves out all.
 4. Review: one `spex:roadmap-reviewer` per 10 stubs, in one message, each told its folders, the
    roadmap file and the design files. Apply each finding to its stub (a `tag` becomes an Open
-   question), or answer it under Decisions. Then step 3 again.
+   question) or its row, or answer it under Decisions; one only the person settles is a question
+   of reply 2. Then step 3 again.
 5. Reply 2: `✅ ROADMAP WRITTEN`, the counts, what changed since the table. No question is open, so
    the answer line says what ok does: `ok starts round 1 of <first step's folder>`.
 
