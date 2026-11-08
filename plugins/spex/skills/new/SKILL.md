@@ -1,6 +1,6 @@
 ---
 name: new
-description: Shape a raw idea into a spec in rounds — size it (one step, or a roadmap where every design section has a step or a reason), then every open question on one screen per round, each with a pick, until the user says done. The only way in; resumes a shaping spec, opens a planned step. With "auto" a decider answers and nobody is asked.
+description: Shape a raw idea into a spec in rounds — size it (one step, or a roadmap where every design section has a step or a reason), then every open question on one screen per round, each with a pick, until the user says done. Resumes a shaping spec, opens a planned step. With "auto" a decider answers and nobody is asked.
 disable-model-invocation: true
 allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Read(${CLAUDE_PLUGIN_ROOT}/reply.md), Read(${CLAUDE_PLUGIN_ROOT}/skills/new/roadmap.md), Agent, WebSearch, WebFetch
 ---
@@ -9,8 +9,8 @@ allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUD
 
 `SPEX` = `${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs` (it runs as it is), from the repo root.
 
-The thinking phase: the user ends it, never you. `spec.md` is the spec in words.
-`/spex:requirements` turns it into records, from a folder this skill approved.
+The thinking phase: the user ends it, never you. `spec.md` is the spec in words, and
+`/spex:requirements` makes the records from it once approved.
 
 ## Inputs you read
 
@@ -25,10 +25,10 @@ The thinking phase: the user ends it, never you. `spec.md` is the spec in words.
 
 ## Every reply
 
-In the frame of `${CLAUDE_PLUGIN_ROOT}/reply.md` (read it first). The banner names the
-phase, never "planning":
+In the frame of `${CLAUDE_PLUGIN_ROOT}/reply.md` (read it first). The banner's first line
+names the phase instead of `❓ QUESTIONS`:
 
-- `**🔍 SIZING · <idea>**`, then `round 0 · one step or a roadmap?`
+- `**🔍 SIZING · <idea>**`, then `round 0 · reply 1 of 2 · 31 steps in the draft`
 - `**💎 SHAPING · 029 Deploy One Push**`, then `spec 2 of 29 in roadmap nex-target ·
   question round 1` and the sizes, as `gate new` printed.
 
@@ -43,7 +43,7 @@ shaping`. A round is its own reply; a side job gets its own.
    and ships alone: `SPEX new <slug> --shaping` prints `specs/NNN-slug`. More is a roadmap,
    and so is a roadmap of this idea that exists: read
    `${CLAUDE_PLUGIN_ROOT}/skills/new/roadmap.md` and follow it.
-3. Write Why and What into `spec.md`. Every answer goes into the file in the round it
+3. Write Why and What into `spec.md`. Each answer goes into the file in the round it
    arrives: the file is the memory. Round 1 is the next reply.
 
 ## A planned step

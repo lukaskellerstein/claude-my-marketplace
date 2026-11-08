@@ -1013,3 +1013,17 @@ test('review accept: every finding at once, the person answers in one word, fix 
   assert.equal(r.code, 0, r.stdout);
   assert.ok(r.json.text.includes('deferred, for a later step:\n- P3 Finding F2 of the round'), r.json.text);
 });
+
+test('new --number starts at a number the repo uses elsewhere too, and never goes below the next one', () => {
+  // nex numbers its specs in docs/my-specs/ as well: after 28 there, the next folder is 029, not 001.
+  const repo = makeRepo('csv-export');
+  let r = spex(repo, 'new', 'deploy-one-push', '--shaping', '--number', '29');
+  assert.equal(r.code, 0, r.stdout);
+  assert.equal(r.json.dir, 'specs/029-deploy-one-push');
+  r = spex(repo, 'new', 'next-step');
+  assert.equal(r.json.dir, 'specs/030-next-step', 'the rest count on');
+  r = spex(repo, 'new', 'older', '--number', '12');
+  assert.equal(r.code, 2, r.stdout);
+  assert.ok(r.json.findings[0].message.includes('below 31'), r.stdout);
+  assert.equal(spex(repo, 'new', 'x', '--number', 'abc').code, 2);
+});

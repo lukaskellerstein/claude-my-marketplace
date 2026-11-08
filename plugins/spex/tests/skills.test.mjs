@@ -126,7 +126,12 @@ test('every reply is in one frame: reply.md holds it, and every skill reads it a
   // paragraph, and a shaping round said `step 2 of 29` with dot sizes and no line between questions. The person read
   // neither. One file now gives every skill the same banner, question block and order; each skill names its verdict.
   const reply = readFileSync(join(PLUGIN, 'reply.md'), 'utf8');
-  assert.ok(Buffer.byteLength(reply, 'utf8') <= 4000, 'reply.md is small: every skill reads it once per run');
+  assert.ok(Buffer.byteLength(reply, 'utf8') <= 4500, 'reply.md is small: every skill reads it once per run');
+  // Round 0 in agent-flywheel-os picked "restore the folders you deleted" because a rule said HEAD wins, and nex
+  // picked a hand-made folder because spex could not set a number. The person answers ok nearly every time, so a
+  // pick is the best result for their goal, never a rule alone or a work-around, and what they did is an answer.
+  assert.ok(/best result for their goal/.test(reply) && /never a work-around for a missing spex feature/.test(reply) && /is their answer, not a\s+question/.test(reply), 'a pick is the best result, never a rule alone or a work-around');
+  assert.ok(/the\s+replies left when the skill knows them \(`reply 1 of 2`\)/.test(reply), 'the banner says how many replies are left'); 
   assert.ok(reply.includes('━'.repeat(40)) && reply.includes('─'.repeat(40)), 'a heavy rule around the banner, a light one around each question');
   for (const needle of ['👉 **Pick:', '🟥 BIG', '🟧 MEDIUM', '🟨 SMALL', '⏸ WAITING FOR YOU', '⛔ NOT STARTED', 'I do this unless you say no', 'No `STATUS:` code']) assert.ok(reply.includes(needle), `reply.md has ${needle}`);
   const words = { approve: 'APPROVED', clarify: 'CLARIFIED', develop: 'IMPLEMENTED', fix: 'FIXED', init: 'SET UP', new: 'SHAPED', requirements: 'RECORDS WRITTEN', research: 'DECIDED', review: 'REVIEWED', ship: 'SHIPPED', tasks: 'PLANNED', tests: 'TESTS WRITTEN', update: 'UPDATED', verify: 'VERIFIED' };
@@ -143,7 +148,11 @@ test('every reply is in one frame: reply.md holds it, and every skill reads it a
   assert.ok(/Round 1 drafts first: fill every section/.test(shaping) && /one Mermaid diagram/.test(shaping), 'the person reads a whole draft, with a picture, before the questions');
   // Round 0 of a roadmap lives in a reference file the skill reads only then: the skill stays under its cap.
   assert.ok(shaping.includes('`${CLAUDE_PLUGIN_ROOT}/skills/new/roadmap.md`') && /Read\(\$\{CLAUDE_PLUGIN_ROOT\}\/skills\/new\/roadmap\.md\)/.test(shaping), 'new reads the roadmap round, without a prompt');
+  assert.ok(/first line\s+names the phase instead of `❓ QUESTIONS`/.test(shaping) && /round 0 · reply 1 of 2 · 31 steps in the draft/.test(shaping), 'one banner for sizing in every session, with the replies left');
   const round0 = readFileSync(join(skillsDir, 'new', 'roadmap.md'), 'utf8');
+  assert.ok(/It is in the first reply, drafted with every pick taken/.test(round0) && /Round 0 is these two replies/.test(round0) && /`B drops 031–034`/.test(round0), 'the person sees the whole step list before any answer, and what each other option changes in it');
+  assert.ok(/the person deleted: that is\s+their answer\. Cut fresh, never offer to restore them/.test(round0), 'folders the person deleted stay deleted');
+  assert.ok(/`--number <n>` when the repo\s+numbers its specs elsewhere too/.test(round0), 'a number the repo uses elsewhere is a flag, not a hand-made folder');
   assert.ok(Buffer.byteLength(round0, 'utf8') <= 6000, 'the roadmap round is small too');
   assert.ok(/`SPEX outline <file>`/.test(round0) && /design's own list of work comes first/.test(round0), 'the steps start from the design\'s own units and order, so a second session cuts the same list');
   assert.ok(/A re-cut starts from what exists/.test(round0) && /`SPEX drop <dir> --reason/.test(round0) && /Never delete a folder by hand/.test(round0), 'a re-cut is keep, change, add, drop; a dropped step keeps its work');

@@ -101,6 +101,8 @@ export interface NewOptions extends RoadmapFields {
   from?: string;
   shaping?: boolean;
   planned?: boolean;
+  /** The folder's number, when the repo numbers its specs elsewhere too (docs/my-specs/28 → 029). Never below the next one. */
+  number?: number;
 }
 
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -111,6 +113,9 @@ export function newFeature(root: string, slug: string, opts: NewOptions): CmdRes
   if (opts.planned && opts.shaping) return usage('--planned and --shaping exclude each other', 'A stub of a roadmap is --planned; the step being shaped now is --shaping.');
   if (opts.roadmap !== undefined && !SLUG.test(opts.roadmap)) return usage(`roadmap "${opts.roadmap}" must be lower-case words joined by dashes`, 'Example: --roadmap nex-platform');
   if (opts.step !== undefined && (!Number.isInteger(opts.step) || opts.step < 1)) return usage(`step must be a whole number from 1, not ${opts.step}`, 'Example: --step 3');
+  const next = nextNumber(root);
+  if (opts.number !== undefined && (!Number.isInteger(opts.number) || opts.number < 1 || opts.number > 999)) return usage(`--number must be a whole number from 1 to 999, not ${opts.number}`, 'Example: --number 29');
+  if (opts.number !== undefined && opts.number < next) return usage(`--number ${opts.number} is below ${next}: a folder or a branch has ${String(next - 1).padStart(3, '0')} already`, `Use --number ${next} or more, or leave it out.`);
   if (opts.planned && !opts.roadmap) return usage('--planned needs --roadmap <name>', 'A planned step belongs to a roadmap: spex new <slug> --planned --roadmap <name> --step <n>.');
   const depends_on: string[] = [];
   for (const given of opts.depends_on ?? []) {
@@ -124,7 +129,7 @@ export function newFeature(root: string, slug: string, opts: NewOptions): CmdRes
     if (!fileExists(src)) return usage(`${opts.from} does not exist`, 'Pass the path of the document to copy in as spec.md.');
     text = readText(src);
   }
-  const n = String(nextNumber(root)).padStart(3, '0');
+  const n = String(opts.number ?? next).padStart(3, '0');
   const dir = `${SPECS_DIR}/${n}-${slug}`;
   const spec = `${dir}/${SPEC_FILE}`;
   const title = slug.split('-').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');

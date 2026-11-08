@@ -18,14 +18,19 @@ design says for its step, so no later round has to find it again.
 
 ## 2. A re-cut starts from what exists
 
-When `SPEX roadmap <name>` lists steps, `specs/<name>.roadmap.md` exists, or git HEAD holds the folders:
-start from that list. Show it as keep, change, add and drop, one line each with the reason, and ask only
+When `SPEX roadmap <name>` lists steps or `specs/<name>.roadmap.md` exists: start from that
+list. Show it as keep, change, add and drop, one line each with the reason, and ask only
 about the changes. A kept step keeps its folder; an added one gets `SPEX new`; a dropped one gets
 `SPEX drop <dir> --reason "…"`, which keeps its work in `.spex/archive/`. Never delete a folder by hand.
+Step folders that git HEAD holds and the working tree deletes, the person deleted: that is
+their answer. Cut fresh, never offer to restore them, and name them once under What.
 
 ## 3. The list the person edits
 
-One table: number, slug, goal in one line, `depends_on`, the sections it covers. Under it:
+It is in the first reply, drafted with every pick taken, so the person sees the scale before
+any answer. One table: number, slug, goal in one line, `depends_on`, the sections it covers.
+Each question says what its other options change in it (`B drops 031–034`). "ok" takes the
+picks and the table; the next reply writes it (§ 4). Round 0 is these two replies. Under it:
 
 - **Not planned**, each with its reason.
 - **Outside**: what a Success needs that no step builds (a service, a test suite, a test account, an
@@ -35,8 +40,8 @@ One table: number, slug, goal in one line, `depends_on`, the sections it covers.
   the step it changes. It becomes that step's Open question, with the design's pick as the
   recommendation. Never a fact.
 
-Ask first what changes the list: which documents are in scope, whether UI work is in the steps or
-outside. The same answers must give the same list.
+The questions are what changes the list: which documents are in scope, whether UI work is in
+the steps or outside. The same answers must give the same list.
 
 ## 4. Write it, then check it
 
@@ -44,7 +49,8 @@ outside. The same answers must give the same list.
    Outside, Decisions (scope, not planned, order: who said it, when) and every Coverage row: the step
    folders that build it, or `built` (by what), `not planned` (why), `outside` (who), `context` (why).
    A row covers the sections under it; give a child its own row when it differs.
-2. One `SPEX new` per step, in order: the first `--shaping`, the rest `--planned`, each with
+2. One `SPEX new` per step, in order: the first `--shaping` (with `--number <n>` when the repo
+   numbers its specs elsewhere too, as `docs/my-specs/28`), the rest `--planned`, each with
    `--roadmap <name> --step <n> --depends-on <dirs>` and a `--source <file#anchor>` for every section its
    rows give it and every section that defines a name it uses (a config file, a signal list, a record
    layout, a policy file are often in a reference chapter, not in the story).

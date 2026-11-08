@@ -26,7 +26,7 @@ import type { Finding } from './types.js';
 
 export const VERSION = '2.2.0';
 
-const VALUE_FLAGS = new Set(['base', 'expect', 'task', 'scope', 'from', 'root', 'status', 'summary', 'reason', 'ask', 'roadmap', 'step', 'depends-on', 'test', 'session', 'result', 'observed', 'by']);
+const VALUE_FLAGS = new Set(['number', 'base', 'expect', 'task', 'scope', 'from', 'root', 'status', 'summary', 'reason', 'ask', 'roadmap', 'step', 'depends-on', 'test', 'session', 'result', 'observed', 'by']);
 const LIST_FLAGS = new Set(['concern', 'question', 'file', 'pulled', 'source', 'artifact']);
 const BOOL_FLAGS = new Set(['json', 'force', 'branches', 'no-branches', 'all', 'tests', 'plan', 'verify', 'review', 'design', 'decisions', 'inherited', 'lessons', 'shaping', 'planned', 'merged', 'help', 'version', 'coverage', 'init']);
 
@@ -61,7 +61,8 @@ const HELP = `spex — spec-driven development in small, checkable files. The cl
 
   spex init [--force]                          write .spex/config.yaml (and .spex/.gitignore) from a scan of the repo; --force is a new scan and loses hand edits
   spex update                                 after a plugin update: add the new keys with their defaults, run the format migrations (1 → 2 writes tests.yaml), set format; keep every value of yours
-  spex new <slug> [--from <file>] [--shaping]  create specs/<NNN>-<slug>/spec.md: the skeleton (--shaping: status: shaping), or a copy of <file>
+  spex new <slug> [--from <file>] [--shaping] [--number <n>]
+                                               create specs/<NNN>-<slug>/spec.md: the skeleton (--shaping: status: shaping), or a copy of <file>; NNN is the next number, or <n> when the repo numbers its specs elsewhere too
   spex new <slug> --planned --roadmap <name> --step <n> [--depends-on <dir,dir>] [--source <file#section>]…
                                                one stub of a roadmap (status: planned); the same roadmap flags also go with --shaping for the first step
   spex check [dir…] [--base <ref>] [--no-branches]
@@ -159,8 +160,10 @@ function main(argv: string[]): void {
       if (!rest[0]) throw new Usage('new needs a slug, e.g. csv-export');
       const step = flags.step === undefined ? undefined : Number(flags.step);
       if (step !== undefined && !Number.isInteger(step)) throw new Usage(`--step takes a whole number, not ${flags.step}`);
+      const number = flags.number === undefined ? undefined : Number(flags.number);
+      if (number !== undefined && !Number.isInteger(number)) throw new Usage(`--number takes a whole number, not ${flags.number}`);
       const dependsOn = flags['depends-on'] === undefined ? undefined : String(flags['depends-on']).split(',').map((s) => s.trim()).filter(Boolean);
-      return emit(command, newFeature(root, rest[0], { from: flags.from as string | undefined, shaping: flags.shaping === true, planned: flags.planned === true, roadmap: flags.roadmap as string | undefined, step, depends_on: dependsOn, source: flags.source as string[] | undefined }), json);
+      return emit(command, newFeature(root, rest[0], { from: flags.from as string | undefined, shaping: flags.shaping === true, planned: flags.planned === true, roadmap: flags.roadmap as string | undefined, step, depends_on: dependsOn, source: flags.source as string[] | undefined, number }), json);
     }
     case 'roadmap':
       return emit(command, roadmap(root, rest[0], { coverage: flags.coverage === true, init: flags.init === true, source: flags.source as string[] | undefined, force: flags.force === true }), json);

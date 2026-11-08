@@ -17,7 +17,8 @@ sentences, one idea each.
    ```
 
    Line 1, bold: the verdict, then what it is about. Line 2, plain: the phase icon and
-   name, the folder, where it stands, in numbers a `SPEX` command printed.
+   name, the folder, where it stands, in numbers a `SPEX` command printed, and the
+   replies left when the skill knows them (`reply 1 of 2`).
 2. **What:** one to three lines: what is true now, for the user, never the steps you
    took. Files, pulls and evidence go to `SPEX report`.
 3. **Questions**, if any: one block each, as below, big first.
@@ -67,7 +68,12 @@ Phase icons: 🧭 init, update · 🔍 sizing · 💎 shaping · ✍️ approve 
   cost or a decision · 🟨 SMALL wording.
 - **Context** is one to three lines: the facts the pick rests on. A word from earlier in
   the chat gets its meaning again: each block stands alone.
-- **👉 Pick** is what "ok" takes. Money, time or no undo: say it, with the number.
+- **👉 Pick** is what "ok" takes, and the person says ok nearly every time. So it is the
+  option with the best result for their goal, and its reason names that result: never
+  "the rule says" alone, never a work-around for a missing spex feature (name the gap).
+  What the person did already (deleted folders, a branch) is their answer, not a
+  question. Read each pick as them before you send it. Money, time or no undo: say it,
+  with the number.
 - A question with one option is no question. List those once, after the blocks, under
   `I do this unless you say no:`, one line each, numbered on.
 - Under the last rule, the skill's answer line, so one word answers.
