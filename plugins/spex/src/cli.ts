@@ -8,24 +8,27 @@ import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { exitCodeFor, runCheck } from './check.js';
 import { coverage } from './commands/coverage.js';
+import { drop } from './commands/drop.js';
 import { init } from './commands/init.js';
 import { approve, block, done, gate, next, ship, unblock, type CmdResult } from './commands/lifecycle.js';
 import { update } from './commands/update.js';
 import { FORMAT } from './config.js';
 import { liveIndex } from './commands/live.js';
 import { newFeature } from './commands/new.js';
+import { outline } from './commands/outline.js';
 import { report } from './commands/report.js';
+import { reviewAccept } from './commands/review.js';
 import { roadmap } from './commands/roadmap.js';
 import { run } from './commands/run.js';
 import { showDecisions, showDesign, showInherited, showLessons, showPlan, showRecord, showReview, showSession, showTask, showTests, showVerify } from './commands/show.js';
 import { session, verify } from './commands/verify.js';
 import type { Finding } from './types.js';
 
-export const VERSION = '2.0.0';
+export const VERSION = '2.2.0';
 
-const VALUE_FLAGS = new Set(['base', 'expect', 'task', 'scope', 'from', 'root', 'status', 'summary', 'reason', 'ask', 'roadmap', 'step', 'depends-on', 'test', 'session', 'result', 'observed']);
+const VALUE_FLAGS = new Set(['base', 'expect', 'task', 'scope', 'from', 'root', 'status', 'summary', 'reason', 'ask', 'roadmap', 'step', 'depends-on', 'test', 'session', 'result', 'observed', 'by']);
 const LIST_FLAGS = new Set(['concern', 'question', 'file', 'pulled', 'source', 'artifact']);
-const BOOL_FLAGS = new Set(['json', 'force', 'branches', 'no-branches', 'all', 'tests', 'plan', 'verify', 'review', 'design', 'decisions', 'inherited', 'lessons', 'shaping', 'planned', 'merged', 'help', 'version']);
+const BOOL_FLAGS = new Set(['json', 'force', 'branches', 'no-branches', 'all', 'tests', 'plan', 'verify', 'review', 'design', 'decisions', 'inherited', 'lessons', 'shaping', 'planned', 'merged', 'help', 'version', 'coverage', 'init']);
 
 interface Args {
   positional: string[];
@@ -75,6 +78,10 @@ const HELP = `spex — spec-driven development in small, checkable files. The cl
   spex show <dir> --inherited                  what the steps in depends_on settled: goals, interfaces, decisions, entities, produced signatures
   spex show <dir> --lessons                    what a finished step recorded for the steps after it: concerns, questions, default answers, deferred, blocks, decisions, supersedes
   spex roadmap [name]                          the steps of one idea in order, with where each stands; without a name, every roadmap on disk
+  spex roadmap <name> --init --source <file>…  write specs/<name>.roadmap.md: idea, order, outside, decisions, and one coverage row per design section
+  spex roadmap <name> --coverage               every design section has a row (steps, built, not planned, outside, context); every step covers one and cites it
+  spex outline <file>…                         a design's sections, with the anchor a source or a coverage row names
+  spex drop <dir> --reason "…"                 a step a re-cut removes: the folder and its .spex/ work move to .spex/archive/, with the reason
   spex next <dir> [--all]                      what now: the stage, the one command that moves it, and if the chat can be cleared first; --all lists every ready task by wave
   spex run <dir> <task> [--expect fail]        run the task's tests, write the record (the developer's loop)
   spex run <dir> --test <TS> [--expect fail]   run one script test (the test developer's red run)
@@ -88,6 +95,8 @@ const HELP = `spex — spec-driven development in small, checkable files. The cl
   spex coverage <dir>                          which test proves each claim, and which script has no file yet
   spex index [--scope s] [--branches] [--all]  the live requirements
   spex ship <dir> [--merged]                   the end: approved → built, superseded → retired, then (ship.commit) a commit and (ship.cmd) the merge; --merged: a person merged already
+  spex review accept <dir> [ok | F2=defer | 3=fix | all=skip]… [--by agent]
+                                               a person's answer to the newest review round: fix picks → fix tasks (no second approval), defer → deferred[], skip → noted; writes the review report ship reads
   spex report <dir> <stage> [task] --status s --summary "…" [--concern c]* [--question q]* [--file f]* [--pulled p]*
 
 Every command takes --json. Exit codes: 0 ok · 2 usage · 4 invalid · 5 gap · 6 refused · 7 verify failed.`;
@@ -108,7 +117,8 @@ function renderFindings(findings: Finding[]): string {
     .join('\n');
 }
 
-function emit(command: string, result: CmdResult, json: boolean): never {
+/** Print the result and set the exit code. No process.exit here: on a pipe it cuts off output past 64 KB. */
+function emit(command: string, result: CmdResult, json: boolean): void {
   if (json) {
     const { text, data, ...rest } = result;
     process.stdout.write(JSON.stringify({ command, ...rest, ...(data ?? {}), text }, null, 2) + '\n');
@@ -116,7 +126,7 @@ function emit(command: string, result: CmdResult, json: boolean): never {
     const parts = [result.text, renderFindings(result.findings)].filter(Boolean);
     process.stdout.write(parts.join('\n') + '\n');
   }
-  process.exit(result.exit);
+  process.exitCode = result.exit;
 }
 
 function main(argv: string[]): void {
@@ -153,7 +163,11 @@ function main(argv: string[]): void {
       return emit(command, newFeature(root, rest[0], { from: flags.from as string | undefined, shaping: flags.shaping === true, planned: flags.planned === true, roadmap: flags.roadmap as string | undefined, step, depends_on: dependsOn, source: flags.source as string[] | undefined }), json);
     }
     case 'roadmap':
-      return emit(command, roadmap(root, rest[0]), json);
+      return emit(command, roadmap(root, rest[0], { coverage: flags.coverage === true, init: flags.init === true, source: flags.source as string[] | undefined, force: flags.force === true }), json);
+    case 'outline':
+      return emit(command, outline(root, rest), json);
+    case 'drop':
+      return emit(command, drop(root, needDir(), (flags.reason as string) ?? ''), json);
     case 'check': {
       const r = runCheck(root, rest, { base: flags.base as string | undefined, branches: flags['no-branches'] !== true });
       const exit = exitCodeFor(r.findings);
@@ -211,6 +225,12 @@ function main(argv: string[]): void {
       return emit(command, liveIndex(root, { scope: flags.scope as string | undefined, branches: flags.branches === true, all: flags.all === true }), json);
     case 'ship':
       return emit(command, ship(root, needDir(), { merged: flags.merged === true }), json);
+    case 'review': {
+      const [sub, dir, ...picks] = rest;
+      if (sub !== 'accept') throw new Usage('review takes one subcommand: spex review accept <dir> [ok | F2=defer]…');
+      if (!dir) throw new Usage('review accept needs a spec folder');
+      return emit(command, reviewAccept(root, dir, picks, (flags.by as string | undefined) || 'person'), json);
+    }
     case 'archive':
       throw new Usage('archive is `spex ship <dir> --merged` since 2.0: the close after a merge a person made');
     case 'report': {

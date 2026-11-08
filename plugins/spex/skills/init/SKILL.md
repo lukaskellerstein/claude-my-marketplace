@@ -2,12 +2,12 @@
 name: init
 description: Set up spex in a repository once — write .spex/config.yaml from a scan of the test runner, scripts and folders (the default driver, a playwright driver when the repo has it, fast checks, the real systems a test may write, the people who are never an actor, how a feature ships), plus the .spex/.gitignore that keeps the script's work folders out of git — or, after a plugin update, bring an existing config to the new format with spex update. Use when the user says "init spex", "set up spex", "spex init", or asks to start spec-driven work in a repo that has no .spex/config.yaml yet.
 disable-model-invocation: true
-allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *)
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Read(${CLAUDE_PLUGIN_ROOT}/reply.md)
 ---
 
 # spex init
 
-`SPEX` below means `node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs`. Run it from the repo root.
+`SPEX` below means `${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs` (it runs as it is). Run it from the repo root.
 
 ## Steps
 
@@ -46,12 +46,13 @@ allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *)
    Then delete the test. If the runner never collects the folder (a vitest `include` list
    that stops at `src/`, a glob that misses it), fix the command or the runner config and
    probe again. A command that silently runs zero tests makes every red run `RUN-NO-TESTS`.
-5. If the scan found no runner, ask the user one closed question: which command runs the
-   acceptance tests, with 2 to 4 options drawn from the repo and one recommended.
+5. If the scan found no runner, ask the user one question block of `reply.md`: which
+   command runs the acceptance tests, with 2 to 4 options drawn from the repo and a pick.
 6. Run `SPEX check` once. It must print `0 error(s)` on a repo with no specs yet.
 
 ## Reply
 
-At most 15 lines. First line `STATUS: done | concerns | blocked`. Then the runner it found,
-the drivers, the fast checks, `ship.cmd`, and every guess the user must confirm: `live`
-above all, because nothing writes a real system until it is listed there.
+In the frame of `${CLAUDE_PLUGIN_ROOT}/reply.md` (read it first), at most 15 lines, no NEXT.
+`✅ SET UP`, or `⛔ STOPPED`. Then the runner it found, the drivers, the fast checks,
+`ship.cmd`, and every guess the user must confirm under You: `live` above all, because
+nothing writes a real system until it is listed there.

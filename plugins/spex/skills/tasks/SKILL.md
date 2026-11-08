@@ -2,12 +2,12 @@
 name: tasks
 description: Turn approved spex requirements into specs/NNN-slug/tasks.yaml — approach, boundaries, a design block (modules, entities, decisions) and one task record per agent run with write allowlists, context, signatures and named values, never a person as an actor — make it pass spex check with full coverage, then have a test-analyst subagent add a test for every task to tests.yaml. Use when the user says "tasks", "spex tasks", "plan the tasks", "write the tasks", or after spex approve.
 disable-model-invocation: true
-allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Agent
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Read(${CLAUDE_PLUGIN_ROOT}/reply.md), Agent
 ---
 
 # spex tasks
 
-`SPEX` = `node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs`, from the repo root. Every finding
+`SPEX` = `${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs` (it runs as it is), from the repo root. Every finding
 has a `fix` text; read it.
 
 You are the analyst: you write the claim (`done_when`). You never write its proof:
@@ -24,7 +24,7 @@ You are the analyst: you write the claim (`done_when`). You never write its proo
    one builds on. Use those names exactly, and `consumes` them instead of reading their
    folders. Then read only the code the records touch: the module behind each interface,
    the test harness conventions, the contract files. Read `.spex/config.yaml` for
-   `limits`, `live` and `people`. Read `spec.md` only for its Decisions and Alternatives
+   `limits`, `live`, `people` and `repos`. Read `spec.md` only for its Decisions and Alternatives
    sections, when a record's `rationale` points there.
 3. Write `<dir>/tasks.yaml` top to bottom:
    - `approach`: the shape of the solution, under `limits.approach_bytes`.
@@ -36,7 +36,9 @@ You are the analyst: you write the claim (`done_when`). You never write its proo
    - `tasks[]`: one task is one agent run. Order: setup, foundational (schema, models,
      contracts), stories, polish. Fields: `id` (`T01`), `title`, `kind`, `requirements` (the
      ids it makes true; a setup task may have none), `depends_on`, `parallel_group` (only
-     with disjoint `paths`), `paths` (the write allowlist, unit tests included, never
+     with disjoint `paths`), `repo` (a key of `repos` when the task writes another git
+     repo; its `paths` and `context` are inside it; one task, one repo: a change in two is
+     two tasks with `depends_on`), `paths` (the write allowlist, unit tests included, never
      `protected` and never a test folder), `context` (files to read, `path:from-to` for a
      range, under `limits.context_kb` in total), `design` (the `E`/`D` ids it needs; modules
      match by path on their own), `interfaces.produces` (exact signatures later tasks rely
@@ -66,10 +68,8 @@ You are the analyst: you write the claim (`done_when`). You never write its proo
 
 ## Reply
 
-At most 15 lines. `STATUS:` first, then the task list (`T01 kind — title`), the design ids,
-the task tests (`TS09 → T03`, sessions with their `why`), and anything the person should
-look at before the first task runs. Last, the output of `SPEX next <dir>`, as printed: with
-`tasks` in `approvals`, it asks the person to read the file and run `spex approve`.
-
-The NEXT block is copied as `SPEX next` printed it, the two rules included, never rewritten
-into prose or shortened, and it does not count toward the line cap.
+In the frame of `${CLAUDE_PLUGIN_ROOT}/reply.md` (read it first), at most 15 lines.
+`✅ PLANNED`, then the task list (`T01 kind — title`), the design ids, the task tests
+(`TS09 → T03`, sessions with their `why`), and under You anything the person should look
+at before the first task runs. With `tasks` in `approvals`, NEXT asks the person to read
+the file and run `spex approve`.

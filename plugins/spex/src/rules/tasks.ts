@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { testDirs } from '../config.js';
 import { patternsOverlap, pathMatches, underAny } from '../glob.js';
 import { bytes, fileExists, lineCount, readText } from '../io.js';
+import { fromRoot, repoFindings, repoPath } from '../repos.js';
 import { personActor } from '../tests.js';
 import type { Finding, Task, TasksFile } from '../types.js';
 import type { RuleContext } from './requirements.js';
@@ -50,7 +51,14 @@ export function checkTasks(ctx: RuleContext): Finding[] {
   if (bytes(file.approach) > config.limits.approach_bytes) f('error', 'TASK-LIMITS', `approach is ${bytes(file.approach)} bytes, above limits.approach_bytes ${config.limits.approach_bytes}`, 'The approach is the shape of the solution, not the design. Move detail into design.modules, design.entities and design.decisions.');
 
   const covered = new Map<string, string[]>();
-  const noTests = [...config.protected, ...testDirs(config).map((d) => `${d}/`)];
+  // What no task writes, per repo: the home repo's protected and test folders, or the other repo's own.
+  const noTests = (repo?: string): string[] => [...(repo ? (config.repos[repo]?.protected ?? []) : config.protected), ...testDirs(config, repo).map((d) => `${d}/`)];
+  // TASK-REPO: a named repo is in the config; a missing clone is a warning here and an error at the gates.
+  const repoNames = [...new Set(file.tasks.map((t) => t.repo).filter((r): r is string => !!r))];
+  for (const x of repoFindings(ctx.root, config, repoNames, 'warning')) {
+    const ids = file.tasks.filter((t) => [' ', ':'].some((c) => x.message.startsWith(`repo ${t.repo}${c}`))).map((t) => t.id);
+    out.push({ ...x, code: x.code === 'REPO-UNKNOWN' ? 'TASK-REPO' : x.code, message: `${ids.join(', ')}: ${x.message}`, path, id: ids[0] });
+  }
   for (const t of file.tasks) {
     // TASK-REQ
     for (const r of t.requirements) {
@@ -66,7 +74,7 @@ export function checkTasks(ctx: RuleContext): Finding[] {
     }
     // TASK-PROTECTED
     for (const p of t.paths) {
-      const hit = underAny(p, noTests);
+      const hit = underAny(p, noTests(t.repo));
       if (hit) f('error', 'TASK-PROTECTED', `${t.id}: path ${p} is under protected ${hit}`, 'A task never writes specs, tests or CI. Remove the path. Tests are written by the test developer (/spex:tests).', t.id);
     }
     // TASK-LIMITS
@@ -94,6 +102,7 @@ export function checkTasks(ctx: RuleContext): Finding[] {
       for (let j = i + 1; j < members.length; j++) {
         const a = members[i];
         const b = members[j];
+        if ((a.repo ?? '') !== (b.repo ?? '')) continue; // two repos share no file
         for (const pa of a.paths) for (const pb of b.paths) if (patternsOverlap(pa, pb)) f('error', 'TASK-PARALLEL', `${a.id} and ${b.id} in parallel_group ${g} both write ${pa === pb ? pa : `${pa} / ${pb}`}`, 'Tasks in one group run at the same time. Give the shared file to one task and make the other depend on it.', a.id);
         for (const c of a.context ?? []) for (const pb of b.paths) if (pathMatches(pb, c.split(':')[0])) f('error', 'TASK-PARALLEL', `${a.id} reads ${c} while ${b.id} writes it in the same parallel_group`, 'A sibling may change the file mid-run. Make the reader depend on the writer.', a.id);
         for (const c of b.context ?? []) for (const pa of a.paths) if (pathMatches(pa, c.split(':')[0])) f('error', 'TASK-PARALLEL', `${b.id} reads ${c} while ${a.id} writes it in the same parallel_group`, 'A sibling may change the file mid-run. Make the reader depend on the writer.', b.id);
@@ -164,8 +173,12 @@ export function parseContextEntry(entry: string): { path: string; from?: number;
   return { path: m[1], from: Number(m[2]), to: Number(m[3]) };
 }
 
-/** A context or contract path is repo-relative, or relative to the feature folder (contracts/…). */
-export function resolveSpecPath(root: string, featureDir: string, p: string): string | null {
+/**
+ * A context or contract path is inside the task's repo, inside the home repo, or relative to the feature folder
+ * (contracts/…), in that order. `repoDir` is the task's repo, from the home root.
+ */
+export function resolveSpecPath(root: string, featureDir: string, p: string, repoDir = ''): string | null {
+  if (repoDir && fileExists(fromRoot(root, join(repoDir, p)))) return fromRoot(root, join(repoDir, p));
   if (fileExists(join(root, p))) return join(root, p);
   if (fileExists(join(root, featureDir, p))) return join(root, featureDir, p);
   return null;
@@ -173,11 +186,12 @@ export function resolveSpecPath(root: string, featureDir: string, p: string): st
 
 function contextCheck(ctx: RuleContext, file: TasksFile, t: Task): Finding[] {
   const out: Finding[] = [];
-  const upstreamPaths = transitiveDeps(file.tasks, t).flatMap((u) => u.paths);
+  const upstreamPaths = transitiveDeps(file.tasks, t).filter((u) => (u.repo ?? '') === (t.repo ?? '')).flatMap((u) => u.paths);
+  const repoDir = repoPath(ctx.config, t.repo);
   let total = 0;
   for (const entry of t.context ?? []) {
     const { path: p, from, to } = parseContextEntry(entry);
-    const abs = resolveSpecPath(ctx.root, ctx.feature.dir, p);
+    const abs = resolveSpecPath(ctx.root, ctx.feature.dir, p, repoDir);
     if (abs) {
       const text = readText(abs);
       if (from !== undefined && to !== undefined) {

@@ -2,12 +2,12 @@
 name: update
 description: After a spex plugin update, bring the repo to the plugin's format — run spex update, which adds the keys the newer plugin needs with their defaults and comments, runs the format migrations (1 → 2 moves every record's verification and every task's verify commands into a tests.yaml per folder) and sets format, keeping every value and comment of yours — then have a test-analyst subagent complete each migrated proof plan, and show what changed. Use when the user says "spex update", "update the config", "update spex", or right after the plugin was updated.
 disable-model-invocation: true
-allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Agent
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Read(${CLAUDE_PLUGIN_ROOT}/reply.md), Agent
 ---
 
 # spex update
 
-`SPEX` = `node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs`, from the repo root.
+`SPEX` = `${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs` (it runs as it is), from the repo root.
 
 ## Steps
 
@@ -31,7 +31,8 @@ allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Agent
 
 ## Reply
 
-At most 12 lines. `STATUS:` first, then one line per change `spex update` printed
+In the frame of `${CLAUDE_PLUGIN_ROOT}/reply.md` (read it first), at most 12 lines, no NEXT.
+`✅ UPDATED`, then one line per change `spex update` printed
 (`added live: []`, `specs/007-csv-export/tests.yaml: written from 2 scenario(s) …`), the
 plans completed, the warnings of `check`, then the output of `SPEX --version`, as printed:
 the plugin version and the format.

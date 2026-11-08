@@ -19,6 +19,7 @@ export const DEFAULT_LIMITS = {
   file_kb: 40,
   tests_scenarios: 12,
   verify_minutes: 20,
+  step_introduces: 10,
 };
 
 /**
@@ -34,6 +35,7 @@ export const DEFAULT_CONFIG: Config = {
   acceptance_dir: 'tests/acceptance',
   acceptance_cmd: '',
   drivers: {},
+  repos: {},
   fast_checks: [],
   source_dirs: ['src'],
   protected: ['specs/', '.spex/', 'tests/acceptance/', '.github/'],
@@ -63,9 +65,13 @@ export function driverOf(config: Config, name: string | undefined): Driver | nul
   return config.drivers[name] ?? { cmd: '', dir: undefined };
 }
 
-/** Every folder that holds test files: acceptance_dir and each driver's dir. No task may write them. */
-export function testDirs(config: Config): string[] {
-  const dirs = [config.acceptance_dir, ...Object.values(config.drivers).map((d) => d.dir).filter((d): d is string => !!d)];
+/**
+ * Every folder that holds test files in one repo: acceptance_dir and the drivers' dirs here, or the dirs of the
+ * drivers that run in that repo. No task may write them.
+ */
+export function testDirs(config: Config, repo?: string): string[] {
+  const own = Object.values(config.drivers).filter((d) => (d.repo ?? undefined) === repo);
+  const dirs = [...(repo ? [] : [config.acceptance_dir]), ...own.map((d) => d.dir).filter((d): d is string => !!d)];
   return [...new Set(dirs.map((d) => d.replace(/\/+$/, '')))];
 }
 
@@ -84,8 +90,10 @@ export function loadConfig(root: string): { config: Config; findings: Finding[] 
     format: raw.format ?? 1, // the only format without a line is 1
     limits: { ...DEFAULT_LIMITS, ...(raw.limits ?? {}) },
     drivers: raw.drivers ?? {},
+    repos: raw.repos ?? {},
     ship: { ...DEFAULT_CONFIG.ship, ...(raw.ship ?? {}) },
   };
+  for (const [name, d] of Object.entries(config.drivers)) if (d.repo && !config.repos[d.repo]) findings.push({ severity: 'error', code: 'CONFIG-REPO', message: `driver ${name} runs in repo ${d.repo}, which is not in repos`, path: CONFIG_PATH, fix: `Add repos.${d.repo}: {path: ../<folder>}, or fix the driver's repo.` });
   if (config.format > FORMAT) findings.push({ severity: 'error', code: 'CONFIG-FORMAT', message: `the specs are format ${config.format}; this spex reads format ${FORMAT}`, path: CONFIG_PATH, fix: 'Update the spex plugin. An older script would read changed keys wrong, so nothing runs until then.' });
   else if (config.format < FORMAT) findings.push({ severity: 'error', code: 'CONFIG-FORMAT', message: `the specs are format ${config.format}; this spex writes format ${FORMAT}`, path: CONFIG_PATH, fix: `Run \`spex update\`: it rewrites the files and sets format: ${FORMAT}.` });
   return { config, findings };

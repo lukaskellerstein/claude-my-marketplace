@@ -125,7 +125,13 @@ const BROKEN = [
   ['TEST-NAME', 4, (d) => mutTests(d, (f) => delete f.tests[0].name)],
   ['TEST-NAME', 4, (d) => mutTests(d, (f) => (f.tests[0].name = 'REQ_007_002_AC_1_wrong_prefix'))],
   ['TEST-NAME', 4, (d) => mutTests(d, (f) => (f.tests[1].name = f.tests[0].name))],
-  ['TEST-FILE', 4, (d) => mutTests(d, (f) => (f.tests[0].name = 'REQ_007_001_AC_1_not_in_the_file'))],
+  ['TEST-FILE', 4, (d) => {
+    // TS01 ran once (its red run is on record) and is now gone from its file: a broken record
+    mkdirSync(join(d, '.spex/evidence/007'), { recursive: true });
+    writeFileSync(join(d, '.spex/evidence/007/TS01.red.json'), '{}');
+    mutTests(d, (f) => (f.tests[0].name = 'REQ_007_001_AC_1_not_in_the_file'));
+  }],
+  ['TEST-FILE', 0, (d) => mutTests(d, (f) => (f.tests[0].name = 'REQ_007_001_AC_1_not_in_the_file'))], // a later batch into a file that exists, never run: not written yet, an info
   ['TEST-FILE', 0, (d) => mutTests(d, (f) => (f.tests[0].file = 'tests/acceptance/later.test.mjs'))], // not written yet: an info
   ['TEST-DRIVER', 4, (d) => mutTests(d, (f) => (f.tests[0].driver = 'playwright'))],
   ['TEST-SESSION-WHY', 4, (d) => mutTests(d, (f) => f.tests.push({ id: 'TS03', covers: ['REQ-007-001'], kind: 'session', driver: 'browser', steps: ['open the export'], expect: ['two rows'] }))],
@@ -226,4 +232,14 @@ test('--base freezes approved records that exist at the ref', () => {
   assert.equal(r.code, 4);
   const clean = spex(dir, 'check');
   assert.ok(!codes(clean).includes('REQ-FROZEN'), 'without --base nothing is frozen');
+});
+
+test('`spex check specs/` checks every folder, as `spex check` does: specs/ itself is no feature', () => {
+  const dir = makeRepo('csv-export');
+  const all = spex(dir, 'check');
+  for (const arg of ['specs/', 'specs', './specs/']) {
+    const r = spex(dir, 'check', arg);
+    assert.ok(!codes(r).includes('SPEC-MISSING'), `${arg}: ${r.stdout}`);
+    assert.deepEqual(r.json.features, all.json.features, arg);
+  }
 });

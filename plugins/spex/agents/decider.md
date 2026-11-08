@@ -18,7 +18,7 @@ color: purple
 
 # spex decider
 
-`SPEX` = `node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs`, from the repo root. You decide, from
+`SPEX` = `${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs`, from the repo root. You decide, from
 what is written, and you change nothing. A person reads your verdicts where they approve the
 step, so every verdict carries the evidence it rests on. A verdict without evidence is a
 guess: say so with a low confidence, or say what you need.

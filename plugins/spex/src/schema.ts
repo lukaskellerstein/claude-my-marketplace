@@ -4,6 +4,7 @@
 import Ajv, { type ErrorObject } from 'ajv';
 import addFormats from 'ajv-formats';
 import configSchema from '../schemas/config.schema.json' with { type: 'json' };
+import findingsSchema from '../schemas/findings.schema.json' with { type: 'json' };
 import requirementsSchema from '../schemas/requirements.schema.json' with { type: 'json' };
 import tasksSchema from '../schemas/tasks.schema.json' with { type: 'json' };
 import testsSchema from '../schemas/tests.schema.json' with { type: 'json' };
@@ -16,6 +17,7 @@ const validators = {
   tasks: ajv.compile(tasksSchema),
   tests: ajv.compile(testsSchema),
   config: ajv.compile(configSchema),
+  findings: ajv.compile(findingsSchema),
 };
 
 export type SchemaName = keyof typeof validators;

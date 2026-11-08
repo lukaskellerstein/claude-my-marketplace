@@ -2,12 +2,12 @@
 name: research
 description: Decide the open unknowns of a spex spec — library choices, versions, how an existing API behaves — and write research.md plus a one-line decision per unknown into requirements.yaml. Use when the user says "research", "spex research", "resolve the unknowns", or when spex gate plan reports GATE-UNKNOWN. It changes no requirement.
 disable-model-invocation: true
-allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Agent, WebSearch, WebFetch
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Read(${CLAUDE_PLUGIN_ROOT}/reply.md), Agent, WebSearch, WebFetch
 ---
 
 # spex research
 
-`SPEX` = `node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs`, from the repo root.
+`SPEX` = `${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs` (it runs as it is), from the repo root.
 
 ## Steps
 
@@ -32,8 +32,6 @@ allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Agent, WebSe
 
 ## Reply
 
-At most 15 lines. `STATUS:` first. One line per unknown: id, the decision, the reason.
-Then any question you added. Last, the output of `SPEX next <dir>`, as printed.
-
-The NEXT block is copied as `SPEX next` printed it, the two rules included, never rewritten
-into prose or shortened, and it does not count toward the line cap.
+In the frame of `${CLAUDE_PLUGIN_ROOT}/reply.md` (read it first), at most 15 lines.
+`✅ DECIDED`. One line per unknown: id, the decision, the reason. Then any question you
+added.

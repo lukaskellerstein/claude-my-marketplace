@@ -1,7 +1,7 @@
 // The spec in words (spec.md). Markdown is for people, so the rule reads only its shape: the sections
 // the next step needs are there and have words in them, the front matter a program flips (`status`)
 // and a roadmap step carries (`roadmap`, `step`, `depends_on`, `source`), and the sized open
-// questions. Everything else about the text is the person's business.
+// questions. Everything else about the text is the person's business, a Mermaid diagram included.
 
 import { join } from 'node:path';
 import { parse } from 'yaml';
@@ -20,9 +20,18 @@ export const REQUIRED_SECTIONS = ['Why', 'What', 'Not this', 'Success'];
 /** What a planned step must say before its turn comes: the goal and the boundary to its siblings. */
 export const STUB_SECTIONS = ['Why', 'What', 'Not this'];
 
-/** How big a hole is. The marks read like a signal meter and survive any terminal font. */
-export const SIZE_MARKS = { big: '●●●', medium: '●●○', small: '●○○' } as const;
+/** What a step of a roadmap takes from the others and gives them: names, each with where it comes from. A stub must say both ("None." is an answer). */
+export const LINK_SECTIONS = ['Uses', 'Introduces'];
+
+/** The stub's fourth section: what its `source` sections say, so a person need not open the design to read the step. */
+export const DESIGN_SECTION = 'From the design';
+
+/** How big a hole is: a colored square, which a person finds in a scan. Big, medium, small read red, orange, yellow. */
+export const SIZE_MARKS = { big: '🟥', medium: '🟧', small: '🟨' } as const;
 export type Size = keyof typeof SIZE_MARKS;
+
+/** The marks of v2.0 and before, a signal meter in dots. Specs written then still count. */
+const OLD_SIZE_MARKS: Record<Size, string> = { big: '●●●', medium: '●●○', small: '●○○' };
 
 /**
  * `planned`: a stub of a roadmap, written by /spex:new when it sized a big idea; `spex gate new` flips it to
@@ -131,16 +140,16 @@ export function openQuestions(sections: Map<string, string>): OpenCounts {
     const m = line.match(/^\s*(?:[-*+]|\d+[.)])\s+(.*)$/);
     if (!m) continue;
     const item = m[1].trim();
-    const size = (Object.keys(SIZE_MARKS) as Size[]).find((s) => item.startsWith(SIZE_MARKS[s]));
+    const size = (Object.keys(SIZE_MARKS) as Size[]).find((s) => item.startsWith(SIZE_MARKS[s]) || item.startsWith(OLD_SIZE_MARKS[s]));
     counts[size ?? 'unsized']++;
     counts.total++;
   }
   return counts;
 }
 
-/** `1 ●●● · 2 ●●○ · 0 ●○○`, plus the unsized ones when there are any. */
+/** `🟥 1 big · 🟧 2 medium · 🟨 0 small`, plus the unsized ones when there are any. */
 export function openSummary(c: OpenCounts): string {
-  const parts = (Object.keys(SIZE_MARKS) as Size[]).map((s) => `${c[s]} ${SIZE_MARKS[s]}`);
+  const parts = (Object.keys(SIZE_MARKS) as Size[]).map((s) => `${SIZE_MARKS[s]} ${c[s]} ${s}`);
   if (c.unsized) parts.push(`${c.unsized} unsized`);
   return parts.join(' · ');
 }
@@ -216,9 +225,9 @@ export function checkSpec(ctx: { root: string; feature: Feature }): Finding[] {
   const text = readText(join(ctx.root, doc.path));
   const sections = sectionBodies(text);
   const meta = specMeta(text);
-  const required = meta.status === 'planned' ? STUB_SECTIONS : REQUIRED_SECTIONS;
+  const required = meta.status === 'planned' ? [...STUB_SECTIONS, ...LINK_SECTIONS] : REQUIRED_SECTIONS;
   const empty = required.filter((s) => !sections.get(s.toLowerCase()));
-  if (empty.length) findings.push({ severity: 'warning', code: 'SPEC-SECTIONS', message: `${doc.path} has nothing under: ${empty.join(', ')}`, path: doc.path, fix: meta.status === 'planned' ? 'A planned step says Why, What and Not this in a few lines each, so the steps around it know its boundary.' : 'Run /spex:new to fill them, or write them by hand. "Not this" is the boundary; "Success" is what the acceptance tests will measure.' });
+  if (empty.length) findings.push({ severity: 'warning', code: 'SPEC-SECTIONS', message: `${doc.path} has nothing under: ${empty.join(', ')}`, path: doc.path, fix: meta.status === 'planned' ? 'A planned step says Why, What and Not this, so the steps around it know its boundary, and Uses and Introduces, so spex check can test its depends_on ("None." when there is nothing).' : 'Run /spex:new to fill them, or write them by hand. "Not this" is the boundary; "Success" is what the acceptance tests will measure.' });
   if (meta.status === 'shaping') {
     const open = openQuestions(sections);
     findings.push({ severity: 'info', code: 'SPEC-SHAPING', message: `${doc.path} is still shaping: ${open.total ? `${openSummary(open)} open` : 'no open question'}`, path: doc.path, fix: `Continue with /spex:new ${ctx.feature.dir}. When the person says done, \`spex approve ${ctx.feature.dir}\` marks it ready.` });

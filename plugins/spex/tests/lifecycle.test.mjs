@@ -55,7 +55,8 @@ test('the whole lifecycle on the README example', () => {
   r = spex(repo, 'next', DIR);
   assert.equal(r.json.stage, 'approve-tasks');
   assert.ok(r.json.text.startsWith(`${'─'.repeat(40)}\nNEXT   /clear\n       /spex:approve specs/007-csv-export\n`), r.json.text);
-  assert.ok(r.json.text.includes('auto: off'), r.json.text);
+  // approve asks no question, so auto changes nothing here and the block does not mention it
+  assert.ok(!r.json.text.includes('auto:'), r.json.text);
   assert.ok(codes(spex(repo, 'gate', 'tests', DIR, 'TS01')).includes('GATE-TASKS-APPROVED'));
   assert.ok(codes(spex(repo, 'gate', 'develop', DIR, 'T01')).includes('GATE-TASKS-APPROVED'));
   r = spex(repo, 'approve', DIR);
@@ -416,9 +417,28 @@ test('coverage names the script with no file, and the claim with no test', () =>
   assert.equal(r.json.missing, 1);
   assert.ok(r.json.findings[0].message.includes('REQ_007_002_AC_1_refuses_overwrite'));
   assert.ok(r.json.text.includes('ok  REQ-007-001/AC-1  TS01 script') && r.json.text.includes('MISSING TS02'), r.json.text);
-  // the file the plan names exists without the test: the check says so; a plan without a file is the coverage gate
+  // the file the plan names exists without the test, and TS02 never ran: a later batch writes it there.
+  // agent-flywheel-os 001: batch 2 pointed at the files batch 1 made, the gate refused it as broken records,
+  // and NEXT named /spex:tests again, which printed the same refusal.
   let g = spex(repo, 'gate', 'develop', DIR, 'T02');
+  assert.ok(codes(g).includes('GATE-COVERAGE') && !g.json.findings.some((f) => f.code === 'TEST-FILE' && f.severity === 'error'), codes(g).join(','));
+  g = spex(repo, 'gate', 'tests', DIR);
+  assert.equal(g.code, 0, g.stdout);
+  assert.deepEqual(g.json.tests, ['TS02']);
+  let n = spex(repo, 'next', DIR);
+  assert.equal(n.json.command, `/spex:tests ${DIR}`, n.json.text);
+  // once TS02 ran, a name gone from its file is a broken record: the gate refuses, and NEXT says spex check, not the skill again
+  mkdirSync(join(repo, '.spex/evidence/007'), { recursive: true });
+  writeFileSync(join(repo, '.spex/evidence/007/TS02.red.json'), '{}');
+  g = spex(repo, 'gate', 'tests', DIR);
+  assert.equal(g.code, 6, g.stdout);
   assert.ok(codes(g).includes('TEST-FILE'), codes(g).join(','));
+  n = spex(repo, 'next', DIR);
+  assert.equal(n.code, 4, n.stdout);
+  assert.equal(n.json.stage, 'invalid');
+  assert.equal(n.json.command, `spex check ${DIR}`);
+  assert.ok(n.json.text.includes('(TEST-FILE)') && !n.json.text.includes('/clear') && !n.json.text.includes('auto:'), n.json.text);
+  rmSync(join(repo, '.spex/evidence/007/TS02.red.json'));
   const testsPath = join(repo, DIR, 'tests.yaml');
   writeFileSync(testsPath, readFileSync(testsPath, 'utf8').replace('    name: REQ_007_002_AC_1_refuses_overwrite\n    file: tests/acceptance/export.test.mjs\n', '    name: REQ_007_002_AC_1_refuses_overwrite\n'));
   g = spex(repo, 'gate', 'develop', DIR, 'T02');
@@ -503,10 +523,11 @@ test('new --shaping writes the status line, check counts the sized holes, approv
   r = spex(repo, 'approve', 'specs/008-bulk-delete');
   assert.equal(r.code, 6, r.stdout);
   assert.ok(codes(r).includes('APPROVE-SPEC'));
-  // filled, with sized holes: the check counts them, approve flips the status and carries them over
-  writeFileSync(path, '---\nstatus: shaping\n---\n# Bulk delete\n\n## Why\nwords\n\n## What\n- words\n\n## Not this\n- words\n\n## Success\n- words\n\n## Open questions\n\n- ●●● Which login provider? Proposed: GitHub only.\n- ●●○ Soft delete or hard delete?\n- ●●○ Audit log?\n- an unsized one\n');
+  // filled, with sized holes: the check counts them, approve flips the status and carries them over.
+  // The squares are the marks now; the dots of v2.0 still count, so a spec shaped then reads the same.
+  writeFileSync(path, '---\nstatus: shaping\n---\n# Bulk delete\n\n## Why\nwords\n\n## What\n- words\n\n## Not this\n- words\n\n## Success\n- words\n\n## Open questions\n\n- 🟥 Which login provider? Proposed: GitHub only.\n- 🟧 Soft delete or hard delete?\n- ●●○ Audit log?\n- an unsized one\n');
   r = spex(repo, 'check', 'specs/008-bulk-delete');
-  assert.ok(r.json.findings.find((f) => f.code === 'SPEC-SHAPING').message.endsWith('1 ●●● · 2 ●●○ · 0 ●○○ · 1 unsized open'), r.stdout);
+  assert.ok(r.json.findings.find((f) => f.code === 'SPEC-SHAPING').message.endsWith('🟥 1 big · 🟧 2 medium · 🟨 0 small · 1 unsized open'), r.stdout);
   r = spex(repo, 'approve', 'specs/008-bulk-delete');
   assert.equal(r.code, 0, r.stdout);
   assert.deepEqual(r.json.open, { big: 1, medium: 2, small: 0, unsized: 1, total: 4 });
@@ -537,7 +558,11 @@ test('new --shaping writes the status line, check counts the sized holes, approv
   r = spex(repo, 'new', 'still-shaping', '--shaping');
   r = spex(repo, 'next', 'specs/011-still-shaping');
   assert.equal(r.json.stage, 'shaping');
-  assert.ok(r.json.text.includes('Stay in this chat'), r.json.text);
+  // the answer is the next step, not the skill the chat is already in: the command only resumes from another chat
+  assert.ok(r.json.text.includes('NEXT   your answer, in the shaping chat'), r.json.text);
+  assert.ok(r.json.text.includes('ok takes every pick · answer by number · done approves the spec and ends shaping'), r.json.text);
+  assert.ok(r.json.text.includes('No shaping chat open? /spex:new specs/011-still-shaping resumes it.'), r.json.text);
+  assert.ok(!r.json.text.includes('NEXT   /spex:new'), r.json.text);
   r = spex(repo, 'next', 'specs/009-from-notes');
   assert.equal(r.json.stage, 'spec-ready');
   assert.equal(r.json.command, '/spex:requirements specs/009-from-notes');
@@ -587,19 +612,22 @@ test('a roadmap: planned stubs, gate new waits for built dependencies, inherited
   assert.equal(r.code, 0, r.stdout);
   const stub = readFileSync(join(repo, 'specs/010-runner-cli/spec.md'), 'utf8');
   assert.ok(stub.startsWith('---\nstatus: planned\nroadmap: nex-platform\nstep: 3\ndepends_on: [008-ticket-model, 009-runner]\nsource: ["docs/nex-design.md#3.4", "docs/nex-design.md#3.5"]\n---\n'), stub.split('\n').slice(0, 8).join('\n'));
+  // a stub says what it is, and holds only what is known now: no empty heading reads as a failed run
+  assert.ok(stub.includes('> Planned: step 3 of the roadmap nex-platform. /spex:new shapes it once 008-ticket-model, 009-runner are built.'), stub);
+  assert.deepEqual([...stub.matchAll(/^## (.+)$/gm)].map((m) => m[1]), ['Why', 'What', 'Not this', 'From the design', 'Uses', 'Introduces', 'Open questions']);
   // usage: a stub needs its roadmap, depends only on folders that exist, and not on both flags at once
   assert.equal(spex(repo, 'new', 'x', '--planned').code, 2);
   assert.equal(spex(repo, 'new', 'x', '--planned', '--roadmap', 'nex-platform', '--depends-on', '099-nowhere').code, 2);
   assert.equal(spex(repo, 'new', 'x', '--planned', '--shaping', '--roadmap', 'nex-platform').code, 2);
-  // check: a stub needs Why, What and Not this; the design file is missing (a warning); SPEC-PLANNED says what it waits for
+  // check: a stub needs Why, What, Not this, Uses and Introduces; the design file is missing (a warning); SPEC-PLANNED says what it waits for
   r = spex(repo, 'check', 'specs/010-runner-cli');
   assert.equal(r.code, 0, r.stdout);
   assert.deepEqual(codes(r).sort(), ['REQ-MISSING', 'SPEC-PLANNED', 'SPEC-SECTIONS', 'SPEC-SOURCE', 'SPEC-SOURCE']);
-  assert.ok(r.json.findings.find((f) => f.code === 'SPEC-SECTIONS').message.endsWith('Why, What, Not this'));
+  assert.ok(r.json.findings.find((f) => f.code === 'SPEC-SECTIONS').message.endsWith('Why, What, Not this, Uses, Introduces'));
   assert.ok(r.json.findings.find((f) => f.code === 'SPEC-PLANNED').message.includes('waits for 008-ticket-model (shaping), 009-runner (planned)'), r.stdout);
   mkdirSync(join(repo, 'docs'));
   writeFileSync(join(repo, 'docs/nex-design.md'), '# nex\n\n## 3.1\n\n## 3.2\n\n## 3.4\n\n## 3.5\n');
-  const fill = (dir) => writeFileSync(join(repo, dir, 'spec.md'), readFileSync(join(repo, dir, 'spec.md'), 'utf8').replace(/## Why\n\n<!--.*?-->/s, '## Why\nwords').replace(/## What\n\n<!--.*?-->/s, '## What\nwords').replace(/## Not this\n\n<!--.*?-->/s, '## Not this\nwords').replace(/## Success\n\n<!--.*?-->/s, '## Success\nwords'));
+  const fill = (dir) => writeFileSync(join(repo, dir, 'spec.md'), readFileSync(join(repo, dir, 'spec.md'), 'utf8').replace(/## Why\n\n<!--.*?-->/s, '## Why\nwords').replace(/## What\n\n<!--.*?-->/s, '## What\nwords').replace(/## Not this\n\n<!--.*?-->/s, '## Not this\nwords').replace(/## Success\n\n<!--.*?-->/s, '## Success\nwords').replace(/## Uses\n\n<!--.*?-->/s, '## Uses\nNone.').replace(/## Introduces\n\n<!--.*?-->/s, '## Introduces\nNone.'));
   fill('specs/009-runner');
   fill('specs/010-runner-cli');
   assert.deepEqual(codes(spex(repo, 'check', 'specs/010-runner-cli')).sort(), ['REQ-MISSING', 'SPEC-PLANNED']);
@@ -661,9 +689,22 @@ test('a roadmap: planned stubs, gate new waits for built dependencies, inherited
   r = spex(repo, 'gate', 'new', 'specs/009-runner');
   assert.equal(r.code, 0, r.stdout);
   assert.equal(r.json.flipped, true);
-  assert.ok(readFileSync(join(repo, 'specs/009-runner/spec.md'), 'utf8').startsWith('---\nstatus: shaping\nroadmap: nex-platform\nstep: 2\n'));
+  const opened = readFileSync(join(repo, 'specs/009-runner/spec.md'), 'utf8');
+  assert.ok(opened.startsWith('---\nstatus: shaping\nroadmap: nex-platform\nstep: 2\n'));
+  // opening the stub: the planned note goes, the sections it left out come back with their hints, its words stay
+  assert.ok(!opened.includes('> Planned:'), opened);
+  assert.deepEqual([...opened.matchAll(/^## (.+)$/gm)].map((m) => m[1]), ['Why', 'What', 'Not this', 'From the design', 'Uses', 'Introduces', 'Open questions', 'Who', 'Constraints', 'Success', 'Alternatives', 'Decisions']);
+  assert.ok(opened.includes('## Why\nwords') && opened.includes('<!-- Tech, time, cost, compatibility. -->'), opened);
+  // the banner's numbers: step 2 of the 3 folders that name the roadmap
+  assert.equal(r.json.steps, 3);
+  assert.ok(r.json.text.includes('roadmap nex-platform, step 2 of 3 · after 008-ticket-model (built)'), r.json.text);
   assert.ok(r.json.text.includes('read next: spex show specs/009-runner --inherited'), r.json.text);
-  // this test filled the stub's four sections and left nothing open, so the flipped step already waits for a person
+  // a second gate on the opened step changes nothing
+  assert.equal(spex(repo, 'gate', 'new', 'specs/009-runner').json.flipped, false);
+  assert.equal(readFileSync(join(repo, 'specs/009-runner/spec.md'), 'utf8'), opened);
+  // Success came back empty, so the step is still shaping; filled, it waits for a person
+  assert.equal(spex(repo, 'next', 'specs/009-runner').json.stage, 'shaping');
+  writeFileSync(join(repo, 'specs/009-runner/spec.md'), opened.replace(/## Success\n\n<!--.*?-->/s, '## Success\nwords'));
   assert.equal(spex(repo, 'next', 'specs/009-runner').json.stage, 'approve-spec');
   // step 3 still waits, now for step 2 only
   assert.deepEqual(spex(repo, 'roadmap', 'nex-platform').json.steps[2].waits, ['specs/009-runner']);
@@ -694,7 +735,7 @@ test('update keeps the config a person wrote and adds what a newer plugin needs;
   assert.ok(before.startsWith('# The example repo'));
   let r = spex(repo, 'update');
   assert.equal(r.code, 0, r.stdout);
-  assert.deepEqual(r.json.changes, ['added drivers: {}', 'added live: []', 'added people: []', 'added verify_rounds: 3', 'added approvals: ["tasks"]', 'added auto: false', 'added ship: {"commit":false,"cmd":""}', 'added limits.tests_scenarios: 12']);
+  assert.deepEqual(r.json.changes, ['added drivers: {}', 'added repos: {}', 'added live: []', 'added people: []', 'added verify_rounds: 3', 'added approvals: ["tasks"]', 'added auto: false', 'added ship: {"commit":false,"cmd":""}', 'added limits.tests_scenarios: 12', 'added limits.step_introduces: 10']);
   const after = readFileSync(path, 'utf8');
   assert.ok(after.startsWith('# The example repo'), `the header comment stays first:\n${after}`);
   assert.ok(after.includes('acceptance_cmd: node --test --test-name-pattern="{ids}"'), 'values kept');
@@ -889,4 +930,86 @@ test('a shaping spec with every section filled and nothing open waits for a pers
   n = spex(repo, 'next', dir);
   assert.equal(n.json.auto, true);
   assert.ok(n.json.text.includes('auto: on (nobody is asked'), n.json.text);
+});
+
+test('review accept: every finding at once, the person answers in one word, fix picks become tasks that need no second approval', () => {
+  // nex 028: each review finding went through approve, tests, develop, verify and a fresh full review, and the
+  // fourth round had no way to ship. Now the round waits for one answer, the fixes go through /spex:fix, and a
+  // later round only checks them.
+  const repo = makeRepo('csv-export');
+  spex(repo, 'approve', DIR);
+  spex(repo, 'approve', DIR);
+  writeFileSync(join(repo, 'src/state.txt'), 'implemented\n');
+  const tasksPath = join(repo, DIR, 'tasks.yaml');
+  writeFileSync(tasksPath, readFileSync(tasksPath, 'utf8').replace(/status: todo/g, 'status: done'));
+  assert.equal(spex(repo, 'verify', DIR).code, 0);
+  let r = spex(repo, 'show', DIR, '--review');
+  assert.equal(r.json.round, 1);
+  assert.equal(r.json.findings_file, '.spex/review/007-1.findings.yaml');
+  assert.ok(r.json.text.includes(`/spex:review ${DIR} ok`), r.json.text);
+  const finding = (id, severity, pick, extra = '') => `  - id: ${id}\n    severity: ${severity}\n    title: Finding ${id} of the round\n    file: src/cli/commands/export.ts\n    line: 12\n    when: a list has a task whose title holds a newline\n    effect: the row splits in two\n    fix: quote a title that holds a newline, in export.ts\n    pick: ${pick}\n${extra}`;
+  const fixPart = '    done_when: a title with a newline is one quoted CSV field\n    requirements: [REQ-007-001]\n    paths: [src/cli/commands/export.ts]\n    context: [src/state.txt]\n';
+  writeFileSync(join(repo, '.spex/review/007-1.findings.yaml'), `feature: "007"\nround: 1\nfindings:\n${finding('F1', 'P1', 'fix', fixPart)}${finding('F2', 'P3', 'defer', '    why: no user has a newline in a title\n')}${finding('F3', 'nit', 'skip')}`);
+
+  // the round waits for the answer: next names it, and nothing else moves
+  r = spex(repo, 'next', DIR);
+  assert.equal(r.json.stage, 'review-accept', r.stdout);
+  assert.equal(r.json.command, `/spex:review ${DIR} ok`);
+  assert.ok(r.json.text.includes('Stay in this chat: 3 finding(s) of review round 1 wait for your answer'), r.json.text);
+
+  // a fix pick needs the claim and the paths; a pick the round does not have is refused
+  assert.ok(codes(spex(repo, 'review', 'accept', DIR, '2=fix')).includes('REVIEW-FIX'));
+  assert.ok(codes(spex(repo, 'review', 'accept', DIR, '9=fix')).includes('REVIEW-UNKNOWN'));
+  assert.equal(spex(repo, 'review', 'accept', DIR, 'maybe').code, 2);
+
+  r = spex(repo, 'review', 'accept', DIR, 'ok');
+  assert.equal(r.code, 0, r.stdout);
+  const tasks = parse(readFileSync(tasksPath, 'utf8'), { schema: 'core' });
+  const t03 = tasks.tasks.find((t) => t.id === 'T03');
+  assert.deepEqual([t03.kind, t03.severity, t03.review, t03.status, t03.instructions], ['fix', 'P1', '007-1/F1', 'todo', 'quote a title that holds a newline, in export.ts']);
+  assert.ok(t03.source.startsWith('review round 1 F1 (P1, src/cli/commands/export.ts:12)') && t03.source.includes('When a list has a task whose title holds a newline'), t03.source);
+  assert.deepEqual(tasks.deferred.map((d) => [d.severity, d.by, d.why]), [['P3', 'person', 'no user has a newline in a title']]);
+  assert.equal(tasks.tasks.length, 3, 'the skip pick made nothing');
+  const accepted = parse(readFileSync(join(repo, '.spex/review/007-1.findings.yaml'), 'utf8')).accepted;
+  assert.deepEqual([accepted.by, accepted.tasks, accepted.deferred, accepted.skipped], ['person', ['T03'], ['F2'], ['F3']]);
+  assert.equal(JSON.parse(readFileSync(join(repo, '.spex/runs/007/review.json'), 'utf8')).status, 'concerns');
+  assert.equal(spex(repo, 'review', 'accept', DIR).json.findings[0].code, 'REVIEW-NONE', 'an answered round is not answered twice');
+
+  // the accept was the approval: next goes to /spex:fix, not to /spex:approve, also once a test covers T03
+  r = spex(repo, 'next', DIR);
+  assert.equal(r.json.stage, 'plan-tests', r.stdout);
+  assert.equal(r.json.command, `/spex:fix ${DIR}`);
+  const testsPath = join(repo, DIR, 'tests.yaml');
+  writeFileSync(testsPath, `${readFileSync(testsPath, 'utf8')}  - id: TS03\n    covers: [T03]\n    kind: script\n    driver: shell\n    steps:\n      - grep -q fixed src/fix.txt\n    expect:\n      - the exit code is 0\n`);
+  r = spex(repo, 'next', DIR);
+  assert.equal(r.json.stage, 'develop', r.stdout);
+  assert.equal(r.json.command, `/spex:fix ${DIR}`);
+  assert.equal(spex(repo, 'check', DIR).code, 0);
+
+  // only spex review accept writes the review field: a forged one is an error
+  writeFileSync(tasksPath, readFileSync(tasksPath, 'utf8').replace('review: 007-1/F1', 'review: 007-1/F3'));
+  assert.ok(codes(spex(repo, 'check', DIR)).includes('TASK-REVIEW'));
+  writeFileSync(tasksPath, readFileSync(tasksPath, 'utf8').replace('review: 007-1/F3', 'review: 007-1/F1'));
+
+  // the fix is built and verified: round 2 only checks it, and an empty round is clean, so ship opens
+  writeFileSync(join(repo, 'src/fix.txt'), 'fixed\n');
+  writeFileSync(tasksPath, readFileSync(tasksPath, 'utf8').replace(/status: todo/g, 'status: done'));
+  r = spex(repo, 'next', DIR);
+  assert.equal(r.json.command, `/spex:fix ${DIR}`, 'verify is part of the fix run');
+  assert.equal(spex(repo, 'verify', DIR).code, 0);
+  r = spex(repo, 'next', DIR);
+  assert.equal(r.json.stage, 'review');
+  assert.ok(r.json.why.includes('checks each accepted finding'), r.json.why);
+  r = spex(repo, 'show', DIR, '--review');
+  assert.equal(r.json.round, 2);
+  assert.equal(r.json.check, true);
+  assert.ok(r.json.text.includes('## check (round 2)') && r.json.text.includes('T03 done P1 007-1/F1'), r.json.text);
+  writeFileSync(join(repo, '.spex/review/007-2.findings.yaml'), 'feature: "007"\nround: 2\nfindings: []\n');
+  r = spex(repo, 'review', 'accept', DIR, 'ok', '--by', 'agent');
+  assert.equal(r.code, 0, r.stdout);
+  assert.equal(JSON.parse(readFileSync(join(repo, '.spex/runs/007/review.json'), 'utf8')).status, 'done');
+  assert.equal(spex(repo, 'next', DIR).json.stage, 'ship');
+  r = spex(repo, 'ship', DIR, '--merged');
+  assert.equal(r.code, 0, r.stdout);
+  assert.ok(r.json.text.includes('deferred, for a later step:\n- P3 Finding F2 of the round'), r.json.text);
 });

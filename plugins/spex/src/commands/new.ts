@@ -3,13 +3,16 @@
 // in words), requirements.yaml (the records), tasks.yaml (the plan), contracts/.
 //
 // A big idea becomes a roadmap: one folder per step, each a stub with `status: planned` and the roadmap
-// fields in its front matter. The detail of a step is written when its turn comes, never up front.
+// fields in its front matter, and one file, specs/<name>.roadmap.md, for the whole. A stub holds all the
+// design says for its step, now: Why, What, Not this, every name and value of its source sections, the
+// names it uses and brings, and the design's open items. What the code says is written when its turn
+// comes, because the steps before it change the code. `spex gate new` adds the other sections then.
 
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { branchNames, isGitRepo } from '../git.js';
 import { ensureDir, fileExists, isDir, readText, writeText } from '../io.js';
-import { ALL_SECTIONS, SIZE_MARKS, SPEC_FILE, resolveDependency, withFrontMatter, type SpecStatus } from '../rules/spec.js';
+import { ALL_SECTIONS, DESIGN_SECTION, LINK_SECTIONS, SIZE_MARKS, SPEC_FILE, STUB_SECTIONS, resolveDependency, sectionBodies, withFrontMatter, type SpecStatus } from '../rules/spec.js';
 import { SPECS_DIR } from '../specs.js';
 import type { Finding } from '../types.js';
 import type { CmdResult } from './lifecycle.js';
@@ -25,7 +28,25 @@ const HINTS: Record<string, string> = {
   Alternatives: 'Two or three other ways to get the same outcome, with sources, and why not.',
   'Open questions': `One per line, each with its size first: ${SIZE_MARKS.big} big (the idea does not work without the answer) · ${SIZE_MARKS.medium} medium (changes scope, cost or a decision) · ${SIZE_MARKS.small} small (wording, nice-to-have).`,
   Decisions: 'What was decided while shaping this, with the reason and the source. Grows over time.',
+  [DESIGN_SECTION]: 'Everything the source sections say for this step: every name, key, value, file, command, label, check, signal and record path, a bullet each, with its #section and a tag at the end: [new], [built: spec 24] or [changes: spec 21].',
+  Uses: 'Each name this step needs from another, one per line: `name` ← the step folder that introduces it, ← built (where), or ← outside (who). None. when there is none.',
+  Introduces: 'Each name this step brings that a later step may use, one per line: `name`: what it is.',
 };
+
+/** A stub's sections: the boundary, the design, the links, and the open items the design leaves to a person. */
+const STUB_TEMPLATE = [...STUB_SECTIONS, DESIGN_SECTION, ...LINK_SECTIONS, 'Open questions'];
+
+/** A step of a roadmap that is shaped now: the nine sections, with the links after the boundary. */
+const ROADMAP_TEMPLATE = [...ALL_SECTIONS.slice(0, 3), ...LINK_SECTIONS, ...ALL_SECTIONS.slice(3)];
+
+const INTRO = '<!-- The spec in words, shaped with /spex:new. The records in requirements.yaml are what the gates read. -->';
+
+/** The line a person reads first in a stub: what the file is, and when it grows. `spex gate new` removes it. */
+function plannedNote(fields: RoadmapFields): string {
+  const after = fields.depends_on?.length ? ` once ${fields.depends_on.join(', ')} ${fields.depends_on.length > 1 ? 'are' : 'is'} built` : ' when its turn comes; it depends on no other step';
+  return `> Planned: step ${fields.step ?? '?'} of the roadmap ${fields.roadmap ?? '?'}. /spex:new shapes it${after}. Until then it holds the boundary and what the design says, nothing more.`;
+}
+const PLANNED_NOTE = /^> Planned: .*\n\n?/m;
 
 export interface RoadmapFields {
   roadmap?: string;
@@ -34,11 +55,20 @@ export interface RoadmapFields {
   source?: string[];
 }
 
-/** The skeleton: nine sections with their hints, and the front matter when a status or roadmap fields are given. */
+/** The skeleton: nine sections with their hints, and the front matter when a status or roadmap fields are given. A step of a roadmap also has Uses and Introduces; a stub has seven. */
 export function specTemplate(title: string, status: SpecStatus | null = null, fields: RoadmapFields = {}): string {
-  const lines = [`# ${title}`, '', '<!-- The spec in words, shaped with /spex:new. The records in requirements.yaml are what the gates read. -->', ''];
-  for (const s of ALL_SECTIONS) lines.push(`## ${s}`, '', `<!-- ${HINTS[s]} -->`, '');
+  const planned = status === 'planned';
+  const lines = [`# ${title}`, '', planned ? plannedNote(fields) : INTRO, ''];
+  for (const s of planned ? STUB_TEMPLATE : fields.roadmap ? ROADMAP_TEMPLATE : ALL_SECTIONS) lines.push(`## ${s}`, '', `<!-- ${HINTS[s]} -->`, '');
   return withFields(lines.join('\n'), status, fields);
+}
+
+/** A stub opened for shaping: the planned note goes, and every section it lacks is added at the end, with its hint. */
+export function openedStub(text: string): string {
+  const have = sectionBodies(text);
+  const missing = ALL_SECTIONS.filter((s) => !have.has(s.toLowerCase()));
+  const body = text.replace(PLANNED_NOTE, '').replace(/\s*$/, '\n');
+  return missing.length ? `${body}\n${missing.map((s) => `## ${s}\n\n<!-- ${HINTS[s]} -->\n`).join('\n')}` : body;
 }
 
 /** The front matter lines, in a fixed order, on top of any text. Sources are quoted: a `#` inside a flow list is safe, but a reader need not know that. */

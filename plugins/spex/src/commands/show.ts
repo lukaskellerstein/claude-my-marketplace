@@ -1,11 +1,13 @@
 // `spex show`: the compiled input of one run. Text for the agent, JSON for Dex.
 
+import { findingsPath } from '../review.js';
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { SHELL, driverOf, loadConfig, testDirs } from '../config.js';
 import { currentBranch, diffAgainst, isGitRepo, mergeBase, refExists } from '../git.js';
 import { bytes, fileExists, isDir, readText, writeText } from '../io.js';
 import { isBuilt, resolveDependency, specMetaOf } from '../rules/spec.js';
+import { featureRepos, fromRoot, inRepo, repoDiffBase, repoFindings, repoPath, repoRoot } from '../repos.js';
 import { parseContextEntry, resolveSpecPath } from '../rules/tasks.js';
 import { loadFeature, resolveFeatureDir } from '../specs.js';
 import { claimsOf, isFileTest, isSession, locateTest, nameToken, splitCover, testFiles, testsOf } from '../tests.js';
@@ -54,7 +56,7 @@ export function renderTest(t: TestRecord, config?: Config): string {
   const lines = [head.join(' · ')];
   if (config && t.kind === 'script' && t.driver !== SHELL) {
     const d = driverOf(config, t.driver);
-    lines.push(`  runs with: ${d?.cmd.trim() ? d.cmd : '(no command: set acceptance_cmd or drivers in .spex/config.yaml)'}${d?.dir ? ` · files under ${d.dir}` : ''}`);
+    lines.push(`  runs with: ${d?.cmd.trim() ? d.cmd : '(no command: set acceptance_cmd or drivers in .spex/config.yaml)'}${d?.repo ? ` · in repo ${d.repo} (${repoPath(config, d.repo)})` : ''}${d?.dir ? ` · files under ${inRepo(config, d.repo, d.dir)}` : ''}`);
   }
   if (t.why) lines.push(`  why a session: ${t.why}`);
   lines.push('  steps:', ...t.steps.map((s, i) => `  ${i + 1}. ${s}`), '  expect:', ...t.expect.map((e) => `  - ${e}`));
@@ -136,18 +138,21 @@ export function showTask(root: string, dir: string, taskId: string): ShowResult 
   lines.push(`# ${task.id} — ${task.title}`, `feature ${feature.requirements.feature} (${feature.requirements.title}) · kind ${task.kind} · status ${task.status}`);
   if (task.depends_on?.length) lines.push(`depends_on: ${task.depends_on.join(', ')}`);
   if (task.parallel_group) lines.push(`parallel_group: ${task.parallel_group}`);
-  lines.push('', '## paths (write allowlist — nothing outside these)', ...task.paths.map((p) => `- ${p}`));
+  const repoDir = repoPath(config, task.repo);
+  if (task.repo) lines.push(`repo: ${task.repo} — another git repo at ${repoDir}; every path below is from this repo's root`);
+  lines.push('', '## paths (write allowlist — nothing outside these)', ...task.paths.map((p) => `- ${inRepo(config, task.repo, p)}`));
   lines.push('', '## context (read these first)');
   for (const c of task.context ?? []) {
     const { path, from, to } = parseContextEntry(c);
-    const abs = resolveSpecPath(root, feature.dir, path);
+    const abs = resolveSpecPath(root, feature.dir, path, repoDir);
     let size = '';
     if (abs) {
       const text = readText(abs);
       const part = from !== undefined && to !== undefined ? text.split('\n').slice(from - 1, to).join('\n') : text;
       size = ` (${Math.max(1, Math.round(bytes(part) / 1024))} KB)`;
     }
-    lines.push(`- ${abs && abs !== join(root, path) ? `${feature.dir}/${c}` : c}${abs ? size : ' (written by an earlier task)'}`);
+    const shown = abs && repoDir && abs === fromRoot(root, join(repoDir, path)) ? inRepo(config, task.repo, c) : abs && abs !== join(root, path) ? `${feature.dir}/${c}` : !abs && task.repo ? inRepo(config, task.repo, c) : c;
+    lines.push(`- ${shown}${abs ? size : ' (written by an earlier task)'}`);
   }
   if (!task.context?.length) lines.push('- (none)');
   if (task.interfaces?.consumes?.length) lines.push('', '## consumes (exact signatures from earlier tasks)', ...task.interfaces.consumes.map((s) => `- ${s}`));
@@ -239,7 +244,7 @@ export function showTests(root: string, dir: string, ids: string[]): ShowResult 
   const covered: Requirement[] = [];
   for (const t of tests) {
     const d = driverOf(config, t.driver);
-    lines.push('', `## ${t.id} — name ${t.name ?? '(none: give it one)'} · driver ${t.driver ?? 'default'}: ${d?.cmd.trim() || '(no command in .spex/config.yaml)'} · files under ${d?.dir ?? config.acceptance_dir}${t.file ? ` · intended file ${t.file}` : ''}`);
+    lines.push('', `## ${t.id} — name ${t.name ?? '(none: give it one)'} · driver ${t.driver ?? 'default'}: ${d?.cmd.trim() || '(no command in .spex/config.yaml)'}${d?.repo ? ` · runs in repo ${d.repo}` : ''} · files under ${inRepo(config, d?.repo, d?.dir ?? config.acceptance_dir)}${t.file ? ` · intended file ${t.file}` : ''}`);
     const located = locateTest(root, config, t);
     if (located) lines.push(`exists already in ${located}: rewrite it there`);
     lines.push('steps:', ...t.steps.map((s, i) => `${i + 1}. ${s}`), 'expect:', ...t.expect.map((e) => `- ${e}`));
@@ -261,8 +266,9 @@ export function showTests(root: string, dir: string, ids: string[]): ShowResult 
   if (glossary.length) lines.push('', '## glossary', ...glossary);
   const supersedes = feature.requirements.requirements.flatMap((r) => (r.relationships ?? []).filter((x) => x.type === 'supersedes').map((x) => x.target));
   const retire = supersedes.flatMap((old) => files.filter((p) => readText(join(root, p)).includes(old.replace(/-/g, '_'))).map((p) => `${old} in ${p}`));
-  const existing = files.slice(0, 20);
-  lines.push('', `## existing test files under ${testDirs(config).join(', ')} (read one or two for the conventions)`, ...(existing.length ? existing.map((p) => `- ${p}`) : ['- (none yet; create the folder and the first file)']));
+  const existing = files.filter((p) => tests.some((t) => { const d = driverOf(config, t.driver); return p.startsWith(inRepo(config, d?.repo, (d?.dir ?? config.acceptance_dir).replace(/\/+$/, '')) + '/'); })).slice(0, 20);
+  const dirsHere = [...new Set(tests.map((t) => driverOf(config, t.driver)).map((d) => inRepo(config, d?.repo, d?.dir ?? config.acceptance_dir)))];
+  lines.push('', `## existing test files under ${dirsHere.join(', ')} (read one or two for the conventions)`, ...(existing.length ? existing.map((p) => `- ${p}`) : ['- (none yet; create the folder and the first file)']));
   if (retire.length) lines.push('', '## tests to retire (this feature supersedes their record)', ...retire.map((x) => `- ${x}`));
   lines.push('', `Never read ${config.source_dirs.join(', ')}. The name is the test's name in the file, exactly. End with one red run per test:`, ...tests.map((t) => `- spex run ${feature.dir} --test ${t.id} --expect fail`));
   return { ok: true, text: lines.join('\n'), findings, exit: 0, data: { tests: tests.map((t) => t.id), records: tests, retire, contracts, test_dirs: testDirs(config) } };
@@ -329,11 +335,28 @@ export function showReview(root: string, dir: string, opts: { task?: string; bas
   if (!isGitRepo(root)) return fail([{ severity: 'error', code: 'GIT-REQUIRED', message: 'review needs a git repository for the diff', fix: 'Run inside the repository.' }], 2);
   const task = opts.task ? findTask(feature.tasks, opts.task) : undefined;
   if (opts.task && !task) return fail([{ severity: 'error', code: 'TASK-UNKNOWN', message: `${opts.task} is not in ${feature.tasksPath}`, fix: 'Check the id.' }], 2);
-  const base = opts.base ?? (refExists(root, 'main') ? 'main' : refExists(root, 'master') ? 'master' : null);
-  if (!base) return fail([{ severity: 'error', code: 'GIT-BASE', message: 'no main or master branch to diff against', fix: 'Pass --base <ref>.' }], 2);
-  const branch = currentBranch(root);
-  const from = branch === base ? base + '~1' : (mergeBase(root, base, 'HEAD') ?? base);
-  const diff = diffAgainst(root, from, task ? task.paths.filter((p) => !/[*?]/.test(p)) : []);
+  const files = task ? task.paths.filter((p) => !/[*?]/.test(p)) : [];
+  // The home repo's part, unless the task writes another repo; then one part per other repo, its paths from here.
+  const repos = task ? (task.repo ? [task.repo] : []) : featureRepos(config, feature);
+  const lost = repoFindings(root, config, repos);
+  if (lost.length) return fail(lost, 2);
+  let diff = '';
+  let from = '';
+  if (!task?.repo) {
+    const base = opts.base ?? (refExists(root, 'main') ? 'main' : refExists(root, 'master') ? 'master' : null);
+    if (!base) return fail([{ severity: 'error', code: 'GIT-BASE', message: 'no main or master branch to diff against', fix: 'Pass --base <ref>.' }], 2);
+    const branch = currentBranch(root);
+    from = branch === base ? base + '~1' : (mergeBase(root, base, 'HEAD') ?? base);
+    diff = diffAgainst(root, from, files);
+  }
+  const parts: { repo: string; path: string; base: string; why: string }[] = [];
+  for (const name of repos) {
+    const b = repoDiffBase(root, config, feature.requirements.feature, name);
+    if ('code' in b) return fail([b], 2);
+    diff += diffAgainst(repoRoot(root, config, name), b.from, files, repoPath(config, name));
+    parts.push({ repo: name, path: repoPath(config, name), base: b.from, why: b.why });
+  }
+  if (!from) from = parts[0]?.base ?? '';
   const reviewDir = join(root, '.spex', 'review');
   let round = 1;
   while (fileExists(join(reviewDir, `${feature.requirements.feature}-${round}${task ? `-${task.id}` : ''}.diff`))) round++;
@@ -343,6 +366,7 @@ export function showReview(root: string, dir: string, opts: { task?: string; bas
   const over = size > config.limits.diff_kb * 1024;
   const lines: string[] = [];
   lines.push(`# review ${feature.requirements.feature} — ${feature.requirements.title}${task ? ` (task ${task.id})` : ''} · round ${round} of ${config.review_rounds}`, `goal: ${feature.requirements.goal}`, '', `diff: ${diffPath} (${Math.round(size / 1024)} KB, against ${from.slice(0, 12)})`);
+  if (parts.length) lines.push(`other repos in the diff, their paths from this root: ${parts.map((p) => `${p.repo} (${p.path}) against ${p.base.slice(0, 12)}, ${p.why}`).join('; ')}`);
   if (over && !task) lines.push(`The diff is above limits.diff_kb ${config.limits.diff_kb}. Review per task: spex show ${feature.dir} --review --task T01`);
   const v = readVerify(root, feature.requirements.feature);
   lines.push(`evidence: ${v ? `verify round ${v.round} at tree ${v.tree}, ${v.ok ? 'green' : 'RED'}: ${v.scripts.filter((s) => s.ok).length}/${v.scripts.length} scripts, ${v.sessions.filter((s) => s.status === 'pass').length}/${v.sessions.length} sessions` : '(no verify run yet)'} — the script proved it; do not rerun the tests`);
@@ -353,8 +377,18 @@ export function showReview(root: string, dir: string, opts: { task?: string; bas
   const b = feature.tasks.boundaries;
   if (b?.always?.length || b?.never?.length) lines.push('', '## boundaries', ...(b.always ?? []).map((a) => `- always: ${a}`), ...(b.never ?? []).map((n) => `- never: ${n}`));
   if (feature.tasks.deferred?.length) lines.push('', '## deferred', ...feature.tasks.deferred.map((d) => `- ${d.finding} — ${d.why} (${d.by})`));
-  if (round > config.review_rounds) findings.push({ severity: 'warning', code: 'REVIEW-ROUNDS', message: `round ${round} is past review_rounds ${config.review_rounds}`, fix: 'Stop and hand the feature to a person.' });
-  const result: ShowResult = { ok: !over || !!task, text: lines.join('\n'), findings, exit: over && !task ? 6 : 0, data: { diff: diffPath, bytes: size, round, base: from, requirements: reqs, tasks: feature.tasks.tasks, verify: v } };
+  // Round 2 and later is a check, not a new review: is each accepted fix in? Only a P1 is a new finding.
+  const fixTasks = feature.tasks.tasks.filter((t) => t.review);
+  const check = !task && round > 1 && fixTasks.length > 0;
+  if (check) {
+    lines.push('', `## check (round ${round}): each accepted fix, at its task's paths — fixed | not-fixed; a new finding here must be P1`);
+    lines.push(...fixTasks.map((t) => `- ${t.id} ${t.status} ${t.severity ?? ''} ${t.review}: ${t.title} — paths: ${t.paths.join(', ')} — slice: spex show ${feature.dir} --review --task ${t.id}`));
+  }
+  const last = round >= config.review_rounds;
+  if (last && round <= config.review_rounds) lines.push('', `last round (${round} of ${config.review_rounds}): a P2 or P3 is picked defer; only a P1 is picked fix`);
+  if (round > config.review_rounds) findings.push({ severity: 'warning', code: 'REVIEW-ROUNDS', message: `round ${round} is past review_rounds ${config.review_rounds}`, fix: 'Every finding is picked defer or skip, unless it is P1; the person answers, and spex review accept writes the clean report ship needs.' });
+  lines.push('', `findings go to ${findingsPath(feature.requirements.feature, round)}; the person answers with /spex:review ${feature.dir} ok`);
+  const result: ShowResult = { ok: !over || !!task, text: lines.join('\n'), findings, exit: over && !task ? 6 : 0, data: { diff: diffPath, bytes: size, round, check, last, findings_file: findingsPath(feature.requirements.feature, round), base: from, repos: parts, requirements: reqs, tasks: feature.tasks.tasks, verify: v } };
   if (over && !task) result.findings.push({ severity: 'error', code: 'REVIEW-DIFF-BIG', message: `diff is ${Math.round(size / 1024)} KB, above limits.diff_kb ${config.limits.diff_kb}`, fix: `Review per task: spex show ${feature.dir} --review --task <id>.` });
   return result;
 }

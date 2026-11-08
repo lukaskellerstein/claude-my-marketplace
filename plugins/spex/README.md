@@ -6,8 +6,16 @@ tasks sized for one agent run, a test analyst writes the proof plan for every
 claim, and a script — not the model — decides whether each step is done. The
 one who writes a claim never writes its proof.
 
-> **Status:** design v2.0 · 2026-11-07 · data format 2. It replaces GitHub
+> **Status:** design v2.1 · 2026-11-07 · data format 2. It replaces GitHub
 > spec-kit in Dex and in any repo.
+>
+> **v2.1** makes review end. Every finding of a round comes at once, worst
+> first, each with a severity (P1 to nit), the finder's fix plan and a pick;
+> the person answers in one word (`ok`, or `2=defer`), and `spex review accept`
+> turns the fix picks into fix tasks that need no second approval. `/spex:fix`
+> builds them in one run (tests, code, verify), and a later round only checks
+> those fixes. Deferring ends the rounds, so ship always has a way in. See
+> [What changed in v2.1](#what-changed-in-v21).
 >
 > **v2.0** puts a wall through the process: the analyst writes the claim (a
 > record with its scenarios, a task with its `done_when`), a `test-analyst`
@@ -39,7 +47,8 @@ one who writes a claim never writes its proof.
 ```text
 /spex:init                       # once per repo: writes .spex/config.yaml from what the repo already has
 /spex:new <raw idea or design>   # the shaping phase: sizes it, then every open question on one screen per round → specs/NNN-slug/spec.md: the spec in words.
-                                 # A big idea becomes a roadmap: one stub folder per step, the first shaped now
+                                 # A big idea becomes a roadmap: specs/<name>.roadmap.md, where every design section has a step
+                                 # or a reason, and one stub folder per step, the first shaped now
                                  # (you said done: /spex:new runs spex approve, and spec.md goes from status: shaping to ready)
 /spex:requirements specs/NNN-slug  # spec.md → requirements.yaml (the claim), then a test analyst → tests.yaml (its proof)
 /spex:clarify                    # only when a question opens later: requirements answers its own
@@ -51,9 +60,14 @@ one who writes a claim never writes its proof.
 /spex:develop specs/NNN-slug T01 # one task in this context, inside its paths
 /spex:develop specs/NNN-slug     # or every ready task through developer subagents, a wave at a time; spex done closes each
 /spex:verify                     # the whole feature at this tree: every script, every session a tester performs, the decider on each failure
-/spex:review                     # the diff, read only, for what no test sees; fixes become tasks
+/spex:review                     # the diff, read only, for what no test sees: every finding at once, with a severity and a fix plan
+/spex:review specs/NNN-slug ok   # your answer: ok takes every pick, or 2=defer 3=fix; fix picks become fix tasks
+/spex:fix                        # the accepted fixes: their tests red, the code, verify; then /spex:review only checks them
 /spex:ship specs/NNN-slug        # approved → built, commit, ship.cmd merges; a roadmap step also routes its lessons
 spex roadmap <name>              # the steps of one idea, in order, with where each stands
+spex roadmap <name> --coverage   # every design section has a row: steps, built, not planned, outside or context
+spex outline <design file>       # the design's sections, with the anchor a source or a row names
+spex drop specs/NNN-slug --reason "…"  # a step a re-cut removes: folder and work to .spex/archive/
 /spex:new specs/NNN-next-step    # the next planned step, once every step it depends on is built
 ```
 
@@ -500,11 +514,20 @@ so every command a person types by hand in the flow is a skill.
 
 A big idea does not become one big spec. `/spex:new` sizes it in round 0: more
 than one step, and it proposes a **roadmap**, which the person confirms, cuts
-or reorders. Each step is then a folder with a stub of about ten lines
-(`status: planned`, `roadmap`, `step`, `depends_on`, `source`, and Why, What
-and Not this in a few lines each), and only the first step is shaped in full.
-A step's detail is written when its turn comes, from the code as it is then,
-so there is nothing to keep in sync in the meantime. See
+or reorders. The steps start from the design's own sections (`spex outline`)
+and its own order, so a second session cuts the same list; each change to that
+order is written down with its reason. One file, `specs/<name>.roadmap.md`,
+holds the whole: the idea, the order, what the roadmap needs from outside, the
+round-0 decisions, and a coverage table where every design section has a row
+(the steps that build it, or built, not planned, outside, context, with the
+reason); `spex roadmap <name> --coverage` names every section without one.
+Each step is a folder with a stub (`status: planned`, `roadmap`, `step`,
+`depends_on`, `source`, a first line that says when it is shaped, Why, What and
+Not this, From the design: every name and value its sections fix, each tagged
+`[new]`, `[built: …]` or `[changes: …]`, Uses and Introduces, and the design's
+open items as Open questions), and only the first step is shaped in full.
+What the code says is written when a step's turn comes, because the steps
+before it change the code; `spex gate new` adds those sections then. See
 [Roadmaps](#roadmaps-a-big-idea-one-step-at-a-time).
 
 Three readings per feature are a person's: the spec they shaped, the records
@@ -584,7 +607,7 @@ folder.
 | `/spex:develop <dir>` | yes | not at stage `develop`: prints the NEXT block and stops | script | |
 | `/spex:develop <dir> <task>` | careful | `done`: refused (`GATE-DONE`); waiting on another task: refused (`GATE-DEPENDS`); `blocked`: unblocks and runs | script | on a blocked task the run is the act |
 | `/spex:verify` | yes | a new round, a new `verify-<n>.json`; green and no session pending: nothing to dispatch | script | every run counts toward `verify_rounds` (3) |
-| `/spex:review` | careful | all tasks done and verify green: a new round, a new diff file, a report; clean: `tasks.yaml` stays byte for byte | script | every run counts toward `review_rounds` (3); findings append fix tasks, so `tasks.yaml` waits for you again |
+| `/spex:review` | careful | all tasks done and verify green: a new round, a new diff file, a findings file; clean: `tasks.yaml` stays byte for byte | script | every run counts toward `review_rounds` (3); a round waits for your one-word answer, and later rounds only check the accepted fixes |
 | `/spex:ship` | yes | the close is skipped once it happened (`closed already`); a failed merge is rerun from the merge; `--merged` closes after a merge a person made | script | the re-plan round of a roadmap step runs before the commit, once |
 
 ## Files
@@ -592,7 +615,8 @@ folder.
 ```text
 specs/                             only what a person approves
 ├── 008-runner/
-│   └── spec.md                    a planned step of a roadmap: ten lines, status: planned, depends_on, source
+│   └── spec.md                    a planned step of a roadmap: status: planned, depends_on, source, Uses, Introduces
+├── nex-target.roadmap.md          a roadmap as a whole: idea, order, outside, decisions, one coverage row per design section
 └── 007-csv-export/
     ├── spec.md                    the spec in words, for people; /spex:new writes it (or `spec:` points elsewhere)
     ├── requirements.yaml          EARS records + scenarios: the claim; gate 1 approves this
@@ -669,9 +693,12 @@ While `/spex:new` shapes the idea, the file starts with a front matter line
 
 | Mark | Size | Means |
 |:--|:--|:--|
-| `●●●` | big | the idea does not work without the answer |
-| `●●○` | medium | the answer changes scope, cost or a decision |
-| `●○○` | small | wording, a nice-to-have |
+| 🟥 | big | the idea does not work without the answer |
+| 🟧 | medium | the answer changes scope, cost or a decision |
+| 🟨 | small | wording, a nice-to-have |
+
+The dots of v2.0 (`●●●`, `●●○`, `●○○`) still count, so a spec shaped then
+reads the same.
 
 `spex check` reports `SPEC-SHAPING` (info) with the counts until the person
 says done; then `spex approve <dir>` flips the status to `ready`. It refuses
@@ -695,11 +722,35 @@ source: ["docs/nex-design.md#3.4"]   # the sections of the design it covers; the
 ---
 ```
 
-While `planned`, only Why, What and Not this must have words (`SPEC-SECTIONS`
-checks those three): the goal and the boundary to the steps around it. The
-rest is written when its turn comes. `SPEC-DEPENDS` and `SPEC-CYCLE` keep the
-order sound, `SPEC-SOURCE` warns when the design file moved, and
-`SPEC-PLANNED` (info) says what the step still waits for.
+While `planned`, Why, What, Not this, Uses and Introduces must have words
+(`SPEC-SECTIONS`; "None." is an answer): the goal, the boundary to the steps
+around it, and the names it takes and gives. The rest is written when its
+turn comes. `SPEC-DEPENDS` and `SPEC-CYCLE` keep the order sound, `SPEC-SOURCE`
+warns when the design file moved, and `SPEC-PLANNED` (info) says what the step
+still waits for.
+
+Uses and Introduces are lists of names, one per line:
+
+```markdown
+## Introduces
+
+- `nex:rung-fix`: the label of a ticket built on a rung's branch
+
+## Uses
+
+- `deployed` ← 029-deploy-one-push
+- `AutoMerge` ← built (spec 23)
+```
+
+A used name comes from a step this one depends on, directly or through
+others (`USES-DEPENDS`), which lists it under Introduces (`USES-INTRODUCES`),
+from what is built, or from outside (`← outside (who)`, for what the roadmap file's
+Outside section lists); a line with no source is `USES-FROM`. Two steps that
+introduce one name are a boundary to fix (`INTRODUCES-TWICE`), and a step that
+introduces more than `limits.step_introduces` (10) names is two steps
+(`SPEC-SIZE`). A planned step tags every From the design bullet (`SPEC-TAG`),
+and names other steps by folder, never by a bare number a re-cut gives away
+(`SPEC-STEPREF`).
 
 ### `requirements.yaml`
 
@@ -901,6 +952,7 @@ Each task record:
 | `kind` | `setup`, `foundational`, `story`, `polish`, `fix` |
 | `requirements` | the ids this task makes true; a setup task may have none, its own test proves it |
 | `depends_on`, `parallel_group` | order; tasks in one group must have disjoint `paths`, and never read a sibling's `paths` |
+| `repo` | the repo it writes, a key of `repos` in the config; absent: this repo. Its `paths` and `context` are inside it |
 | `paths` | the files it may write — the write allowlist; never a `protected` path and never a test folder |
 | `context` | the files it reads, as `path` or `path:from-to`; the total is capped by `limits.context_kb` |
 | `design` | ids of design entities and decisions this task needs; modules are matched by path on their own |
@@ -990,6 +1042,7 @@ format: 2                           # the shape of specs/ and .spex/, one intege
 acceptance_dir: tests/acceptance
 acceptance_cmd: npm run test:acceptance -- -t "{ids}"   # the default driver. {ids} = REQ_007_001|REQ_007_002; {ids_k} = "A or B" for pytest
 drivers: {playwright: {cmd: 'npx playwright test --grep "{ids}"', dir: tests/e2e}}   # more ways to run script tests; a test record picks one with driver:. shell is built in
+repos: {}                           # other git repos a task may write (repo: in the task): dashboard: {path: ../forks/odh-dashboard}
 fast_checks: [npm run typecheck, npm test]   # run by spex done and spex verify; must not run the test folders
 source_dirs: [src]                  # the test analyst and the test developers never read these
 protected: [specs/, .spex/, tests/acceptance/, .github/]   # no task may write these; every driver's folder is protected too
@@ -1018,7 +1071,8 @@ ship: {commit: true, cmd: "gh pr create --fill && gh pr merge --squash --delete-
 | `format` | `2` | the version of the data, not of the plugin; a missing line means 1 |
 | `acceptance_dir` | `tests/acceptance` | where the default driver's tests live; the test developers write there |
 | `acceptance_cmd` | empty | the default driver: one command that runs only the tests whose names match `{ids}` (joined by `\|`) or `{ids_k}` (joined by ` or `) |
-| `drivers` | `{}` | more drivers by name, each `{cmd, dir}` with the same placeholders; `spex init` adds `playwright` when `@playwright/test` is a dependency. `shell` needs no entry: its steps are the commands |
+| `drivers` | `{}` | more drivers by name, each `{cmd, dir, repo}` with the same placeholders; `repo` runs the command in another repo of `repos`, and `dir` is inside it; `spex init` adds `playwright` when `@playwright/test` is a dependency. `shell` needs no entry: its steps are the commands |
+| `repos` | `{}` | other git repos a task may write, by name: `{path, base, fast_checks, protected, ship}`. See **Other repos** below |
 | `fast_checks` | `[]` | the repo's own checks (typecheck, lint, unit tests); `spex done` and `spex verify` run them first |
 | `source_dirs` | `[src]` | what the test analyst and the test developers never read |
 | `protected` | `[specs/, .spex/, tests/acceptance/, .github/]` | no task may write these; `acceptance_dir` and every driver's `dir` are protected as well |
@@ -1032,6 +1086,42 @@ ship: {commit: true, cmd: "gh pr create --fill && gh pr merge --squash --delete-
 | `approvals` | `[tasks]` | the stages past gate 1 a person approves; `tests` adds a reading of `tests.yaml` whenever it changed after the last stamp |
 | `auto` | `false` | nobody is asked; the decider answers with evidence; the NEXT block says `auto: on` |
 | `ship` | `{commit: false, cmd: ""}` | `commit: true` commits the tree before the merge (`"<feature>: <title>"`, the work dirs under `.spex/` left out); `cmd` pushes, opens the request and merges it; empty: a person merges and runs `spex ship --merged` |
+
+**Other repos.** A feature can change code in more than one git repo: an API
+here and its UI in a fork next to it. The specs, the records and `.spex/` stay
+in this repo (the home repo). The other repos get a name in `repos`:
+
+```yaml
+repos:
+  dashboard: {path: ../forks/odh-dashboard, fast_checks: ['npm run type-check'], ship: {commit: true, cmd: ''}}
+drivers:
+  dashboard-jest: {repo: dashboard, cmd: 'npx jest -t "{ids}"', dir: frontend/src/__tests__/flywheel}
+```
+
+- A task with `repo: dashboard` writes in that repo: its `paths` and
+  `context` are inside it. One task writes one repo; a change in two repos is
+  two tasks with `depends_on`.
+- A driver with `repo:` runs its command there (`cd ../forks/odh-dashboard &&
+  …`), and its `dir` is protected there. The repo's `protected` and
+  `fast_checks` work as the home repo's do, in that repo.
+- `path` is from the home root, or absolute (`/…` or `~/…`). Write it
+  absolute when you work in git worktrees: a worktree's root is another
+  folder, so `../forks` from there points at nothing.
+- Every path spex prints is from the home root
+  (`../forks/odh-dashboard/frontend/…`), or absolute when `path` is, so an
+  agent that starts here can open it. The review diff has one part per repo,
+  its file names from the home root (`b/../forks/…`, `b//Users/…`).
+- The evidence's tree covers each repo the feature names, so a change in any
+  of them makes a green run stale.
+- A repo's review diff starts at `base` when it is set, else at the commit the
+  repo was at when its first task opened (`.spex/runs/<feature>/start.json`).
+  A long-lived integration branch then shows only this feature's work.
+- `spex ship` commits and merges each other repo first, with its own `ship`
+  (`commit` defaults to this repo's; an empty `cmd` means a person merges it),
+  and this repo last. A rerun skips the repos merged already
+  (`.spex/runs/<feature>/ship.json`).
+- Claude Code writes only inside its working folders. Add each repo with
+  `/add-dir` or `additionalDirectories`, or every write there asks first.
 
 `spex init` fills this from what the repo already has — `package.json`
 scripts, `pyproject.toml`, `go.mod`, the test folders, `@playwright/test` in
@@ -1105,12 +1195,28 @@ drift. `{ids}` in a driver command is those names joined by `|`.
 
 ## Skills
 
-Every skill ends with a reply of at most 15 lines. The first line is
-`STATUS: done | concerns | blocked | needs-context | too-big`. The same status
-goes to `.spex/runs/<feature>/<stage>[-<task>].json` as
-`{status, summary, concerns[], questions[], files_changed[], pulled[]}`. Dex
-reads the file, not the prose. *(Superpowers' four statuses plus `too-big` from
-nex; BMAD's status in plan frontmatter.)*
+Every skill ends with a reply of at most 15 lines, in the one frame that
+[`reply.md`](reply.md) gives them all; each skill reads it before it replies
+and keeps only what goes in. The frame, in reading order:
+
+1. A banner between two heavy `━` rules: in bold the verdict (`✅` and the
+   skill's word, such as `IMPLEMENTED`, or `⏸ WAITING FOR YOU`, `⛔ NOT
+   STARTED`, `⛔ STOPPED`, `❓ QUESTIONS`) and what it is about; on the line
+   under it the phase icon, the folder and the numbers a command printed.
+2. `What:`, one to three lines of what is true now, never the steps taken.
+3. Questions, one block each between two `─` rules: the size (🟥 BIG, 🟧
+   MEDIUM, 🟨 SMALL) and a closed question as the heading, **Context**, the
+   options A, B, C, and **👉 Pick**. A question with one option is listed
+   under "I do this unless you say no" instead.
+4. `You:`, the one step that is the person's, never hidden in a paragraph.
+5. The NEXT block, as `spex next` printed it.
+
+The agents' words (`blocked`, `test-bug`, `concerns`) never reach the banner.
+The status goes to `.spex/runs/<feature>/<stage>[-<task>].json` as
+`{status, summary, concerns[], questions[], files_changed[], pulled[]}`, with
+`done | concerns | blocked | needs-context | too-big`. Dex reads the file, not
+the prose. *(Superpowers' four statuses plus `too-big` from nex; BMAD's status
+in plan frontmatter.)*
 
 | Skill | Reads | Writes | Starts | Target size |
 |:--|:--|:--|:--|:--|
@@ -1187,8 +1293,9 @@ holes, write the pitch"; shaped work is "rough, solved, bounded". Superpowers
   merges or reorders. Then `spex new <slug> --shaping` for one step, or one
   `spex new` per step for a roadmap (the first `--shaping`, the rest
   `--planned`, each with `--roadmap`, `--step`, `--depends-on`, `--source`),
-  Why, What and Not this into each stub in three lines, and Why and What into
-  the first step's file. From then on every answer lands in `spec.md` in the
+  Why, What and Not this into each stub in three lines, From the design (3 to
+  6 bullets of what its source sections say, each with its `#section`), and
+  Why and What into the first step's file. From then on every answer lands in `spec.md` in the
   round it arrives. The file is the memory, so a compacted or a new session
   loses nothing.
 - A planned step, when its turn comes, reads in this order: the stub, the
@@ -1196,19 +1303,30 @@ holes, write the pitch"; shaped work is "rough, solved, bounded". Superpowers
   decisions and signatures of the steps it builds on, to use as they are),
   `spex index --scope`, and its Open questions, where the ship of an earlier
   step routed what it learned. Those questions come first in the rounds.
+- Round 1 drafts first. Before it asks anything, it fills every section of
+  `spec.md` from the design, the code and the steps it builds on, and draws
+  the step under What as one Mermaid diagram: what starts it, what runs, what
+  it leaves. A question is only what the draft cannot settle, and it names the
+  line it changes. So the person reads a whole spec, and the holes in it, not
+  a list of holes in an empty file (nex 029: five decisions after round 1, and
+  Who, Constraints, Success and Alternatives still empty).
 - Every later round is one reply with every open question known so far on one
-  screen, and nothing else in it: numbered, big first, each a closed question
-  with one to three lines of context and a pick the person takes with "ok".
+  screen, and nothing else in it: under the banner `💎 SHAPING · <spec>` and
+  `spec 2 of 29 in roadmap <name> · question round 1`, numbered, big first,
+  each a question block of `reply.md` (the size, the question, **Context**, the
+  options, **👉 Pick**), and the pick is what the person takes with "ok".
   The questions are not known in advance: an answer opens new holes, and those
   join the next round, marked `new`. At most 5 are asked per round; the rest
   stand under them, title and size only. A side job the person asked for in
   the same chat gets its own reply, and the round is the next one.
-- Every hole is sized: `●●●` the idea does not work without the answer, `●●○`
-  the answer changes scope, cost or a decision, `●○○` wording or a nice-to-have.
+- Every hole is sized: 🟥 the idea does not work without the answer, 🟧 the
+  answer changes scope, cost or a decision, 🟨 wording or a nice-to-have.
   Big first; when only small ones are left, the skill says so.
 - Every reply ends with the answer line, so the person always knows what a
-  word does: `answer by number · "ok" takes every pick · "done" approves the
-  spec and ends shaping`. A "done" while a question of the last round has no
+  word does: `ok takes every pick · answer by number · done approves the spec
+  and ends shaping`. It sits in the NEXT block as `NEXT   your answer, in the
+  shaping chat`: the answer is the next step, not `/spex:new`, which only
+  resumes the shaping from another chat. A "done" while a question of the last round has no
   answer is explained once ("done" approves with these open; "ok" takes the
   picks and ends) and asked once.
 - Research before a verdict, never from memory: one line says
@@ -1573,23 +1691,45 @@ between the slices.
   proved them, and the evidence is in `.spex/evidence/`.
 - The developer's report is a claim, not evidence. When the diff cannot show
   something, the verdict is `cannot-verify`, not `met`.
-- Each finding is routed. A `patch` appends a `kind: fix` task with `source`;
-  its proof is the test that sees the missed case (the task id is appended to
-  that test's `covers`), or a `test-analyst` plans one for a finding no test
-  sees. A `spec-gap` adds a question to `requirements.yaml` and settles it in
+- Every finding of the round comes at once, worst first, in
+  `.spex/review/<feature>-<round>.findings.yaml`, each with a severity, the
+  failure scenario (`when`, `effect`), the finder's fix plan (`fix`, what and
+  where, never code), the claim (`done_when`) and a pick:
+
+  | Severity | Means | Pick |
+  |:--|:--|:--|
+  | `P1` | likely in normal use, or data loss, security, a broken boundary | fix |
+  | `P2` | a wrong result in a rare but real case | fix in one task's paths, else defer |
+  | `P3` | rare and harmless, or only looks wrong | defer |
+  | `nit` | style, names, taste | skip |
+
+  The person answers in one word: `ok` takes every pick, `2=defer 3=fix`
+  changes some. `spex review accept` is that answer: each `fix` becomes a
+  `kind: fix` task (finding → `source`, fix plan → `instructions`, with
+  `severity` and `review: <feature>-<round>/F<n>`), each `defer` goes to
+  `deferred[]` with its severity, each `skip` is only noted. The finder plans
+  the fix because the finder knows the bug; a test analyst plans its proof
+  from the scenario, a test developer writes it red, a developer builds it,
+  so nobody grades their own work. A task with `review` is out of the
+  `tasks.yaml` and `tests.yaml` approval hashes: the answer was the approval.
+  `TASK-REVIEW` refuses a `review` field no accept wrote. In auto mode the
+  skill takes the picks itself (`--by agent`).
+- `/spex:fix` builds the accepted fixes in one run, and the round after only
+  checks them (`## check` in `spex show --review`): `fixed` or `not-fixed`
+  per finding, and a new finding there counts only at P1. On the last round,
+  and past `review_rounds`, only a P1 is picked `fix`; an answer with no fix
+  pick writes the clean report ship needs, so a person can always end the
+  rounds by deferring. `spex ship` lists every deferred item with its
+  severity.
+- Two kinds are the process's own work, not findings. A `spec-gap` adds a question to `requirements.yaml` and settles it in
   the same run the way `/spex:clarify` does in auto mode, with the decider. A
   `test-bug` (a green test that asserts other than its claim, and code written
   to it) goes to one `test-developer`, which rewrites that one test from its
   record and proves it; `spex run --test` after that: red means the code met
   the wrong test, so a `patch` follows with the finding as `source`; green
-  means the claim is met already. A `defer` goes to `deferred[]` with
-  `by: agent` when the decider agrees, else it is a `patch`. The review never
-  asks the person and never edits a test itself.
+  means the claim is met already. The review asks the person one thing, the
+  answer to the round, and never edits a test itself.
 - Append only. If nothing is found, `tasks.yaml` stays byte for byte the same.
-- At most `review_rounds` rounds; then it stops for a person. `done` means
-  clean and ship is next; `concerns` means findings were routed, and the NEXT
-  block names the stage that takes them (a fix task goes through the person's
-  reading of `tasks.yaml`, develop, verify and review again).
 
 ### `ship`
 
@@ -1617,7 +1757,10 @@ learned first.
   then the commit when `ship.commit` is true (`"<feature>: <title>"`, the
   work dirs under `.spex/` taken back out of the index), then `ship.cmd`:
   push, open the request, merge it. It is safe to rerun: a close that happened
-  is skipped, and a failed `ship.cmd` is rerun from the merge.
+  is skipped, and a failed `ship.cmd` is rerun from the merge. With **Other
+  repos**, each one the feature names is committed and merged first, with its
+  own `ship`, and this repo last; a rerun skips the repos merged already, and
+  `SHIP-CMD` names each repo a person merges.
 - `SHIP-CMD` (no `ship.cmd`): the close is done and a person merges; the skill
   says so, and `/spex:ship <dir> --merged` finishes after the merge.
   `SHIP-BRANCH` (on `main`): nothing to merge; `--merged`. `SHIP-FAILED`: the
@@ -1695,6 +1838,7 @@ coverage hole (exit 5); `info` is a fact. The config:
 | `CONFIG-SCHEMA` | error | its keys are the ones above |
 | `CONFIG-FORMAT` | error | `format` is the one this script reads; newer: update the plugin, older: `spex update` |
 | `CONFIG-MISSING` | error | `spex update` found no config: `spex init` writes the first one |
+| `CONFIG-REPO` | error | a driver's `repo` is a key of `repos` |
 | `CONFIG-ACCEPTANCE` | error | a test under the default driver has no command: `acceptance_cmd` is not set |
 
 The spec in words:
@@ -1746,6 +1890,8 @@ Tasks:
 | `TASK-COVERAGE` | gap | every requirement that is not `retired` is covered by a task (exit 5) |
 | `TASK-PROTECTED` | error | no `paths` entry is under `protected`, `acceptance_dir` or a driver's `dir` |
 | `TASK-PARALLEL` | error | tasks in one `parallel_group` have disjoint `paths`, globs included, and no `context` inside a sibling's `paths` |
+| `TASK-REPO` | error | a task's `repo` is a key of `repos` |
+| `REPO-MISSING` | warning | a repo a task names exists at its `path` and is a git repo; an error at the develop, verify, review and ship gates, at `done` and at `show --review` |
 | `TASK-CONTEXT` | error | every `context` file exists, or is in the `paths` of a task this one depends on; a line range is inside the file; the total is under `limits.context_kb` |
 | `TASK-DONE-WHEN` | error | `done_when` is not empty |
 | `TASK-PERSON` | error | `instructions` and `done_when` name no person as an actor: "by hand", "manually", "go-ahead", "sign-off", "a person's yes", "ask the user", "waits for someone", or a name from `people[]` |
@@ -1786,7 +1932,9 @@ Runs, gates and commands:
 | `COVERAGE` | gap | `spex coverage`: a claim with no test, or a script with no file |
 | `VERIFY-ROUNDS` | warning | a verify round past `verify_rounds`: the loop did not converge |
 | `VERIFY-MISSING` | error | `show --verify` without a `spex verify` run |
-| `REVIEW-DIFF-BIG`, `REVIEW-ROUNDS` | error, warning | the diff is above `limits.diff_kb` (review per task); a review round past `review_rounds` |
+| `REVIEW-DIFF-BIG`, `REVIEW-ROUNDS` | error, warning | the diff is above `limits.diff_kb` (review per task); a review round past `review_rounds` (only a P1 is a fix) |
+| `REVIEW-NONE`, `REVIEW-FIX`, `REVIEW-UNKNOWN`, `REVIEW-SCHEMA` | error | `spex review accept` with no round waiting; a fix pick without `done_when` or `paths`; a pick for a finding the round does not have; a findings file off its schema |
+| `TASK-REVIEW` | error, warning | a task's `review` field names no finding accepted as `fix` (warning when the findings file is gone, as on a fresh clone) |
 | `GATE-SPEC` | error | `gate requirements` on something that is not a ready spec folder; `gate new` on a document without a status line |
 | `GATE-DONE` | error | `gate new` on a spec that is ready or has records; `gate develop` on a done task |
 | `GATE-BUILT` | error | `gate new` on a planned step whose dependency is not built |
@@ -1804,7 +1952,7 @@ Runs, gates and commands:
 | `DONE-FAILED` | error | `spex done`: a command failed now, so the status stays |
 | `UNBLOCK-STATUS` | error | `unblock` on a task that is not blocked |
 | `SHIP-QUESTION`, `SHIP-TASKS`, `SHIP-VERIFY`, `SHIP-REVIEW` | error | `ship` refused: a question open, a task left or no `tasks.yaml`, verify not green at this tree, no clean review |
-| `SHIP-BRANCH` | error | `ship` on `main` or `master` without `--merged`: nothing to merge |
+| `SHIP-BRANCH` | error | `ship` on `main` or `master` without `--merged`, in this repo or in another repo of the feature (on its `base`): nothing to merge |
 | `SHIP-COMMIT`, `SHIP-CMD`, `SHIP-FAILED` | error | the commit failed; `ship.cmd` is empty (a person merges, then `--merged`); `ship.cmd` exited non-zero (fix the cause, rerun: the close and the commit are kept) |
 | `GIT-REQUIRED`, `GIT-BASE` | error | a command that needs a git repository for the tree id; `show --review` with no `main`, `master` or `--base` |
 | `INIT-EXISTS` | error | `init` with a config already there (use `update`, or `--force`) |
@@ -1853,20 +2001,41 @@ full up front: the later specs describe code that does not exist yet, and step
 5 changes something that steps 6 to 20 already assumed, so fifteen files are
 stale and nobody owns the re-sync. spex avoids both by construction.
 
-- **Late binding.** `/spex:new` sizes the idea in round 0 and, for more than
-  one step, writes one folder per step: a stub of about ten lines with
-  `status: planned`, `roadmap`, `step`, `depends_on`, `source`, and Why, What
-  and Not this in a few lines each. A stub holds nothing that can go stale
-  except its goal and its order. The detail of a step is written when its turn
-  comes, from `main` as it is then. The person confirms the list once, in the
-  chat; each step still gets its own `spex approve`, gate 1 and the rest, as
-  any feature. *(Dex 020, D-020-3 and D-020-7: a roadmap of steps, briefs
-  generated per step at the time it starts; Shape Up: the thin path first.)*
-- **The roadmap is computed.** `spex roadmap <name>` reads the folders. The
-  order and the dependencies live in each stub's front matter, so there is no
-  roadmap file that drifts from the folders, and `SPEC-DEPENDS` and
-  `SPEC-CYCLE` keep them sound. *(Dex 020 keeps a `roadmap.json`; spex applies
-  its own "the current truth is computed" rule instead.)*
+- **Two layers, bound at two times.** What the design says for a step does not
+  change when the code does, so round 0 writes all of it into the stub at
+  once: every name, key, value, file, command, label, check, signal and record
+  path of its sections, each tagged `[new]`, `[built: …]` or `[changes: …]`,
+  the names it uses and introduces, and the design's open items as Open
+  questions. What the code says (Constraints, research, the decisions that
+  rest on them) is written when the step's turn comes, from `main` as it is
+  then, because the steps before it change the code. A stub has seven
+  headings; the other five come with `spex gate new`, since headings with only
+  hints under them read as a run that failed. The person confirms the list
+  once, in the chat; each step still gets its own `spex approve`, gate 1 and
+  the rest, as any feature. *(Dex 020, D-020-3 and D-020-7: a roadmap of steps,
+  briefs per step at the time it starts. Measured on nex 029 to 057 and on a
+  second project: stubs of 3 to 6 bullets left design sections in no step,
+  and dependencies a reader had to guess.)*
+- **The order is computed; the coverage is a file.** `spex roadmap <name>`
+  reads the folders: the order and the dependencies live in each stub's front
+  matter, and `SPEC-DEPENDS` and `SPEC-CYCLE` keep them sound. What the
+  folders cannot say lives in `specs/<name>.roadmap.md`: the idea, why the
+  order is this one, what the roadmap needs from outside, the round-0
+  decisions, and one coverage row per design section. The file names steps
+  only in its rows, and `spex roadmap <name> --coverage` fails on a row that
+  names a step that is gone, on a step no row names, and on a section with no
+  row, so it cannot drift silently.
+- **The same design gives the same list.** Round 0 starts from `spex outline`,
+  the design's own sections, and from the design's own list of work and order
+  when it has one; each merge, split and change of order is a line with its
+  reason. Two sessions on one design cut 16 and 14 steps, with different
+  dependencies, when the list came from a free reading. A re-cut starts from
+  the roadmap that exists: keep, change, add, drop, and `spex drop` keeps a
+  dropped step's work in `.spex/archive/`.
+- **A missing dependency is found by a program.** Each stub lists the names it
+  uses, each with the step it comes from, and the names it introduces.
+  `USES-DEPENDS` fails when that step is not among its dependencies, so the
+  step cannot be shaped before the name exists.
 - **A step opens only when its dependencies are built.** `spex gate new`
   refuses a planned step while a folder in its `depends_on` is not shipped
   (its records `built`), and flips it to `shaping` when every one is. The
@@ -1900,10 +2069,9 @@ stale and nobody owns the re-sync. spex avoids both by construction.
   one read of N ten-line stubs. *(Dex 020, D-020-6: a re-plan after every
   merged step, "no change" passing without the person.)*
 
-What the script does not check: that every section of the design is covered
-by a step. That needs the design split into sections (Dex 020, D-020-1), which
-is Dex's work; in spex the skill lists the uncovered sections in the sizing
-round and the person decides.
+What the script does not check: that a row's reason is a good one, or that a
+stub's bullets hold everything its sections say. Those are a person's reading
+of the roadmap file and the stubs, once, in round 0.
 
 ## Agents
 
@@ -2250,6 +2418,62 @@ the plan, nor that "done" ends the phase: "done" came as the answer to round
 | the migrations table had no entry, so the "older repo" branch of `CONFIG-FORMAT` could not run | format 1 → 2 is the first migration: `spex update` removes `verification` from every record, `verify`, `quick` and `approvals.tests` from every `tasks.yaml`, and writes a `tests.yaml` per folder (one script test per scenario, its name and file found in `acceptance_dir` when the test exists; one shell test per task that had `verify` commands); `/spex:update` then starts a test analyst per folder to complete it: a session where no script can judge, a test for every task, a name for every script. The new keys (`drivers`, `live`, `people`, `verify_rounds`, `ship`) arrive with their comments |
 | the config had one way to run tests | `drivers`: named commands past the default (`playwright` when `@playwright/test` is a dependency), each with its folder, every folder protected; `shell` built in for steps that are commands |
 | `spex go`, one command that runs the whole feature with no stop | deferred: every skill already ends with the NEXT block, the gates are the only stops, and auto mode removes every question; a runner over them is Dex's job (017) until a real repo shows a person typing the same seven commands |
+
+## What changed in v2.1
+
+One observation from nex step 028, after v2.0. Review round 1 found no
+blocking finding, but two rare cases went to a decider, which said "patch".
+Each fix task then went through the person's approval of `tasks.yaml`, the
+test developers, develop, verify and a fresh review: about ten commands for
+two small changes in one file. Round 3 read the new retry code with fresh
+eyes and found a rare case in the fix itself, so a third fix task came. The
+round after it would have been round 4, past `review_rounds`, and the skill
+said "hand it to a person"; but `gate ship` needs a clean review report, and
+no command let the person give one. The person said it plainly: a reviewer
+always finds something, and the job is to fix the big things and skip the
+small ones.
+
+| Hole in v2.0 | v2.1 |
+|:--|:--|
+| every bug was blocking, however rare; a decider chose defer or patch and leaned to patch | a severity on every finding (`P1` likely or harmful, `P2` rare but real, `P3` rare and harmless, `nit` style) and a default pick for each |
+| findings came one route at a time, inside the run, and the person saw only the result | every finding at once, worst first, with the finder's fix plan and a pick, in `.spex/review/<feature>-<round>.findings.yaml`; the person answers in one word, and `spex review accept` is the answer |
+| a fix task the review wrote waited for a second `/spex:approve` of `tasks.yaml` | the accept is the approval: a task with `review` stays out of the approval hashes, and `TASK-REVIEW` refuses the field when no accept wrote it |
+| a fix went through four commands (approve, tests, develop, verify) | `/spex:fix`: the test analyst plans the finder's scenario as a test of the task's own (a review fix is proved only by a test that names it), the test developers write it red, developers build, verify proves the feature |
+| every round reviewed the whole diff again with fresh eyes, so new code always gave new rare cases | round 2 and later only checks the accepted fixes, and a new finding there counts only at P1; on the last round only a P1 is a fix |
+| past `review_rounds` there was no way to ship | an answer with no fix pick writes the clean review report; `spex ship` lists every deferred item with its severity |
+
+Three more from the same day, read in the person's own sessions: a develop
+run in agent-flywheel-os 001, the roadmap of nex 028 to 056, and the shaping
+of nex 029.
+
+| Hole in v2.0 | v2.1 |
+|:--|:--|
+| every skill wrote its own reply; develop said `STATUS: blocked` for a task that was built and waited for one yes, the question sat in a paragraph, and NEXT pointed at the next task | one frame in `reply.md` that every skill reads: a bold verdict between heavy rules (`✅ IMPLEMENTED`, `⏸ WAITING FOR YOU`, `⛔ NOT STARTED`), `What:`, the question blocks, `You:`, NEXT. The agents' status words stay with the agents |
+| the shaping banner said `step 2 of 29 · round 1`, which read as 29 questions; sizes were small dots; the questions ran together, and four of five had one option ("Pick: that") | `💎 SHAPING` and `spec 2 of 29 in roadmap nex-target · question round 1`, the total from `spex gate new`; 🟥 🟧 🟨; one block per question between `─` rules with **Context** and **👉 Pick**; one-option items under "I do this unless you say no" |
+| a stub was Why, What and Not this, then five headings with only a hint; 28 of them looked like a run that failed, and none said what the design said | a stub has a first line that says when it is shaped, its three sections and From the design; `spex gate new` adds the other sections when it opens the step |
+| shaping asked questions into a mostly empty file; after round 1 the person had seen no spec | round 1 drafts every section first, with one Mermaid diagram, and asks only what the draft cannot settle |
+
+## What changed in v2.2
+
+Two roadmaps, read in the person's own repos after v2.1: nex 028 to 057, cut
+by `/spex:new` from `nex-design.html`, and agent-flywheel-os, whose UI lives
+in forks next to it. Each nex stub had 3 to 6 bullets. Design sections fell
+in no step, a reader had to guess the dependencies, and two sessions on one
+design cut 16 and 14 steps. In the flywheel, the dashboard pages became
+"outside", because a feature could write only one repo. The person's rule:
+every spec has no gaps from round 0, and what is not settled is an open
+question, not a hole.
+
+| Hole in v2.1 | v2.2 |
+|:--|:--|
+| the step list came from a free reading of the design | round 0 (`skills/new/roadmap.md`) starts from `spex outline`, the design's own sections, and from its own list of work and order; each merge, split and change of order is a line with its reason |
+| nothing said which design section went to which step | `spex roadmap <name> --init` writes `specs/<name>.roadmap.md`, one coverage row per section; `--coverage` fails on a section with no row (`ROADMAP-UNCOVERED`), a row with no reason (`ROADMAP-WHY`), a row that names a step that is gone (`ROADMAP-STEP`), and a step that covers nothing (`ROADMAP-IDLE`) |
+| a stub held what the agent remembered of the design | From the design holds every name, key, value, file, command and signal its sections fix, each with its `#anchor` and a tag (`[new]`, `[built: spec 24]`, `[changes: spec 21]`, `SPEC-TAG`); another step is named by its folder, never by a number (`SPEC-STEPREF`) |
+| a missing dependency showed up when a later step's shaping failed | Uses and Introduces in each stub: `USES-DEPENDS` fails when a name comes from a step outside `depends_on`, `USES-FROM` when that step does not introduce it, `INTRODUCES-TWICE` when two steps bring one name; `← outside (who)` for what the Outside section lists |
+| the design's picks and TBDs were lost, or written as facts | each one is an Open question of its step, with the design's pick as the recommendation |
+| a re-cut deleted folders by hand | a re-cut starts from the list that exists: keep, change, add, drop. `spex drop <dir> --reason` moves a step and its work to `.spex/archive/`, and refuses a step that another depends on (`DROP-DEPENDED`) or that has approved or built records (`DROP-LIVE`) |
+| one feature, one git repo: a UI in a fork was "outside" | `repos` in `.spex/config.yaml`, and `repo:` on a task or a driver. Paths print from the home root, or absolute for a repo at `/…` or `~/…` (a git worktree has another root). The evidence's tree covers every repo, so a change in any makes a green run stale. A repo's review diff starts at the commit of its first task. `spex ship` merges the other repos first and this one last, and a rerun skips what merged. See **Other repos** |
+| `spex check specs/` failed with `SPEC-MISSING` | `specs/` means every folder, as no argument does |
 
 ## Open questions
 

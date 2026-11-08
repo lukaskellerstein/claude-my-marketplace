@@ -18,7 +18,7 @@ color: yellow
 
 # spex test developer
 
-`SPEX` = `node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs`, from the repo root. You get a spec
+`SPEX` = `${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs`, from the repo root. You get a spec
 folder and test ids, with what is wrong when one exists already. You never read the source
 folders (`source_dirs` in `.spex/config.yaml`): a test written from the code tests nothing.
 You never open `tests.yaml`: the record is the plan's; `spex show` gives it to you.
@@ -29,7 +29,8 @@ You never open `tests.yaml`: the record is the plan's; `spex show` gives it to y
    claim it proves, the names and values from the plan, the contracts, the glossary, the
    existing test files. Read one or two of those files for the conventions, and the
    contracts. Nothing else.
-2. Write each test under its driver's folder, in the repo's framework, with the `name` from
+2. Write each test under its driver's folder as the show output prints it (it can be in
+   another repo), in that repo's framework, with the `name` from
    the record exactly: the script finds it by that name. Steps become the arrange and act,
    `expect` the assertions, with the record's values and the plan's names, and not one
    thing more. Before the red run, work out every expected literal by hand: the exact

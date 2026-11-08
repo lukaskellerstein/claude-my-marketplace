@@ -1,6 +1,8 @@
 // `spex check`: every rule, for one folder or all of them.
 
 import { loadConfig } from './config.js';
+import { checkReviewRefs } from './review.js';
+import { checkLinks } from './rules/links.js';
 import { checkRequirements } from './rules/requirements.js';
 import { checkSpec, specDocPath } from './rules/spec.js';
 import { checkTasks } from './rules/tasks.js';
@@ -19,7 +21,9 @@ export function runCheck(root: string, dirs: string[], opts: { base?: string; br
   const { config, findings } = loadConfig(root);
   const index = buildIndex(root, { branches: opts.branches ?? true });
   findings.push(...index.findings);
-  const targets = dirs.length ? dirs.map((d) => resolveFeatureDir(root, d)) : featureDirs(root);
+  // `spex check specs/` means every folder, as `spex check` does: specs/ itself is no feature.
+  const named = dirs.filter((d) => !/^(\.\/)?specs\/*$/.test(d));
+  const targets = named.length ? named.map((d) => resolveFeatureDir(root, d)) : featureDirs(root);
   const features: Feature[] = [];
   for (const dir of targets) {
     const feature = loadFeature(root, dir);
@@ -27,7 +31,7 @@ export function runCheck(root: string, dirs: string[], opts: { base?: string; br
     findings.push(...feature.errors);
     const ctx = { root, config, feature, index, base: opts.base };
     const spec = checkSpec(ctx);
-    findings.push(...spec);
+    findings.push(...spec, ...checkLinks(ctx));
     if (!feature.requirements && !feature.tasks && !feature.tests && feature.errors.length === 0) {
       // A folder with only spec.md is a feature being shaped or waiting for its records, not an error.
       const shaping = spec.some((f) => f.code === 'SPEC-SHAPING');
@@ -41,6 +45,7 @@ export function runCheck(root: string, dirs: string[], opts: { base?: string; br
     }
     findings.push(...checkRequirements(ctx));
     findings.push(...checkTasks(ctx));
+    findings.push(...checkReviewRefs(root, feature));
     findings.push(...checkTests(ctx));
   }
   return { findings, features, config, index };

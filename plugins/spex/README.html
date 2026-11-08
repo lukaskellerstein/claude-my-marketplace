@@ -196,7 +196,7 @@ footer code { color: var(--fg); }
 
   <footer>
     <div>Also: <code>/spex:init</code> once per repo · <code>/spex:update</code> after a plugin update, it moves old proof lines into <code>tests.yaml</code> · <code>/spex:clarify</code> and <code>/spex:research</code> are the way back in for a question or an unknown that opens later · <code>/spex:ship &lt;dir&gt; --merged</code> after a merge you made yourself.</div>
-    <div><span class="dirbox"><label for="dir">Your folder</label><input id="dir" type="text" value="specs/012-foo" spellcheck="false" autocomplete="off"></span> · spex 2.0.0 · the design, the rules and every refusal code: <a href="README.md">README.md</a> · ← → and space work too.</div>
+    <div><span class="dirbox"><label for="dir">Your folder</label><input id="dir" type="text" value="specs/012-foo" spellcheck="false" autocomplete="off"></span> · spex 2.2.0 · the design, the rules and every refusal code: <a href="README.md">README.md</a> · ← → and space work too.</div>
   </footer>
 </div>
 
@@ -282,7 +282,7 @@ footer code { color: var(--fg); }
     { ch: 8, at: 7, rows: { agent: 'developer: T05', script: 'spex done T05 ✓' }, tasks: { items: { T05: 'done' } }, say: 'One developer, one spex done.', cmd: '/spex:develop <dir>', cmdActor: 'skill' },
     { ch: 8, at: 8, rows: { script: 'spex verify, round 2: every script green, TS06 pass at this tree' }, plan: { items: { TS03: 'green' } }, spex: ['evidence/T01…T05.json', 'verify-1.json: 1 red', 'artifacts/TS06.png', 'verify-2.json: green'], say: 'Round two: green at this tree. The NEXT block names the review.', cmd: 'NEXT /clear · /spex:review <dir>', cmdActor: 'script' },
     { ch: 9, at: 9, rows: { script: 'gate review: verify green at this tree ✓ · show --review writes the diff', agent: 'reviewer ×5, one per task slice' }, checks: { 9: true }, spex: ['evidence/T01…T05.json', 'verify-1.json: 1 red', 'artifacts/TS06.png', 'verify-2.json: green', 'review/012-1.diff'], say: 'Review reads the diff for what no test sees. It reruns nothing: the script proved the tests.', cmd: '/spex:review <dir>', cmdActor: 'skill' },
-    { ch: 9, rows: { skill: 'clean: tasks.yaml stays byte for byte', script: 'report: done' }, review: 'clean', say: 'Clean. Nothing appended. A finding would have become a fix task, the way TS03 did.', cmd: 'NEXT /clear · /spex:ship <dir>', cmdActor: 'script' },
+    { ch: 9, rows: { skill: 'clean: tasks.yaml stays byte for byte', script: 'report: done' }, review: 'clean', say: 'Clean. Nothing appended. With findings, the list comes at once, worst first, each with P1 to nit and the finder\'s fix plan. You reply ok (or 2=defer), and /spex:fix builds the fixes: no second approval.', cmd: 'NEXT /clear · /spex:ship <dir>', cmdActor: 'script' },
     { ch: 10, at: 10, rows: { script: 'gate ship ✓ · spex ship: approved → built, commit, ship.cmd: push, open the request, merge' }, checks: { 10: true }, req: 'built', say: 'No click. The script marks the records built, commits, and ship.cmd merges the branch.', cmd: '/spex:ship <dir>', cmdActor: 'skill' },
     { ch: 10, rows: { you: 'reads the answers nobody gave', script: 'spex next: shipped, nothing is next' }, say: 'Shipped. You read the answers the decider gave. Every file stays as proof of what was decided.', cmd: 'spex next <dir>', cmdActor: 'script' },
   ];

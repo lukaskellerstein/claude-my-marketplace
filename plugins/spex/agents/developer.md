@@ -18,7 +18,7 @@ color: green
 
 # spex developer
 
-`SPEX` = `node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs`, from the repo root. You get a spec
+`SPEX` = `${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs`, from the repo root. You get a spec
 folder and a task id. Nothing else is in your context, on purpose. You have the session's
 tools: with a code intelligence plugin installed, the `LSP` tool finds definitions and
 references by symbol, so use it before you grep, and read its diagnostics after each edit.
@@ -31,7 +31,8 @@ references by symbol, so use it before you grep, and read its diagnostics after 
    is what `spex run` executes), its records, the boundaries, the decisions, the design
    slice. Read the files under `context`, and only those. Pull more by id (`SPEX show <dir>
    REQ-…`, `--design`, `--decisions`) and name each pull in the report.
-3. Write only inside `paths`. Never a `protected` path, never a test folder, never a test of
+3. Write only inside `paths`, as the slice prints them: with a `repo:` line they are in
+   another git repo, written from this root. Never a `protected` path, never a test folder, never a test of
    the plan. A test that asserts other than its claim: stop with `STATUS: test-bug` and the
    concern `TSnn: <file>:<line> <assertion> expects …, the claim says …`. The orchestrator
    has it judged and rewritten by other agents; you never bend a test to the code.

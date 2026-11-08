@@ -102,6 +102,8 @@ export interface Task {
   requirements: string[];
   depends_on?: string[];
   parallel_group?: string;
+  /** The repo the task writes, a key of config.repos; absent for this repo. Its paths and context are inside it. */
+  repo?: string;
   paths: string[];
   context?: string[];
   design?: string[];
@@ -110,7 +112,47 @@ export interface Task {
   /** The claim: one observable sentence. Its proof is a test in tests.yaml, written by the test analyst. */
   done_when: string;
   source?: string;
+  /** A fix task a review finding became: how bad it is (P1 likely or harmful, P2 rare but real, P3 rare and harmless). */
+  severity?: Priority;
+  /** The finding a person accepted with `spex review accept`: `<feature>-<round>/F<n>`. Such a task needs no second approval. */
+  review?: string;
   status: TaskStatus;
+}
+
+/** How bad a review finding is. P1: likely in normal use, or data loss, security, wrong money. P2: wrong in a rare but real case. P3: rare and harmless. */
+export type Priority = 'P1' | 'P2' | 'P3';
+export type FindingSeverity = Priority | 'nit';
+export type Pick = 'fix' | 'defer' | 'skip';
+
+/** One finding of a review round, in .spex/review/<feature>-<round>.findings.yaml. The finder writes the claim and the fix plan; others build and prove it. */
+export interface ReviewFinding {
+  id: string;
+  severity: FindingSeverity;
+  title: string;
+  file: string;
+  line?: number;
+  /** The failure scenario: the state and the input. It becomes the red test. */
+  when: string;
+  /** What goes wrong, as a person sees it. */
+  effect: string;
+  /** The proposed fix: what and where, no code. It becomes the task's instructions. */
+  fix: string;
+  /** The claim the test proves once the fix is in. Needed for a fix pick. */
+  done_when?: string;
+  requirements?: string[];
+  paths?: string[];
+  context?: string[];
+  pick: Pick;
+  /** Why it waits (defer) or does not matter (skip). */
+  why?: string;
+}
+
+export interface FindingsFile {
+  feature: string;
+  round: number;
+  findings: ReviewFinding[];
+  /** Written by `spex review accept`, never by a skill. */
+  accepted?: { at: string; by: string; tasks: string[]; deferred: string[]; skipped: string[] };
 }
 
 export interface Design {
@@ -124,7 +166,7 @@ export interface TasksFile {
   approach: string;
   boundaries?: { always?: string[]; never?: string[] };
   design?: Design;
-  deferred?: { finding: string; why: string; by: string }[];
+  deferred?: { finding: string; why: string; by: string; severity?: FindingSeverity }[];
   /** Written by `spex approve`, never by a skill: a hash of tasks.yaml as a person read it. */
   approvals?: { tasks?: string };
   tasks: Task[];
@@ -176,12 +218,30 @@ export interface Limits {
   file_kb: number;
   tests_scenarios: number;
   verify_minutes: number;
+  /** How many names one step of a roadmap may introduce before spex check says to split it. */
+  step_introduces: number;
 }
 
 /** One more way to run script tests: the command (with {ids}) and the folder its files live in. */
 export interface Driver {
   cmd: string;
   dir?: string;
+  /** The repo the command runs in and the folder is in, a key of config.repos; absent for this repo. */
+  repo?: string;
+}
+
+/** Another git repo a task may write. Specs and .spex/ stay in this repo; the code and its tests may live there. */
+export interface RepoConfig {
+  /** From this repo's root: ../forks/odh-dashboard. */
+  path: string;
+  /** The branch its review diff starts from. Absent: the commit it was at when its first task opened. */
+  base?: string;
+  /** Run in it, after this repo's fast_checks, when a task of the feature writes it. */
+  fast_checks?: string[];
+  /** No task writes these, inside it; its drivers' folders are protected too. */
+  protected?: string[];
+  /** How ship merges it. Absent commit: this repo's ship.commit. Empty cmd: a person merges it. */
+  ship?: { commit?: boolean; cmd?: string };
 }
 
 export interface Config {
@@ -191,6 +251,8 @@ export interface Config {
   acceptance_cmd: string;
   /** Named drivers past the default: `playwright: {cmd: 'npx playwright test --grep "{ids}"', dir: tests/e2e}`. */
   drivers: Record<string, Driver>;
+  /** Other git repos a task may write, by name: `dashboard: {path: ../forks/odh-dashboard}`. */
+  repos: Record<string, RepoConfig>;
   fast_checks: string[];
   source_dirs: string[];
   protected: string[];

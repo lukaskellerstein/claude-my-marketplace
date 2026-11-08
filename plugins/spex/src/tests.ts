@@ -3,10 +3,11 @@
 // these so the two never disagree about what "covered" means.
 
 import { spawnSync } from 'node:child_process';
-import { join } from 'node:path';
+import { isAbsolute, join } from 'node:path';
 import { SHELL, driverOf, testDirs } from './config.js';
 import { coverToken } from './ears.js';
 import { fileExists, readText, walk } from './io.js';
+import { fromRoot, inRepo } from './repos.js';
 import type { Config, Feature, Finding, SessionEvidence, Task, TestRecord } from './types.js';
 
 /** `REQ-007-001/AC-1` → the record id and the scenario id; a record or task id → no scenario. */
@@ -19,6 +20,8 @@ export function splitCover(id: string): { req: string | null; ac: string | null;
 /** Every id a task's proof may name: the task, its records, and their scenarios. */
 export function claimsOf(feature: Feature, task: Task): Set<string> {
   const ids = new Set<string>([task.id]);
+  // A review fix is proved by the finder's scenario, a test of its own: the record's tests are green already.
+  if (task.review) return ids;
   for (const reqId of task.requirements) {
     ids.add(reqId);
     const r = feature.requirements?.requirements.find((x) => x.id === reqId);
@@ -52,17 +55,20 @@ export function nameToken(feature: Feature, t: TestRecord): string {
 
 const TEST_FILE = /\.(ts|tsx|js|mjs|cjs|py|go|rs|java|kt|rb|php|feature|sh)$/;
 
-/** Every test file under the test folders, repo-relative. */
+/** Every test file under the test folders, from the home root: a driver of another repo walks its folder there. */
 export function testFiles(root: string, config: Config): string[] {
-  return testDirs(config).flatMap((d) => walk(root, join(root, d))).filter((p) => TEST_FILE.test(p));
+  const dirs = [...testDirs(config), ...Object.keys(config.repos).flatMap((r) => testDirs(config, r).map((d) => inRepo(config, r, d)))];
+  return [...new Set(dirs)].flatMap((d) => (isAbsolute(d) ? walk(d, d).map((p) => `${d}/${p}`) : walk(root, join(root, d)))).filter((p) => TEST_FILE.test(p));
 }
 
 /** Where a file test lives: its `file` when that holds the name, else the first file under its driver's dir that does. */
 export function locateTest(root: string, config: Config, t: TestRecord, files?: Map<string, string>): string | null {
   if (!t.name) return null;
-  if (t.file && fileExists(join(root, t.file)) && readText(join(root, t.file)).includes(t.name)) return t.file;
-  const dir = driverOf(config, t.driver)?.dir;
-  const contents = files ?? new Map(testFiles(root, config).map((p) => [p, readText(join(root, p))]));
+  const driver = driverOf(config, t.driver);
+  // `file` is from the home root, or from the root of the driver's repo.
+  for (const f of t.file ? [t.file, inRepo(config, driver?.repo, t.file)] : []) if (fileExists(fromRoot(root, f)) && readText(fromRoot(root, f)).includes(t.name)) return f;
+  const dir = driver?.dir ? inRepo(config, driver.repo, driver.dir) : undefined;
+  const contents = files ?? new Map(testFiles(root, config).map((p) => [p, readText(fromRoot(root, p))]));
   for (const [p, text] of contents) {
     if (dir && !p.startsWith(dir.replace(/\/+$/, '') + '/')) continue;
     if (text.includes(t.name)) return p;

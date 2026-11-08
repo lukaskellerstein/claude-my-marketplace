@@ -8,6 +8,8 @@ import { testId } from '../ears.js';
 import { bytes, fileExists, readText } from '../io.js';
 import { claimsOf, isFileTest, isScript, nameToken, personActor, splitCover, testFiles } from '../tests.js';
 import type { Finding } from '../types.js';
+import { evidencePath } from '../verify.js';
+import { fromRoot } from '../repos.js';
 import type { RuleContext } from './requirements.js';
 
 const clip = (text: string, max = 100): string => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
@@ -78,7 +80,13 @@ export function checkTests(ctx: RuleContext): Finding[] {
           if (t.file) {
             const abs = join(ctx.root, t.file);
             if (!fileExists(abs)) f('info', 'TEST-FILE', `${t.id}: ${t.file} does not exist yet`, 'The test developer writes it: /spex:tests.', t.id);
-            else if (!readText(abs).includes(t.name)) f('error', 'TEST-FILE', `${t.id}: ${t.file} holds no test named ${t.name}`, 'Fix `file` or `name`: the file is where the test developer put it, the name is what it is called there.', t.id);
+            else if (!readText(abs).includes(t.name)) {
+              // A later batch often writes into a file an earlier batch created: with no run on record, the test is
+              // not written yet. Only a test that ran once, red or green, and is now gone from its file is a broken record.
+              const ran = (['fail', 'pass'] as const).some((e) => fileExists(evidencePath(ctx.root, reqs.feature, t.id, e)));
+              if (ran) f('error', 'TEST-FILE', `${t.id}: ${t.file} holds no test named ${t.name}, but ${t.id} ran before`, 'Fix `file` or `name`: the file is where the test developer put it, the name is what it is called there.', t.id);
+              else f('info', 'TEST-FILE', `${t.id}: ${t.file} has no test named ${t.name} yet`, 'The test developer writes it: /spex:tests.', t.id);
+            }
           }
         }
       }
@@ -118,7 +126,7 @@ export function checkTests(ctx: RuleContext): Finding[] {
     const files = testFiles(ctx.root, config);
     for (const old of supersedes) {
       const needle = testId(old);
-      const hits = files.filter((p) => readText(join(ctx.root, p)).includes(needle));
+      const hits = files.filter((p) => readText(fromRoot(ctx.root, p)).includes(needle));
       if (hits.length) f('warning', 'TEST-STALE', `${old} is superseded by this feature but ${hits.join(', ')} still tests it`, 'When the test developer writes the superseding test, it retires the old one.', old);
     }
   }

@@ -2,12 +2,12 @@
 name: tests
 description: Write the test code the proof plan (tests.yaml) asks for — every script test without a file, batch after batch, through test-developer subagents that never read the source and prove each test red with spex run --test --expect fail — before any code exists. Use when the user says "tests", "spex tests", "write the tests", "tests TS03", or when a NEXT block names /spex:tests.
 disable-model-invocation: true
-allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Agent
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Read(${CLAUDE_PLUGIN_ROOT}/reply.md), Agent
 ---
 
 # spex tests
 
-`SPEX` = `node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs`, from the repo root.
+`SPEX` = `${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs` (it runs as it is), from the repo root.
 
 The plan is in `tests.yaml` (the test analyst's); this skill turns its script tests into
 files. One run covers every script test without a file, one batch at a time: a batch is the
@@ -18,7 +18,8 @@ Your context holds the batch and the results, never a test body: the test develo
 ## Steps
 
 1. `SPEX gate tests <dir> [TS…]`, with the ids the user gave or none for the batch. Refused:
-   report its `fix` text and stop. Its `tests:` line names the batch; an empty one means
+   `SPEX coverage <dir>` once, for the tests already written, then the Reply with
+   `⛔ NOT STARTED`, and stop. Its `tests:` line names the batch; an empty one means
    every script has its file: go to step 6.
 2. `SPEX show <dir> --tests <ids…>` once, to group the batch: tests that name the same
    `file` go to one developer; the rest by driver, two or three per developer.
@@ -52,9 +53,24 @@ never `tests.yaml`: the wall between the claim, its plan and its code holds here
 
 ## Reply
 
-At most 15 lines. `STATUS:` first, then one line per batch: the tests, their files, each
-red run's result, and the records the analyst rewrote. Last, the output of `SPEX next
-<dir>`, as printed.
+In the frame of `${CLAUDE_PLUGIN_ROOT}/reply.md` (read it first), at most 15 lines.
+`✅ TESTS WRITTEN`, `⏸ WAITING FOR YOU` (blocked) or `⛔ NOT STARTED` (refused). Then this
+table in a code block. A row with no test is left out; consecutive ids are a range
+(`TS01–TS09`), with the count after it.
+
+```
+red as expected  TS01–TS09, TS11, TS12 (11)  test_001_training_job.py, test_001_evaluations_api.py
+already green    TS10  mutation proof: <evidence>; kept as a concern
+not red          TS05  RUN-SKIPPED: <finding>; a fresh developer took it again
+rewritten        TS07  by the test analyst: <why>
+not written      TS13–TS22 (10)  <the next batch | what the gate said>
+why              <refused or blocked only: one line per finding code, what it saw>
+choose           <refused or blocked only: A) the first fix text, your pick  B) the next one>
+```
+
+`why` says what is wrong in plain words; `choose` lists each distinct `fix` text once,
+lettered, so the user answers with one letter. Last, the output of `SPEX next <dir>`, as
+printed.
 
 The NEXT block is copied as `SPEX next` printed it, the two rules included, never rewritten
 into prose or shortened, and it does not count toward the line cap.

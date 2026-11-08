@@ -7,8 +7,9 @@ import { spawnSync } from 'node:child_process';
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { SHELL, driverOf } from './config.js';
-import { treeId } from './git.js';
+import { isGitRepo, treeId } from './git.js';
 import { fileExists, isDir, readText, writeText } from './io.js';
+import { cdPrefix, featureRepos, repoRoot } from './repos.js';
 import { isFileTest, isScript, isSession, isShellTest, readSession, testsOf } from './tests.js';
 import type { Config, Evidence, Feature, Finding, SessionStatus, Task, TestRecord, VerifyEvidence } from './types.js';
 
@@ -33,7 +34,8 @@ export function driverGroups(config: Config, tests: TestRecord[]): DriverGroup[]
     let g = out.find((x) => x.driver === key);
     if (!g) {
       const d = driverOf(config, t.driver);
-      g = { driver: key, template: d?.cmd.trim() ? d.cmd : null, tests: [], names: [] };
+      // A driver of another repo runs there: the command carries the cd, so the log shows where it ran.
+      g = { driver: key, template: d?.cmd.trim() ? cdPrefix(config, d.repo) + d.cmd : null, tests: [], names: [] };
       out.push(g);
     }
     g.tests.push(t);
@@ -52,8 +54,13 @@ export interface Composed {
   findings: Finding[];
 }
 
+/** fast_checks of this repo and of `repos`, each run in its repo. */
+export function fastChecks(config: Config, repos: string[] = []): string[] {
+  return [...config.fast_checks, ...repos.flatMap((r) => (config.repos[r]?.fast_checks ?? []).map((c) => cdPrefix(config, r) + c))];
+}
+
 /** fast_checks, then one command per driver for the file tests, then every shell test's steps. `fail` runs only the drivers. */
-export function compose(config: Config, tests: TestRecord[], expect: 'pass' | 'fail' = 'pass'): Composed {
+export function compose(config: Config, tests: TestRecord[], expect: 'pass' | 'fail' = 'pass', repos: string[] = []): Composed {
   const scripts = tests.filter(isScript);
   const groups = driverGroups(config, scripts);
   const findings: Finding[] = [];
@@ -68,13 +75,13 @@ export function compose(config: Config, tests: TestRecord[], expect: 'pass' | 'f
   }
   const driverCmds = groups.filter((g) => g.template).map((g) => driverCommand(g.template!, g.names));
   if (expect === 'fail') cmds.push(...driverCmds);
-  else cmds.push(...config.fast_checks, ...driverCmds, ...scripts.filter(isShellTest).flatMap((t) => t.steps));
+  else cmds.push(...fastChecks(config, repos), ...driverCmds, ...scripts.filter(isShellTest).flatMap((t) => t.steps));
   return { cmds, names: groups.flatMap((g) => g.names), fileTests: scripts.filter(isFileTest), shellTests: scripts.filter(isShellTest), groups, findings };
 }
 
-/** The commands of one task: its tests from tests.yaml. */
+/** The commands of one task: its tests from tests.yaml, and the fast_checks of the repo it writes. */
 export function composeVerify(config: Config, feature: Feature, task: Task, expect: 'pass' | 'fail' = 'pass'): Composed {
-  return compose(config, testsOf(feature, task), expect);
+  return compose(config, testsOf(feature, task), expect, task.repo ? [task.repo] : []);
 }
 
 export function evidencePath(root: string, feature: string, name: string, expect: 'pass' | 'fail'): string {
@@ -126,8 +133,18 @@ export function runCommands(root: string, cmds: string[], timeoutMinutes: number
   return { results, ok, output, raw, printed: printedAll };
 }
 
-export function currentTree(root: string): string {
-  return treeId(root);
+/**
+ * The tree the evidence is keyed by: this repo's, and, for a feature, each other repo it names
+ * (`3f2a…+9c1d… dashboard:77ab…+0000…`). A change in any of them makes the evidence stale.
+ */
+export function currentTree(root: string, config?: Config, feature?: Feature): string {
+  const home = treeId(root);
+  if (!config || !feature) return home;
+  const others = featureRepos(config, feature).map((name) => {
+    const abs = repoRoot(root, config, name);
+    return `${name}:${isGitRepo(abs) ? treeId(abs) : 'missing'}`;
+  });
+  return [home, ...others].join(' ');
 }
 
 export interface VerifyResult {
@@ -143,17 +160,18 @@ export interface VerifyResult {
 /** Run one task's checks now. `pass`: everything must exit 0. `fail`: its file tests must run and fail. */
 export function verifyTask(root: string, config: Config, feature: Feature, task: Task, expect: 'pass' | 'fail'): VerifyResult {
   const tests = testsOf(feature, task);
-  return judge(root, config, feature.requirements?.feature ?? feature.name, task.id, compose(config, tests, expect), tests, expect);
+  return judge(root, config, feature, task.id, composeVerify(config, feature, task, expect), tests, expect);
 }
 
 /** Run one test record now, by id. */
 export function verifyOne(root: string, config: Config, feature: Feature, test: TestRecord, expect: 'pass' | 'fail'): VerifyResult {
-  return judge(root, config, feature.requirements?.feature ?? feature.name, test.id, compose(config, [test], expect), [test], expect);
+  return judge(root, config, feature, test.id, compose(config, [test], expect), [test], expect);
 }
 
-function judge(root: string, config: Config, featureId: string, name: string, c: Composed, tests: TestRecord[], expect: 'pass' | 'fail'): VerifyResult {
+function judge(root: string, config: Config, feature: Feature, name: string, c: Composed, tests: TestRecord[], expect: 'pass' | 'fail'): VerifyResult {
   if (c.findings.length) return { ok: false, findings: c.findings, commands: [], tail: '' };
-  const tree = currentTree(root);
+  const featureId = feature.requirements?.feature ?? feature.name;
+  const tree = currentTree(root, config, feature);
   const ids = tests.filter(isScript).map((t) => t.id);
   if (!c.cmds.length) {
     if (expect === 'fail' && !c.fileTests.length) {
@@ -213,9 +231,9 @@ export function readVerify(root: string, featureId: string): VerifyEvidence | nu
 }
 
 /** The whole-feature run is good for this tree: every script passed and every session was recorded as a pass at it. */
-export function verifyIsCurrent(root: string, featureId: string): boolean {
-  const v = readVerify(root, featureId);
-  return !!v && v.ok && v.tree === currentTree(root);
+export function verifyIsCurrent(root: string, config: Config, feature: Feature): boolean {
+  const v = readVerify(root, feature.requirements?.feature ?? feature.name);
+  return !!v && v.ok && v.tree === currentTree(root, config, feature);
 }
 
 export interface FeatureVerify {
@@ -232,13 +250,13 @@ export interface FeatureVerify {
  */
 export function verifyFeature(root: string, config: Config, feature: Feature): FeatureVerify {
   const featureId = feature.requirements?.feature ?? feature.name;
-  const tree = currentTree(root);
+  const tree = currentTree(root, config, feature);
   const tests = feature.tests?.tests ?? [];
   const dir = join(root, '.spex', 'evidence', featureId);
   const round = (isDir(dir) ? readdirSync(dir).filter((n) => /^verify-\d+\.json$/.test(n)).length : 0) + 1;
   const findings: Finding[] = [];
   let output = '';
-  const fast = runCommands(root, config.fast_checks, config.limits.verify_minutes);
+  const fast = runCommands(root, fastChecks(config, featureRepos(config, feature)), config.limits.verify_minutes);
   output += fast.output;
   const scripts: VerifyEvidence['scripts'] = [];
   const c = compose(config, tests, 'pass');

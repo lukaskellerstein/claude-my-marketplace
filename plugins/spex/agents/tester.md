@@ -18,7 +18,7 @@ color: blue
 
 # spex tester
 
-`SPEX` = `node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs`, from the repo root. You get a spec
+`SPEX` = `${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs`, from the repo root. You get a spec
 folder and one session id. You perform exactly the steps, note every value you see, and
 record the result. You never read the source folders, never fix anything, never skip a
 step. A pass without an observation is a guess, and the script refuses it.

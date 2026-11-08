@@ -4,18 +4,21 @@
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { isMap, isScalar, type Document } from 'yaml';
-import { APPROVAL_STAGES, approvalFindings, tasksApproval, tasksHash, testsApproval, testsHash, type ApprovalStage } from '../approvals.js';
+import { APPROVAL_STAGES, approvalFindings, reviewFixIds, tasksApproval, tasksHash, testsApproval, testsHash, type ApprovalStage } from '../approvals.js';
 import { hasErrors, runCheck } from '../check.js';
 import { loadConfig } from '../config.js';
 import { currentBranch, isGitRepo } from '../git.js';
 import { fileExists, openDocument, readText, saveDocument, writeText } from '../io.js';
 import { nextPlanned, roadmapSteps } from '../roadmap.js';
+import { pendingFindings } from '../review.js';
 import { REQUIRED_SECTIONS, openQuestions, openSummary, sectionBodies, specDocPath, specMeta, specStatus, waitsFor, withSpecStatus } from '../rules/spec.js';
 import { SPECS_DIR, featureDirs, loadFeature, resolveFeatureDir } from '../specs.js';
 import { claimsOf, isScript, needsFindings, testsOf } from '../tests.js';
 import type { Config, Feature, Finding, Task, TestRecord } from '../types.js';
 import { runCommands, verifyIsCurrent, verifyTask } from '../verify.js';
+import { featureRepos, readShipped, recordStarts, repoFindings, repoPath, repoRoot, taskRepos, writeShipped } from '../repos.js';
 import { coverageFor, pickTestBatch } from './coverage.js';
+import { openedStub } from './new.js';
 
 export interface CmdResult {
   ok: boolean;
@@ -68,7 +71,7 @@ function setApproval(doc: Document, key: ApprovalStage, value: unknown): void {
 function stampTests(root: string, feature: Feature): string {
   if (!feature.tests) return '';
   const doc = openDocument(join(root, feature.testsPath));
-  setApproval(doc, 'tests', testsHash(feature.tests));
+  setApproval(doc, 'tests', testsHash(feature.tests, reviewFixIds(feature.tasks)));
   saveDocument(join(root, feature.testsPath), doc);
   return ` and ${feature.testsPath} (${feature.tests.tests.length} test(s)) approved as read`;
 }
@@ -120,7 +123,7 @@ export function approve(root: string, dir: string, stageArg?: string): CmdResult
     }
   }
   if (feature.tests && (!stage || stage === 'tests') && config.approvals.includes('tests')) {
-    const state = testsApproval(config, feature.tests);
+    const state = testsApproval(config, feature.tests, reviewFixIds(feature.tasks));
     if (!state.approved || stage === 'tests') {
       stampTests(root, feature);
       return { ok: true, findings: warnings, exit: 0, text: `${feature.testsPath} approved as read: ${feature.tests.tests.length} test(s)\n${nextBlock()}`, data: { stage: 'tests', approved: feature.tests.tests.length } };
@@ -208,10 +211,24 @@ function reportStatus(root: string, featureId: string, stage: string): string | 
 
 /** What now, from the files alone: the stage the feature is in and the one command that moves it. The skills print it last; Dex can read the JSON. */
 export function whatNext(root: string, config: Config, feature: Feature): NextStep {
-  const s = decide(root, config, feature);
+  let s = decide(root, config, feature);
+  // Every gate refuses on a check error, so the NEXT block must not name a skill whose gate will refuse:
+  // the same command again would only print the same refusal.
+  if (s.stage !== 'invalid') {
+    const errors = runCheck(root, [feature.dir]).findings.filter((f) => f.severity === 'error');
+    if (errors.length) {
+      const byCode = new Map<string, number>();
+      for (const e of errors) byCode.set(e.code, (byCode.get(e.code) ?? 0) + 1);
+      const codes = [...byCode].map(([c, n]) => (n > 1 ? `${c} ×${n}` : c)).join(', ');
+      s = step('invalid', `spex check ${feature.dir}`, false, `${errors.length} error(s) (${codes}) and every gate refuses until each is fixed by its fix text; ${s.command || s.stage} comes after`);
+    }
+  }
   s.auto = config.auto;
   return s;
 }
+
+/** The skills that ask the person questions, and so the only ones auto mode changes. */
+const ASKING = ['/spex:new', '/spex:clarify', '/spex:requirements', '/spex:review'];
 
 function decide(root: string, config: Config, feature: Feature): NextStep {
   const dir = feature.dir;
@@ -226,7 +243,7 @@ function decide(root: string, config: Config, feature: Feature): NextStep {
       const sections = sectionBodies(readText(join(root, doc.path)));
       const filled = REQUIRED_SECTIONS.every((s) => (sections.get(s.toLowerCase()) ?? '').length > 0);
       if (filled && openQuestions(sections).total === 0) return step('approve-spec', `/spex:approve ${dir}`, true, `${doc.path} is shaped and nothing is open: a person reads it, then approve sets status: ready`);
-      return step('shaping', `/spex:new ${dir}`, false, `still shaping; say done, and the skill runs spex approve ${dir}`);
+      return step('shaping', `/spex:new ${dir}`, false, 'ok takes every pick · answer by number · done approves the spec and ends shaping');
     }
     if (meta?.status === 'planned') {
       const waits = waitsFor(root, meta);
@@ -260,18 +277,35 @@ function decide(root: string, config: Config, feature: Feature): NextStep {
   }
   const tasks = feature.tasks;
   if (!tasks) return step('tasks', `/spex:tasks ${dir}`, true, 'it reads requirements.yaml, tests.yaml and the code the records name');
-  if (gaps.tasks.length) return step('plan-tests', `/spex:tasks ${dir}`, true, `${gaps.tasks.join(', ')} have no test in tests.yaml; it starts the test analyst`);
+  // A review round waits for the person's answer: nothing moves until they take the picks or change them.
+  const pending = pendingFindings(root, reqs.feature);
+  if (pending) {
+    const n = pending.file.findings.length;
+    return step('review-accept', `/spex:review ${dir} ok`, false, `${n} finding(s) of review round ${pending.round} wait for your answer (${pending.path}): ok takes every pick; or change one by number, as in ${pending.file.findings.length > 1 ? '2=defer 3=fix' : '1=defer'}`);
+  }
+  // Accepted review fixes go through one command: their tests, their code, verify. Nobody approves them twice.
+  const fixes = new Set(tasks.tasks.filter((t) => t.review).map((t) => t.id));
+  const fixing = tasks.tasks.some((t) => t.review && t.status !== 'done') || (fixes.size > 0 && reportStatus(root, reqs.feature, 'review') === 'concerns' && !verifyIsCurrent(root, config, feature));
+  const viaFix = (stage: string, why: string, extra: Partial<NextStep> = {}): NextStep => step(stage, `/spex:fix ${dir}`, true, `review fixes: ${why}; it plans their tests, writes them red, builds and verifies`, extra);
+  if (gaps.tasks.length) {
+    if (gaps.tasks.every((id) => fixes.has(id))) return viaFix('plan-tests', `${gaps.tasks.join(', ')} have no test yet`);
+    return step('plan-tests', `/spex:tasks ${dir}`, true, `${gaps.tasks.join(', ')} have no test in tests.yaml; it starts the test analyst`);
+  }
   const ta = tasksApproval(config, tasks);
   if (ta.required && !ta.approved) return step('approve-tasks', `/spex:approve ${dir}`, true, `read ${feature.tasksPath} (approach, design, tasks) and ${feature.testsPath}, then approve`);
-  const te = testsApproval(config, feature.tests);
+  const te = testsApproval(config, feature.tests, reviewFixIds(tasks));
   if (te.required && !te.approved) return step('approve-tests', `/spex:approve ${dir} tests`, true, `read ${feature.testsPath}: it changed since a person approved it`);
   const batch = pickTestBatch(root, config, feature);
-  if (batch.tests.length) return step('tests', `/spex:tests ${dir}`, true, `${batch.tests.map((t) => t.id).join(', ')} have no test file yet; it starts the test developers`);
+  if (batch.tests.length) {
+    if (fixing) return viaFix('tests', `${batch.tests.map((t) => t.id).join(', ')} are not written yet`);
+    return step('tests', `/spex:tests ${dir}`, true, `${batch.tests.map((t) => t.id).join(', ')} are not written yet; it starts the test developers`);
+  }
   const counts = { todo: 0, done: 0, blocked: 0 };
   for (const t of tasks.tasks) counts[t.status]++;
   const ready = allReady(tasks.tasks);
   if (ready.length) {
     const t = ready[0];
+    if (fixing && ready.every((x) => fixes.has(x.id))) return viaFix('develop', `${ready.map((x) => x.id).join(', ')} ready`, { task: { id: t.id, title: t.title, kind: t.kind, requirements: t.requirements, parallel_group: t.parallel_group ?? null }, ready: ready.map((x) => x.id), waves: waves(ready), counts });
     return step('develop', `/spex:develop ${dir} ${t.id}`, true, `${ready.length} task(s) ready; each run reads only spex show`, {
       task: { id: t.id, title: t.title, kind: t.kind, requirements: t.requirements, parallel_group: t.parallel_group ?? null },
       ready: ready.map((x) => x.id),
@@ -290,8 +324,14 @@ function decide(root: string, config: Config, feature: Feature): NextStep {
       : `${asks.map((a) => a.task).join(', ')} wait${asks.length === 1 ? 's' : ''} for your yes`;
     return step('blocked', '', false, why, { counts, asks });
   }
-  if (!verifyIsCurrent(root, reqs.feature)) return step('verify', `/spex:verify ${dir}`, true, 'every task is done; it runs every script, performs every session, and judges each failure', { counts });
-  if (reportStatus(root, reqs.feature, 'review') !== 'done') return step('review', `/spex:review ${dir}`, true, 'every test is green at this tree; it reads only the diff and the evidence', { counts });
+  if (!verifyIsCurrent(root, config, feature)) {
+    if (fixing) return viaFix('verify', 'every fix is built, the feature is not verified at this tree', { counts });
+    return step('verify', `/spex:verify ${dir}`, true, 'every task is done; it runs every script, performs every session, and judges each failure', { counts });
+  }
+  if (reportStatus(root, reqs.feature, 'review') !== 'done') {
+    if (fixes.size && reportStatus(root, reqs.feature, 'review') === 'concerns') return step('review', `/spex:review ${dir}`, true, 'the fixes are verified; it checks each accepted finding at its task\'s paths, and only a P1 is new', { counts });
+    return step('review', `/spex:review ${dir}`, true, 'every test is green at this tree; it reads only the diff and the evidence', { counts });
+  }
   return step('ship', `/spex:ship ${dir}`, true, 'review is clean: it merges the branch and closes the feature', { counts });
 }
 
@@ -301,9 +341,12 @@ const RULE = '─'.repeat(40);
 export function renderNext(s: NextStep, all = false): string {
   // A skill that needs nothing from this chat is listed after /clear, so the commands are run top to bottom as printed.
   // No command: `(wait)` when another step must finish first, `(a person)` when only a person can move it.
+  // Shaping waits for the person's answer in the chat that asked; its command only resumes it from another chat.
+  const shaping = s.stage === 'shaping';
   const fresh = !!s.command && s.command.startsWith('/') && s.fresh;
-  const lines = [RULE, `NEXT   ${fresh ? '/clear' : s.command || (s.stage === 'planned' || s.stage === 'built' ? '(wait)' : '(a person)')}`];
-  if (fresh) lines.push(`       ${s.command}`, `       ${s.why}, nothing from this chat.`);
+  const lines = [RULE, `NEXT   ${shaping ? 'your answer, in the shaping chat' : fresh ? '/clear' : s.command || (s.stage === 'planned' || s.stage === 'built' ? '(wait)' : '(a person)')}`];
+  if (shaping) lines.push(`       ${s.why}`, `       No shaping chat open? ${s.command} resumes it.`);
+  else if (fresh) lines.push(`       ${s.command}`, `       ${s.why}, nothing from this chat.`);
   else if (!s.command) {
     if (!s.asks.length || s.asks.length < s.counts!.blocked) lines.push(`       ${s.why}`);
     for (const a of s.asks) lines.push(`       ${a.task} waits for your yes: ${a.ask}`, `         yes → ${a.yes}   (typing it is the yes; it unblocks and runs ${a.task})`, `         no  → leave ${a.task} blocked, or change it in tasks.yaml and /spex:approve`);
@@ -311,7 +354,8 @@ export function renderNext(s: NextStep, all = false): string {
   else lines.push(`       ${s.why}.`);
   if (all && s.waves.length) lines.push(`       ready: ${s.waves.map((w) => (w.length > 1 ? `${w.join(' + ')} (in parallel)` : w[0])).join(' · ')}`);
   if (s.counts) lines.push(`       tasks: ${s.counts.done} done, ${s.counts.todo} todo, ${s.counts.blocked} blocked`);
-  lines.push(`       auto: ${s.auto ? 'on (nobody is asked; you read at the gates)' : 'off (set auto: true in .spex/config.yaml, or say "auto", and nobody is asked)'}`);
+  // auto changes only who answers a skill's questions: the line shows where the next skill asks some.
+  if (ASKING.some((c) => s.command === c || s.command.startsWith(`${c} `))) lines.push(`       auto: ${s.auto ? 'on (nobody is asked; you read at the gates)' : 'off (set auto: true in .spex/config.yaml, or say "auto", and nobody is asked)'}`);
   lines.push(RULE);
   return lines.join('\n');
 }
@@ -321,7 +365,7 @@ export function next(root: string, dir: string, opts: { all?: boolean } = {}): C
   const { config } = loadConfig(root);
   const feature = loadFeature(root, resolveFeatureDir(root, dir));
   const s = whatNext(root, config, feature);
-  return { ok: s.stage !== 'invalid', findings: feature.errors, exit: feature.errors.length ? 4 : 0, text: renderNext(s, opts.all), data: { ...s } };
+  return { ok: s.stage !== 'invalid', findings: feature.errors, exit: s.stage === 'invalid' ? 4 : 0, text: renderNext(s, opts.all), data: { ...s } };
 }
 
 const tasksDone = (root: string, feature: Feature, findings: Finding[]): void => {
@@ -353,15 +397,18 @@ export function gate(root: string, stage: string, dir: string, ids: string[]): C
       if (errors.length) return refuse(errors);
       for (const w of waitsFor(root, meta)) findings.push({ severity: 'error', code: 'GATE-BUILT', message: `${feature.dir} depends on ${w.dir}, which is ${w.state === 'missing' ? 'no folder under specs/' : `not built (${w.state})`}`, fix: w.state === 'missing' ? 'Fix depends_on in the front matter.' : `Finish ${w.dir} first: develop, verify, review, ship.` });
       if (findings.length) return { ...refuse(findings), data };
+      // Opening a stub: the status flips, the planned note goes, and the sections a stub leaves out are added with their hints.
       const flipped = meta.status === 'planned';
-      if (flipped) writeText(join(root, doc.path), withSpecStatus(text, 'shaping'));
+      if (flipped) writeText(join(root, doc.path), openedStub(withSpecStatus(text, 'shaping')));
       const open = openQuestions(sectionBodies(text));
-      const lines = [`gate new open for ${feature.dir}: ${doc.path} ${flipped ? 'planned → shaping' : 'is shaping; resume'}`];
-      if (meta.roadmap) lines.push(`roadmap ${meta.roadmap}, step ${meta.step ?? '?'}${meta.depends_on.length ? ` · after ${meta.depends_on.join(', ')} (built)` : ''}`);
+      const lines = [`gate new open for ${feature.dir}: ${doc.path} ${flipped ? 'planned → shaping; the missing sections are added, empty' : 'is shaping; resume'}`];
+      // "step 2 of 29": the total is the count of folders that name the roadmap, so the banner never reads as 29 questions.
+      const total = meta.roadmap ? roadmapSteps(root, meta.roadmap).length : 0;
+      if (meta.roadmap) lines.push(`roadmap ${meta.roadmap}, step ${meta.step ?? '?'} of ${total}${meta.depends_on.length ? ` · after ${meta.depends_on.join(', ')} (built)` : ''}`);
       if (meta.source.length) lines.push(`source: ${meta.source.join(', ')}`);
       lines.push(`open questions: ${open.total ? openSummary(open) : 'none'}`);
       if (meta.depends_on.length) lines.push(`read next: spex show ${feature.dir} --inherited`);
-      return { ok: true, findings: check.findings.filter((f) => f.severity === 'warning'), exit: 0, text: lines.join('\n'), data: { flipped, status: 'shaping', roadmap: meta.roadmap, step: meta.step, depends_on: meta.depends_on, source: meta.source, open } };
+      return { ok: true, findings: check.findings.filter((f) => f.severity === 'warning'), exit: 0, text: lines.join('\n'), data: { flipped, status: 'shaping', roadmap: meta.roadmap, step: meta.step, steps: meta.roadmap ? total : null, depends_on: meta.depends_on, source: meta.source, open } };
     }
     case 'requirements': {
       // The only way in: a folder under specs/ whose spec document a person approved (status: ready).
@@ -430,6 +477,8 @@ export function gate(root: string, stage: string, dir: string, ids: string[]): C
       // What a person approved must be what is on disk: tasks.yaml, and tests.yaml when configured.
       findings.push(...approvalFindings(check.config, feature, 'tasks'), ...approvalFindings(check.config, feature, 'tests'));
       for (const x of own.filter(isScript)) findings.push(...needsFindings(root, x.needs, x.id));
+      const repos = taskRepos(check.config, t, own.map((x) => x.driver));
+      findings.push(...repoFindings(root, check.config, repos));
       // Red first, checked now: the gate runs the task's file tests itself and they must fail.
       if (!findings.length) {
         if (!isGitRepo(root)) findings.push({ severity: 'error', code: 'GIT-REQUIRED', message: 'the red check needs a git repository', fix: 'Run inside the repository.' });
@@ -442,6 +491,8 @@ export function gate(root: string, stage: string, dir: string, ids: string[]): C
           data.red = v.path ?? null;
         }
       }
+      // The commit each other repo is at when its first task opens: the review diff of that repo starts there.
+      if (!findings.length) recordStarts(root, check.config, reqs!.feature, repos);
       break;
     }
     case 'verify': {
@@ -449,6 +500,7 @@ export function gate(root: string, stage: string, dir: string, ids: string[]): C
       const missing = needFiles('verify');
       if (missing) return missing;
       tasksDone(root, feature, findings);
+      findings.push(...repoFindings(root, check.config, featureRepos(check.config, feature)));
       findings.push(...approvalFindings(check.config, feature, 'tests'));
       for (const x of tests!.tests) findings.push(...needsFindings(root, x.needs, x.id));
       data.sessions = tests!.tests.filter((x) => x.kind === 'session').map((x) => x.id);
@@ -458,7 +510,8 @@ export function gate(root: string, stage: string, dir: string, ids: string[]): C
       if (errors.length) return refuse(errors);
       if (!tasks) return refuse([{ severity: 'error', code: 'SPEC-MISSING', message: 'review gate needs tasks.yaml', fix: 'Run /spex:tasks first.' }]);
       tasksDone(root, feature, findings);
-      if (!findings.length && !verifyIsCurrent(root, reqs?.feature ?? feature.name)) findings.push({ severity: 'error', code: 'GATE-VERIFY', message: 'the whole-feature run is missing, red, or from another tree', fix: `Run /spex:verify ${feature.dir}: every script green and every session passed at this tree, then review.` });
+      findings.push(...repoFindings(root, check.config, featureRepos(check.config, feature)));
+      if (!findings.length && !verifyIsCurrent(root, check.config, feature)) findings.push({ severity: 'error', code: 'GATE-VERIFY', message: 'the whole-feature run is missing, red, or from another tree', fix: `Run /spex:verify ${feature.dir}: every script green and every session passed at this tree, then review.` });
       break;
     }
     case 'ship': {
@@ -466,7 +519,7 @@ export function gate(root: string, stage: string, dir: string, ids: string[]): C
       if (!reqs) return refuse(need(feature));
       tasksDone(root, feature, findings);
       for (const q of reqs.questions ?? []) if (!q.answer) findings.push({ severity: 'error', code: 'GATE-QUESTION', message: `${q.id} is open`, fix: 'Run /spex:clarify.' });
-      if (!findings.length && !verifyIsCurrent(root, reqs.feature)) findings.push({ severity: 'error', code: 'GATE-VERIFY', message: 'the whole-feature run is missing, red, or from another tree', fix: `Run /spex:verify ${feature.dir} first.` });
+      if (!findings.length && !verifyIsCurrent(root, check.config, feature)) findings.push({ severity: 'error', code: 'GATE-VERIFY', message: 'the whole-feature run is missing, red, or from another tree', fix: `Run /spex:verify ${feature.dir} first.` });
       if (!findings.length && reportStatus(root, reqs.feature, 'review') !== 'done') findings.push({ severity: 'error', code: 'GATE-REVIEW', message: 'no clean review report for this feature', fix: `Run /spex:review ${feature.dir}; ship needs its report at status done.` });
       break;
     }
@@ -498,6 +551,8 @@ export function done(root: string, dir: string, taskId: string): CmdResult {
   if (i < 0) return refuse([{ severity: 'error', code: 'TASK-UNKNOWN', message: `${taskId} is not in ${feature.tasksPath}`, fix: 'Check the id.' }], 2);
   if (!isGitRepo(root)) return refuse([{ severity: 'error', code: 'GIT-REQUIRED', message: 'done needs a git repository to identify the tree', fix: 'Run inside the repository.' }], 2);
   const task = feature.tasks.tasks[i];
+  const lost = repoFindings(root, check.config, taskRepos(check.config, task, testsOf(feature, task).map((x) => x.driver)));
+  if (lost.length) return refuse(lost, 2);
   const v = verifyTask(root, check.config, feature, task, 'pass');
   if (!v.evidence) return refuse(v.findings, 2);
   if (!v.ok) {
@@ -583,11 +638,11 @@ function closeFeature(root: string, feature: Feature): { built: number; retired:
   return { built, retired, defaults };
 }
 
-function gitCommit(root: string, message: string): { ok: boolean; committed: boolean; tail: string } {
+function gitCommit(root: string, message: string, home = true): { ok: boolean; committed: boolean; tail: string } {
   const add = spawnSync('git', ['add', '-A', '--', '.'], { cwd: root, encoding: 'utf8' });
   if (add.status !== 0) return { ok: false, committed: false, tail: `${add.stdout}${add.stderr}`.slice(-1000) };
   // The work dirs never ship, whatever .spex/.gitignore says: take them back out of the index.
-  spawnSync('git', ['reset', '-q', '--', '.spex/evidence', '.spex/runs', '.spex/review'], { cwd: root, encoding: 'utf8' });
+  if (home) spawnSync('git', ['reset', '-q', '--', '.spex/evidence', '.spex/runs', '.spex/review'], { cwd: root, encoding: 'utf8' });
   const dirty = spawnSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }).stdout.trim();
   if (!dirty) return { ok: true, committed: false, tail: '' };
   const commit = spawnSync('git', ['commit', '-q', '-m', message], { cwd: root, encoding: 'utf8' });
@@ -613,9 +668,11 @@ export function ship(root: string, dir: string, opts: { merged?: boolean } = {})
   for (const q of reqs.questions ?? []) if (!q.answer) findings.push({ severity: 'error', code: 'SHIP-QUESTION', message: `${q.id} is open`, fix: 'Run /spex:clarify.' });
   for (const t of feature.tasks?.tasks ?? []) if (t.status !== 'done') findings.push({ severity: 'error', code: 'SHIP-TASKS', message: `${t.id} is ${t.status}`, fix: 'Every task must be done before ship.' });
   if (!feature.tasks && !reqs.requirements.every((r) => r.status === 'retired')) findings.push({ severity: 'error', code: 'SHIP-TASKS', message: 'no tasks.yaml: nothing was built', fix: 'Run /spex:tasks and build, or retire the records.' });
+  const repos = featureRepos(config, feature);
+  findings.push(...repoFindings(root, config, repos));
   if (!closed && !findings.length) {
     if (!isGitRepo(root)) findings.push({ severity: 'error', code: 'GIT-REQUIRED', message: 'ship needs a git repository', fix: 'Run inside the repository.' });
-    else if (!verifyIsCurrent(root, reqs.feature)) findings.push({ severity: 'error', code: 'SHIP-VERIFY', message: 'the whole-feature run is missing, red, or from another tree', fix: `Run /spex:verify ${feature.dir} first.` });
+    else if (!verifyIsCurrent(root, config, feature)) findings.push({ severity: 'error', code: 'SHIP-VERIFY', message: 'the whole-feature run is missing, red, or from another tree', fix: `Run /spex:verify ${feature.dir} first.` });
     else if (reportStatus(root, reqs.feature, 'review') !== 'done') findings.push({ severity: 'error', code: 'SHIP-REVIEW', message: 'no clean review report for this feature', fix: `Run /spex:review ${feature.dir} first.` });
   }
   if (findings.length) return refuse(findings);
@@ -628,10 +685,55 @@ export function ship(root: string, dir: string, opts: { merged?: boolean } = {})
     lines.push(`${c.built} record(s) built in ${feature.requirementsPath}`);
     if (c.retired.length) lines.push(`retired: ${c.retired.join(', ')}`);
     if (c.defaults.length) lines.push('answered by default, for a person to read:', ...c.defaults.map((d) => `- ${d}`));
+    const later = feature.tasks?.deferred ?? [];
+    if (later.length) lines.push('deferred, for a later step:', ...later.map((d) => `- ${d.severity ? `${d.severity} ` : ''}${d.finding} (${d.by})`));
   }
+  const shipped = readShipped(root, reqs.feature);
   if (!opts.merged) {
     const branch = isGitRepo(root) ? currentBranch(root) : '';
     if (branch === 'main' || branch === 'master') return { ok: false, findings: [{ severity: 'error', code: 'SHIP-BRANCH', message: `on ${branch}: ship merges a feature branch, and this is the target`, fix: 'Work on a branch and run ship there. If the feature is on main already, run `spex ship <dir> --merged`.' }], exit: 6, text: lines.join('\n'), data };
+    for (const name of repos.filter((r) => !shipped[r])) {
+      const b = currentBranch(repoRoot(root, config, name));
+      const base = config.repos[name].base;
+      if (b === base || (!base && (b === 'main' || b === 'master'))) return { ok: false, findings: [{ severity: 'error', code: 'SHIP-BRANCH', message: `repo ${name} (${repoPath(config, name)}) is on ${b}: ship merges a feature branch, and this is the target`, fix: 'Move its work to a branch and run ship again. If it is merged already, run `spex ship <dir> --merged`.' }], exit: 6, text: lines.join('\n'), data };
+    }
+  }
+  // The other repos first, so a failed merge there stops before this repo merges. A rerun skips the merged ones.
+  const message = `${reqs.feature}: ${reqs.title}`;
+  const waiting: string[] = [];
+  for (const name of repos) {
+    const where = `${name} (${repoPath(config, name)})`;
+    if (shipped[name]) {
+      lines.push(`${where}: merged already, by ${shipped[name]}`);
+      continue;
+    }
+    const rc = config.repos[name];
+    const abs = repoRoot(root, config, name);
+    if (rc.ship?.commit ?? config.ship.commit) {
+      const c = gitCommit(abs, message, false);
+      if (!c.ok) return { ok: false, findings: [{ severity: 'error', code: 'SHIP-COMMIT', message: `git commit failed in repo ${where}`, fix: `Fix git there (an identity, a hook), then run ship again. Tail: ${c.tail.trim().slice(-200)}` }], exit: 7, text: lines.join('\n'), data };
+      lines.push(`${where}: ${c.committed ? `committed: ${message}` : 'nothing to commit'}`);
+    } else lines.push(`${where}: not committed (ship.commit is false)`);
+    if (opts.merged) {
+      shipped[name] = 'a person';
+      continue;
+    }
+    const cmd = rc.ship?.cmd?.trim() ?? '';
+    if (!cmd) {
+      waiting.push(where);
+      continue;
+    }
+    const out = runCommands(abs, [cmd], config.limits.verify_minutes);
+    if (!out.ok) {
+      writeShipped(root, reqs.feature, shipped);
+      return { ok: false, findings: [{ severity: 'error', code: 'SHIP-FAILED', message: `ship.cmd of repo ${where} exited ${out.results[0].exit}`, fix: 'Read the tail, fix the cause (a failing check on the request, a conflict), and run ship again: the repos merged so far are skipped.' }], exit: 7, text: [...lines, '', out.results[0].tail.slice(-2500)].join('\n'), data };
+    }
+    shipped[name] = 'ship.cmd';
+    lines.push(`${where}: merged: ${cmd}`);
+  }
+  if (repos.length) {
+    writeShipped(root, reqs.feature, shipped);
+    data.repos = Object.fromEntries(repos.map((n) => [n, shipped[n] ?? 'waiting for a person']));
   }
   if (config.ship.commit) {
     const c = gitCommit(root, `${reqs.feature}: ${reqs.title}`);
@@ -640,11 +742,17 @@ export function ship(root: string, dir: string, opts: { merged?: boolean } = {})
     data.committed = c.committed;
   } else lines.push(`not committed (ship.commit is false): the changed files wait for a commit`);
   if (!opts.merged) {
-    if (!config.ship.cmd.trim()) return { ok: false, findings: [{ severity: 'error', code: 'SHIP-CMD', message: 'ship.cmd is empty: nothing merges the branch', fix: 'Set ship.cmd in .spex/config.yaml (`gh pr create --fill && gh pr merge --squash --delete-branch`, or the GitLab form), or merge by hand and run `spex ship <dir> --merged`.' }], exit: 6, text: lines.join('\n'), data };
-    const out = runCommands(root, [config.ship.cmd], config.limits.verify_minutes);
-    if (!out.ok) return { ok: false, findings: [{ severity: 'error', code: 'SHIP-FAILED', message: `ship.cmd exited ${out.results[0].exit}`, fix: 'Read the tail, fix the cause (a failing check on the request, a conflict), and run ship again: the close is done, the commit is kept.' }], exit: 7, text: [...lines, '', out.results[0].tail.slice(-2500)].join('\n'), data };
-    lines.push(`merged: ${config.ship.cmd}`);
+    const others = waiting.length ? `; no ship.cmd merges ${waiting.join(', ')} either` : '';
+    if (shipped['.']) lines.push(`merged already, by ${shipped['.']}`);
+    else if (!config.ship.cmd.trim()) return { ok: false, findings: [{ severity: 'error', code: 'SHIP-CMD', message: `ship.cmd is empty: nothing merges the branch${others}`, fix: 'Set ship.cmd in .spex/config.yaml (`gh pr create --fill && gh pr merge --squash --delete-branch`, or the GitLab form), and repos.<name>.ship.cmd for another repo, or merge by hand and run `spex ship <dir> --merged`.' }], exit: 6, text: lines.join('\n'), data };
+    else {
+      const out = runCommands(root, [config.ship.cmd], config.limits.verify_minutes);
+      if (!out.ok) return { ok: false, findings: [{ severity: 'error', code: 'SHIP-FAILED', message: `ship.cmd exited ${out.results[0].exit}`, fix: 'Read the tail, fix the cause (a failing check on the request, a conflict), and run ship again: the close is done, the commit is kept.' }], exit: 7, text: [...lines, '', out.results[0].tail.slice(-2500)].join('\n'), data };
+      lines.push(`merged: ${config.ship.cmd}`);
+      if (repos.length) writeShipped(root, reqs.feature, { ...shipped, '.': 'ship.cmd' });
+    }
     data.merged_by = 'ship.cmd';
+    if (waiting.length) return { ok: false, findings: [{ severity: 'error', code: 'SHIP-CMD', message: `this repo is merged; no ship.cmd merges ${waiting.join(', ')}`, fix: 'A person merges each of them, then runs `spex ship <dir> --merged`. Or set repos.<name>.ship.cmd and run ship again.' }], exit: 6, text: lines.join('\n'), data };
   }
   return { ok: true, findings: check.findings.filter((f) => f.severity === 'warning'), exit: 0, text: lines.join('\n'), data };
 }

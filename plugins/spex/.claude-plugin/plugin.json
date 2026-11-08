@@ -1,6 +1,6 @@
 {
   "name": "spex",
-  "version": "2.0.0",
+  "version": "2.2.0",
   "description": "Spec-driven development in small, checkable files, where the one who writes a claim never writes its proof. A raw idea is shaped into spec.md in rounds, with sized holes and research in parallel subagents, until the person says done; a big design becomes a roadmap of planned steps, shaped one at a time as their dependencies are built. The spec becomes EARS requirement records, the records become tasks sized for one agent run, and a test-analyst subagent writes the proof plan (tests.yaml) for every scenario and every task: scripts a driver runs, or sessions a tester performs in a browser (the bundled Playwright MCP) or against an API. Test developers write the scripts red before any code; developers build; a bundled script — not the model — gates every stage, decides when a task is done, verifies the whole feature at the tree that ships, and merges through the forge CLI. A failing test is judged by a decider (test, code or spec?) and fixed by the agent that owns it, never by the person; no task and no test may name a person as an actor. Every skill is user-invoked only.",
   "author": {
     "name": "Lukas Kellerstein"
@@ -33,6 +33,7 @@
     "./skills/develop",
     "./skills/verify",
     "./skills/review",
+    "./skills/fix",
     "./skills/ship"
   ],
   "mcpServers": {

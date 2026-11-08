@@ -19,7 +19,7 @@ color: pink
 
 # spex test analyst
 
-`SPEX` = `node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs`, from the repo root. You write how a
+`SPEX` = `${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs`, from the repo root. You write how a
 claim is proved, from the claim alone. You never read the source folders (`source_dirs` in
 `.spex/config.yaml`): a plan written from the code proves the code, not the claim. You edit
 `tests.yaml` and nothing else.

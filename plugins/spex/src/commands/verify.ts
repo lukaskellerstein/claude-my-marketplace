@@ -35,6 +35,7 @@ export function verify(root: string, dir: string): CmdResult {
 
 export function session(root: string, dir: string, testId: string, input: { result: string; observed: string; artifacts: string[] }): CmdResult {
   const feature = loadFeature(root, resolveFeatureDir(root, dir));
+  const { config } = loadConfig(root);
   if (feature.errors.length) return { ok: false, findings: feature.errors, exit: 4, text: '' };
   if (!feature.tests || !feature.requirements) return { ok: false, findings: [{ severity: 'error', code: 'SPEC-MISSING', message: `${feature.dir} needs requirements.yaml and tests.yaml`, fix: 'Nothing to record without a plan.' }], exit: 4, text: '' };
   const t = feature.tests.tests.find((x) => x.id === testId);
@@ -45,7 +46,7 @@ export function session(root: string, dir: string, testId: string, input: { resu
   if (!isGitRepo(root)) return { ok: false, findings: [{ severity: 'error', code: 'GIT-REQUIRED', message: 'session needs a git repository to identify the tree', fix: 'Run inside the repository.' }], exit: 2, text: '' };
   const missing = input.artifacts.filter((a) => !fileExists(join(root, a)));
   if (missing.length) return { ok: false, findings: [{ severity: 'error', code: 'USAGE', message: `artifact(s) not found: ${missing.join(', ')}`, fix: 'Pass repo-relative paths of files that exist (a screenshot, a log).' }], exit: 2, text: '' };
-  const evidence: SessionEvidence = { feature: feature.requirements.feature, test: t.id, tree: currentTree(root), result: input.result, observed: input.observed, artifacts: input.artifacts, at: new Date().toISOString() };
+  const evidence: SessionEvidence = { feature: feature.requirements.feature, test: t.id, tree: currentTree(root, config, feature), result: input.result, observed: input.observed, artifacts: input.artifacts, at: new Date().toISOString() };
   const abs = sessionEvidencePath(root, feature.requirements.feature, t.id);
   writeText(abs, JSON.stringify(evidence, null, 2) + '\n');
   const path = abs.slice(root.length + 1);

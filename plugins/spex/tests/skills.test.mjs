@@ -10,10 +10,10 @@ const CAP = 6000;
 const skillsDir = join(PLUGIN, 'skills');
 const skills = readdirSync(skillsDir).filter((d) => statSync(join(skillsDir, d)).isDirectory());
 
-test('the plugin lists thirteen skills, each named for what it leaves behind, and bundles a browser for the tester', () => {
+test('the plugin lists fourteen skills, each named for what it leaves behind, and bundles a browser for the tester', () => {
   const manifest = JSON.parse(readFileSync(join(PLUGIN, '.claude-plugin', 'plugin.json'), 'utf8'));
   assert.deepEqual([...manifest.skills].sort(), skills.map((s) => `./skills/${s}`).sort());
-  assert.deepEqual(skills.sort(), ['approve', 'clarify', 'develop', 'init', 'new', 'requirements', 'research', 'review', 'ship', 'tasks', 'tests', 'update', 'verify']);
+  assert.deepEqual(skills.sort(), ['approve', 'clarify', 'develop', 'fix', 'init', 'new', 'requirements', 'research', 'review', 'ship', 'tasks', 'tests', 'update', 'verify']);
   assert.equal(manifest.version, JSON.parse(readFileSync(join(PLUGIN, 'package.json'), 'utf8')).version, 'one version');
   const pw = manifest.mcpServers?.playwright;
   assert.ok(pw && pw.command === 'npx' && pw.args.includes('@playwright/mcp@latest') && pw.args.includes('--headless'), 'the Playwright MCP is bundled, headless');
@@ -92,7 +92,7 @@ test('the wall: the one who writes a claim never writes its proof, and no skill 
   assert.ok(/start one\s+`spex:test-developer` per group, all in one message/.test(tests), 'tests dispatches test developers');
   assert.ok(/You never write or edit a test yourself, and\s+never `tests\.yaml`/.test(tests), 'the orchestrator writes nothing');
   assert.ok(/`spex:test-analyst` with `<dir> <TS>: <why>`/.test(tests), 'a blocked developer sends the record back to the analyst');
-  for (const s of ['tests', 'develop', 'verify', 'review', 'ship', 'tasks', 'requirements']) assert.ok(/Never ask the user|never ask the user/i.test(read(s)) || /ask nothing/i.test(read(s)) || s === 'tasks' || s === 'requirements', `${s} never asks`);
+  for (const s of ['tests', 'develop', 'verify', 'fix', 'review', 'ship', 'tasks', 'requirements']) assert.ok(/Never ask the user|never ask the user/i.test(read(s)) || /ask nothing/i.test(read(s)) || s === 'tasks' || s === 'requirements', `${s} never asks`);
 });
 
 test('a failing test is the process\'s to fix: develop and verify route it through the decider to the agent that owns it, never to the person', () => {
@@ -119,6 +119,40 @@ test('a failing test is the process\'s to fix: develop and verify route it throu
   const ship = readFileSync(join(skillsDir, 'ship', 'SKILL.md'), 'utf8');
   assert.ok(/`SHIP-CMD` \(no `ship\.cmd`\): the close is done; a person merges/.test(ship) && /`SPEX ship <dir> --merged`/.test(ship), 'ship merges through ship.cmd or waits for a person\'s merge');
   assert.ok(/do \*\*The re-plan round\*\* below now, before the\s+commit/.test(ship), 'the lessons go into the commit that ships');
+});
+
+test('every reply is in one frame: reply.md holds it, and every skill reads it and keeps only its own content', () => {
+  // agent-flywheel-os 001 and nex 029: a develop run said `STATUS: blocked` with the question in the middle of a
+  // paragraph, and a shaping round said `step 2 of 29` with dot sizes and no line between questions. The person read
+  // neither. One file now gives every skill the same banner, question block and order; each skill names its verdict.
+  const reply = readFileSync(join(PLUGIN, 'reply.md'), 'utf8');
+  assert.ok(Buffer.byteLength(reply, 'utf8') <= 4000, 'reply.md is small: every skill reads it once per run');
+  assert.ok(reply.includes('━'.repeat(40)) && reply.includes('─'.repeat(40)), 'a heavy rule around the banner, a light one around each question');
+  for (const needle of ['👉 **Pick:', '🟥 BIG', '🟧 MEDIUM', '🟨 SMALL', '⏸ WAITING FOR YOU', '⛔ NOT STARTED', 'I do this unless you say no', 'No `STATUS:` code']) assert.ok(reply.includes(needle), `reply.md has ${needle}`);
+  const words = { approve: 'APPROVED', clarify: 'CLARIFIED', develop: 'IMPLEMENTED', fix: 'FIXED', init: 'SET UP', new: 'SHAPED', requirements: 'RECORDS WRITTEN', research: 'DECIDED', review: 'REVIEWED', ship: 'SHIPPED', tasks: 'PLANNED', tests: 'TESTS WRITTEN', update: 'UPDATED', verify: 'VERIFIED' };
+  assert.deepEqual(Object.keys(words).sort(), [...skills].sort(), 'a verdict word for every skill');
+  for (const s of skills) {
+    const text = readFileSync(join(skillsDir, s, 'SKILL.md'), 'utf8');
+    assert.ok(/^allowed-tools: .*Read\(\$\{CLAUDE_PLUGIN_ROOT\}\/reply\.md\)/m.test(text), `${s} may read reply.md without a prompt`);
+    assert.ok(text.includes('In the frame of `${CLAUDE_PLUGIN_ROOT}/reply.md` (read it first)'), `${s} replies in the frame`);
+    assert.ok(reply.includes(`${s} ${words[s]}`) && text.includes(`✅ ${words[s]}`), `${s}: its verdict ✅ ${words[s]} is in reply.md and in the skill`);
+    assert.ok(!/`STATUS:[^`]*` first|First line `STATUS:|^STATUS: done \|/m.test(text), `${s} prints no STATUS: code to the person`);
+  }
+  const shaping = readFileSync(join(skillsDir, 'new', 'SKILL.md'), 'utf8');
+  assert.ok(/\*\*💎 SHAPING · 029 Deploy One Push\*\*/.test(shaping) && /spec 2 of 29 in roadmap nex-target ·\s+question round 1/.test(shaping), 'the shaping banner names the roadmap, so 29 never reads as 29 questions');
+  assert.ok(/Round 1 drafts first: fill every section/.test(shaping) && /one Mermaid diagram/.test(shaping), 'the person reads a whole draft, with a picture, before the questions');
+  // Round 0 of a roadmap lives in a reference file the skill reads only then: the skill stays under its cap.
+  assert.ok(shaping.includes('`${CLAUDE_PLUGIN_ROOT}/skills/new/roadmap.md`') && /Read\(\$\{CLAUDE_PLUGIN_ROOT\}\/skills\/new\/roadmap\.md\)/.test(shaping), 'new reads the roadmap round, without a prompt');
+  const round0 = readFileSync(join(skillsDir, 'new', 'roadmap.md'), 'utf8');
+  assert.ok(Buffer.byteLength(round0, 'utf8') <= 6000, 'the roadmap round is small too');
+  assert.ok(/`SPEX outline <file>`/.test(round0) && /design's own list of work comes first/.test(round0), 'the steps start from the design\'s own units and order, so a second session cuts the same list');
+  assert.ok(/A re-cut starts from what exists/.test(round0) && /`SPEX drop <dir> --reason/.test(round0) && /Never delete a folder by hand/.test(round0), 'a re-cut is keep, change, add, drop; a dropped step keeps its work');
+  assert.ok(/`SPEX roadmap <name> --init --source/.test(round0) && /`SPEX roadmap <name> --coverage`/.test(round0), 'every design section gets a row: a step or a reason');
+  assert.ok(/\*\*Outside\*\*/.test(round0) && /code in a repository that is not in `repos`/.test(round0) && /Code in a repo of `repos` is a step/.test(round0), 'what no step builds has an owner; a listed repo is steps');
+  assert.ok(/\*\*The design's open items\*\*/.test(round0) && /Never a fact/.test(round0), 'a proposal in the design is an open question, not a fact');
+  assert.ok(/\*\*From the design\*\*: all its sections say/.test(round0) && /`\[new\]`, `\[built: spec 24\]` or `\[changes: spec 21\]`/.test(round0), 'a stub holds all its design says, each bullet tagged');
+  assert.ok(/\*\*Uses\*\*/.test(round0) && /\*\*Introduces\*\*/.test(round0) && /missing `depends_on`/.test(round0), 'a stub says what it takes and gives, so a program finds a missing dependency');
+  assert.ok(/as a Decision in both steps/.test(round0) && /never "step 041"/.test(round0), 'a move of design scope is a decision; a step is named by its folder');
 });
 
 test('README.html, the one-picture guide, names every skill, the version, every stop and the film that moves through them', () => {

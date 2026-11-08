@@ -2,12 +2,12 @@
 name: clarify
 description: Resolve the open questions of a spex spec, each with options and a recommended answer, and write the answers and the record changes back into requirements.yaml. Use when the user says "clarify", "spex clarify", "answer the spec questions", or when spex check reports REQ-QUESTION-OPEN. With "auto", or auto: true in .spex/config.yaml, a decider subagent answers every question (by: agent, with evidence and confidence) and nobody is asked; the user reads the answers at /spex:approve.
 disable-model-invocation: true
-allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Agent
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Read(${CLAUDE_PLUGIN_ROOT}/reply.md), Agent
 ---
 
 # spex clarify
 
-`SPEX` = `node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs`, from the repo root.
+`SPEX` = `${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs` (it runs as it is), from the repo root.
 
 ## Steps
 
@@ -23,8 +23,9 @@ allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Agent
    to step 7. Every question you add sends its approved records back to `draft`, and gate 1
    runs again.
 4. Get the answers:
-   - Conversation: ask the user one question at a time: the question, why it matters, the
-     options, your recommendation. Wait for the answer before the next one.
+   - Conversation: ask the user one question at a time, as a question block of
+     `${CLAUDE_PLUGIN_ROOT}/reply.md` under a `❓ QUESTIONS` banner. Wait for the answer
+     before the next one.
    - Auto mode (`auto` or `--auto` among the arguments, in any position, or
      `.spex/config.yaml` has `auto: true`): nobody is asked. One `spex:researcher` per
      question that needs outside facts, in parallel; then one `spex:decider` for the file
@@ -47,9 +48,6 @@ allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Agent
 
 ## Reply
 
-At most 15 lines. `STATUS:` first. One line per question: id, the answer, who answered
-(`human`, `agent` with the evidence, or `default`), and the records it changed. Last, the
-output of `SPEX next <dir>`, as printed.
-
-The NEXT block is copied as `SPEX next` printed it, the two rules included, never rewritten
-into prose or shortened, and it does not count toward the line cap.
+In the frame of `${CLAUDE_PLUGIN_ROOT}/reply.md` (read it first), at most 15 lines.
+`✅ CLARIFIED`. One line per question: id, the answer, who answered (`human`, `agent` with
+the evidence, or `default`), and the records it changed.

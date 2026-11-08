@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://spex.local/schemas/findings.schema.json",
+  "title": ".spex/review/<feature>-<round>.findings.yaml",
+  "description": "Every finding of one review round, worst first, with the finder's fix plan and a pick. It waits here for a person's answer; spex review accept turns it into tasks and deferred entries.",
+  "type": "object",
+  "required": ["feature", "round", "findings"],
+  "additionalProperties": false,
+  "properties": {
+    "feature": { "type": "string", "minLength": 1 },
+    "round": { "type": "integer", "minimum": 1 },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "severity", "title", "file", "when", "effect", "fix", "pick"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^F[0-9]+$" },
+          "severity": { "enum": ["P1", "P2", "P3", "nit"] },
+          "title": { "type": "string", "minLength": 3 },
+          "file": { "type": "string", "minLength": 1 },
+          "line": { "type": "integer", "minimum": 1 },
+          "when": { "type": "string", "minLength": 3 },
+          "effect": { "type": "string", "minLength": 3 },
+          "fix": { "type": "string", "minLength": 5 },
+          "done_when": { "type": "string", "minLength": 5 },
+          "requirements": { "type": "array", "items": { "type": "string" } },
+          "paths": { "type": "array", "items": { "type": "string" } },
+          "context": { "type": "array", "items": { "type": "string" } },
+          "pick": { "enum": ["fix", "defer", "skip"] },
+          "why": { "type": "string" }
+        }
+      }
+    },
+    "accepted": {
+      "type": "object",
+      "required": ["at", "by", "tasks", "deferred", "skipped"],
+      "additionalProperties": false,
+      "properties": {
+        "at": { "type": "string" },
+        "by": { "type": "string" },
+        "tasks": { "type": "array", "items": { "type": "string" } },
+        "deferred": { "type": "array", "items": { "type": "string" } },
+        "skipped": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

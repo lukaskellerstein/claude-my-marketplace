@@ -2,12 +2,12 @@
 name: develop
 description: Build spex tasks — one task here, or, given only the spec folder, every ready task through fresh developer subagents, wave by wave, with spex done (the task's own tests green) as the only completion. A wrong test is judged by a decider and rewritten by a test-developer subagent, never by the developer or the user. Use when the user says "develop T01", "spex develop", "implement", "build everything", or when a NEXT block names /spex:develop.
 disable-model-invocation: true
-allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Read(${CLAUDE_PLUGIN_ROOT}/skills/*/SKILL.md), Agent
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Read(${CLAUDE_PLUGIN_ROOT}/reply.md), Read(${CLAUDE_PLUGIN_ROOT}/skills/*/SKILL.md), Agent
 ---
 
 # spex develop
 
-`SPEX` = `node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs`, from the repo root.
+`SPEX` = `${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs` (it runs as it is), from the repo root.
 
 Arguments: `<dir> <task>` builds one task here. `<dir>` alone orchestrates every ready task
 through subagents until none is ready.
@@ -15,19 +15,19 @@ through subagents until none is ready.
 ## One task, here
 
 1. A `blocked` task: a person read its reason and named it, so `SPEX unblock <dir> <task>`
-   first. A block with `--ask`: this run is the yes. Then `SPEX gate develop <dir> <task>`:
-   the task's tests exist, its `needs` are met, and the tests fail (it runs them).
-   Refused: report `STATUS: blocked` with the findings and stop. Never work around a gate.
-2. `SPEX show <dir> <task>` is your spec: the task, its tests (the proof), its records, the
-   boundaries, the decisions, the design slice. Read the files under `context`, and only
+   first. A block with `--ask`: this run is the yes. Then `SPEX gate develop <dir> <task>`
+   (tests exist, `needs` met, tests red). Refused: reply `⛔ NOT STARTED` and stop. Never
+   work around a gate.
+2. `SPEX show <dir> <task>` is your spec: the task, its tests, records, boundaries,
+   decisions and design slice. Read the files under `context`, and only
    those. Pull more by id (`SPEX show <dir> REQ-…`, `--design`, `--decisions`), named in
    the report.
-3. Write only inside `paths`. Never a `protected` path, never a test folder, never
+3. Write only inside `paths`, as the slice prints them. Never a `protected` path, never a test folder, never
    `tests.yaml`. A test that asserts other than its claim: do not fix it or code around it;
    do **A wrong test** below, then step 7.
 4. Red first: the tests fail before the code. Write the smallest code that makes them pass,
    with the names and values the plan gives (`instructions`, `produces`, `consumes`).
-5. Too big for `paths` and `limits`: say how to split it, `STATUS: too-big`, stop. Never
+5. Too big for `paths` and `limits`: say how to split it, reply `✂️ TOO BIG`, stop. Never
    half a task. A write to a real system no test's `touches` covers (money, no undo): do
    the rest, `SPEX block <dir> <task> --reason "…" --ask "<yes/no question>"`, stop.
 6. `SPEX run <dir> <task>` is your loop: read the tail of the first failing command, fix,
@@ -42,7 +42,7 @@ through subagents until none is ready.
 Your context holds the task list and results, never the code.
 
 1. `SPEX next <dir> --all`. The `ready:` line lists the waves: tasks joined with `+` write
-   different files (`TASK-PARALLEL` proved it) and run together; the others one by one.
+   different files and run together; the others one by one.
    If the stage is not `develop`, print the block and stop.
 2. For one wave, start one `spex:developer` subagent per task, all in one message, and say
    so in one line first: `Develop: T03 + T04 → 2 agents`. The brief is one line:
@@ -86,8 +86,5 @@ could bend a test to the code, and never the user. The claim is `TSnn: <file>:<l
 
 ## Reply
 
-At most 15 lines. `STATUS:` first, then one line per task: id, status, files, pulls,
-concerns, a rewritten test. Last, the output of `SPEX next <dir>`, as printed.
-
-The NEXT block is copied as `SPEX next` printed it, the two rules included, never rewritten
-or shortened, and it does not count toward the line cap.
+In the frame of `${CLAUDE_PLUGIN_ROOT}/reply.md` (read it first). Banner: `✅ IMPLEMENTED ·
+<task> · <title>`, `✅ 3 of 4` when orchestrating, or `✂️ TOO BIG`. Many: `T03 ✅ T05 ⏸`.

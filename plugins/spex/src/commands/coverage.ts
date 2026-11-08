@@ -1,9 +1,9 @@
 // `spex coverage`: which test proves each claim, and where each script's file is. The map is tests.yaml;
 // the file is found by the test's name, so a test that moved is still found.
 
-import { join } from 'node:path';
 import { loadConfig } from '../config.js';
 import { readText } from '../io.js';
+import { fromRoot } from '../repos.js';
 import { claimsOf, isFileTest, isSession, isShellTest, locateTest, testFiles } from '../tests.js';
 import { loadFeature, resolveFeatureDir } from '../specs.js';
 import type { Config, Feature, Finding, TestRecord } from '../types.js';
@@ -19,7 +19,7 @@ export interface CoverageRow {
 
 /** Every file test with the file that holds it, or null. `only` narrows it to some tests. */
 export function coverageFor(root: string, config: Config, feature: Feature, only?: TestRecord[]): { rows: CoverageRow[]; missing: CoverageRow[] } {
-  const contents = new Map(testFiles(root, config).map((p) => [p, readText(join(root, p))]));
+  const contents = new Map(testFiles(root, config).map((p) => [p, readText(fromRoot(root, p))]));
   const rows: CoverageRow[] = [];
   for (const t of only ?? feature.tests?.tests ?? []) {
     if (!isFileTest(t)) continue;

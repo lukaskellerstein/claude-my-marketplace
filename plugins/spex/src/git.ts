@@ -95,14 +95,18 @@ function gitOut(root: string, args: string[]): string {
   return res.stdout ?? '';
 }
 
-/** `git diff <base> -- paths`, working tree included, plus every untracked file as an added file. */
-export function diffAgainst(root: string, base: string, paths: string[] = []): string {
+/**
+ * `git diff <base> -- paths`, working tree included, plus every untracked file as an added file. `prefix` puts
+ * another repo's path in front of every file name (`a/../forks/ui/src/x.ts`), so the diff reads from the home root.
+ */
+export function diffAgainst(root: string, base: string, paths: string[] = [], prefix = ''): string {
   const scope = paths.length ? paths : ['.', ':(exclude).spex'];
-  let out = git(root, ['diff', base, '--', ...scope], { allowFail: true, maxBuffer: 256 * 1024 * 1024 });
+  const names = prefix ? [`--src-prefix=a/${prefix}/`, `--dst-prefix=b/${prefix}/`] : [];
+  let out = git(root, ['diff', ...names, base, '--', ...scope], { allowFail: true, maxBuffer: 256 * 1024 * 1024 });
   const untracked = git(root, ['ls-files', '--others', '--exclude-standard', '--', ...scope], { allowFail: true })
     .split('\n')
     .map((s) => s.trim())
     .filter(Boolean);
-  for (const file of untracked) out += gitOut(root, ['diff', '--no-index', '--', '/dev/null', file]);
+  for (const file of untracked) out += gitOut(root, ['diff', ...names, '--no-index', '--', '/dev/null', file]);
   return out;
 }

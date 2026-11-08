@@ -160,6 +160,14 @@
           "by": {
             "type": "string",
             "minLength": 1
+          },
+          "severity": {
+            "enum": [
+              "P1",
+              "P2",
+              "P3",
+              "nit"
+            ]
           }
         }
       }
@@ -222,6 +230,11 @@
           "type": "string",
           "minLength": 1
         },
+        "repo": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The repo the task writes, a key of repos in .spex/config.yaml. Absent: this repo. Its paths and context are inside it."
+        },
         "paths": {
           "type": "array",
           "minItems": 1,
@@ -282,6 +295,19 @@
             "done",
             "blocked"
           ]
+        },
+        "severity": {
+          "enum": [
+            "P1",
+            "P2",
+            "P3"
+          ],
+          "description": "A fix task from a review finding: P1 likely or harmful, P2 rare but real, P3 rare and harmless."
+        },
+        "review": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]+-[0-9]+/F[0-9]+$",
+          "description": "The accepted review finding this task fixes: <feature>-<round>/F<n>. Written by spex review accept."
         }
       }
     }

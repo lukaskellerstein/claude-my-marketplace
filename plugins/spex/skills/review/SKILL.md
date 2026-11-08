@@ -1,68 +1,88 @@
 ---
 name: review
-description: Review a verified spex feature from its diff, read only, for what no test sees — unrequested changes, a broken boundary, a signature that differs from produces, a bug or a hole the tests missed — and route each finding into a fix task, a question, a test rewritten by a test-developer subagent, or the deferred list. The script already proved the tests; the reviewer never reruns them. Use when the user says "review", "spex review", or after /spex:verify is green.
+description: Review a verified spex feature from its diff, read only, like a pull request review — what no test sees: unrequested changes, a broken boundary, a bug or a hole the tests missed. Every finding comes at once, worst first, each with a severity (P1 to nit), the finder's fix plan and a pick; the person answers in one word ("ok", or "2=defer 3=fix") and spex review accept turns the fix picks into fix tasks. Round 2 and later only checks the accepted fixes. Use when the user says "review", "spex review", answers a review with "ok" or picks, or after /spex:verify is green.
 disable-model-invocation: true
-allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Agent, Read(${CLAUDE_PLUGIN_ROOT}/skills/*/SKILL.md)
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Read(${CLAUDE_PLUGIN_ROOT}/reply.md), Agent, Read, Write(.spex/review/*), Read(${CLAUDE_PLUGIN_ROOT}/skills/*/SKILL.md)
 ---
 
 # spex review
 
-`SPEX` = `node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs`, from the repo root.
+`SPEX` = `${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs` (it runs as it is), from the repo root.
+
+## The answer
+
+Arguments after `<dir>` (`ok`, `2=defer`, `F3=fix`, `all=defer`) are the person's answer to
+the round that waits: run `SPEX review accept <dir> <args…>`, print its output, stop. With
+no arguments and `SPEX next <dir>` at `review-accept`, print the list (step 6) from the
+findings file again and stop: the round is written already.
 
 ## Steps
 
-1. `SPEX gate review <dir>`; refused: relay the `fix` text (a task left, or no green
-   `spex verify` at this tree) and stop.
-2. `SPEX show <dir> --review`. It writes the diff to `.spex/review/<feature>-<n>.diff` and
-   prints the evidence line (which verify round proved the tests), the requirements, the
-   tasks, the boundaries and the deferred list. If it refuses with `REVIEW-DIFF-BIG`, review
-   per task: `SPEX show <dir> --review --task T01`, one task at a time. Read the diff file.
-   Do not explore the codebase and do not rerun the tests: the script proved them, and the
-   evidence is in `.spex/evidence/`.
-   **More than three tasks:** say `Review: 6 tasks → 6 agents`, then start one
-   `spex:reviewer` subagent per task, all in one message, each with one line:
-   `<dir> <task>. Review its slice.` Each returns its spec verdict, unrequested changes and
-   blocking findings with file and line. Treat them as claims: open the diff at every
-   blocking finding before you route it. The quality verdict over the whole diff (step 4)
-   stays yours, because duplication and coherence live between the slices.
-3. Spec verdict, one line per requirement. A requirement whose tests are green is `met` by
-   the evidence; read the diff for `cannot-verify` ones (no test can see them) and for
-   `contradicts` (the code does other or more than the record). Then list `unrequested`
-   changes: code no requirement asked for. The developer's report is a claim, not evidence.
-4. Quality verdict: blocking findings only — a bug, a security hole, data loss, a broken
-   boundary, a signature that differs from `produces`. Style is not blocking.
-5. Route every finding. Append only; never rewrite or reorder what exists.
-   - `patch`: append a task to `tasks.yaml` with `kind: fix`, `source: "<finding>"`, the
-     requirement ids, `paths`, `context`, `instructions`, `done_when`, `status: todo`. Its
-     proof: when the finding is a missed case of a record, append the task id to the
-     `covers` of that record's tests in `tests.yaml`; a finding no test sees gets one
-     `spex:test-analyst` with `<dir> <task id>: <finding>`, which plans one.
-   - `spec-gap`: the records do not cover a case. Append a question to `questions[]` with
-     options and a recommendation, then settle it here the way `/spex:clarify` does in auto
-     mode: read `${CLAUDE_PLUGIN_ROOT}/skills/clarify/SKILL.md` and do its steps 4 to 7
-     with the decider. The record change it makes sets the record back to `draft`.
-   - `test-bug`: a green test asserts other than its claim, and the code was written to it.
-     Say `Fix test: TSxx → 1 test developer` and start one `spex:test-developer` with
-     `<dir> TSxx: <what is wrong>`; it rewrites that one test from its plan record, never
-     reads the source, and proves it. Then `SPEX run <dir> --test TSxx`: red means the code
-     met the wrong test, so route a `patch` with the finding as `source`; green means the
-     code meets the claim already. Never edit the test yourself.
-   - `defer`: never ask the user. One `spex:decider` gets the finding, the records it
-     touches and the feature's Why; on its verdict to defer, append to `deferred[]`
-     (`finding`, `why`, `by: agent`), else route it as `patch`.
-   If nothing is found, `tasks.yaml` stays byte for byte the same.
-6. `SPEX check <dir>`; fix errors by their `fix` text.
-7. `SPEX report <dir> review --status <done|concerns> --summary "…"`, one `--concern` per
-   finding, one `--question` per spec gap. `done` means clean: ship is next. `concerns`
-   means findings were routed, and the NEXT block names the stage that takes them. The
-   round count is on the first line of the show output; past `review_rounds`, stop and
-   hand the feature to a person.
+1. `SPEX gate review <dir>`; refused: relay the `fix` text and stop.
+2. `SPEX show <dir> --review`. It writes the diff, and prints the round, the evidence, the
+   requirements, the tasks, the boundaries, the deferred list and the findings file to
+   write. `REVIEW-DIFF-BIG`: review per task with `--task`. Read the diff file: another
+   repo's part names its files from this root (`b/../forks/ui/…`). Do not
+   explore the codebase and do not rerun the tests: the script proved them.
+   - **Round 1, more than three tasks:** say `Review: 6 tasks → 6 agents`, then one
+     `spex:reviewer` per task, all in one message: `<dir> <task>. Review its slice.`
+   - **A `## check` section (round 2 and later):** only those fix tasks, one reviewer each:
+     `<dir> <task>. Check the fix of <review ref>.` A check says `fixed` or `not-fixed`;
+     a new finding there counts only at P1. The other slices are not read again.
+   Treat every returned finding as a claim: open the diff at its line before you keep it.
+3. Spec verdict, one line per requirement: `met` by green tests, `contradicts` or
+   `cannot-verify` from the diff. Then the `unrequested` changes.
+4. Severity, one per finding, from the harm and how likely it is:
+   - `P1` — likely in normal use, or data loss, a security hole, a broken boundary, a
+     signature other than `produces`. Pick `fix`.
+   - `P2` — a wrong result in a rare but real case. Pick `fix` when it stays in one task's
+     `paths`, else `defer`.
+   - `P3` — rare and harmless, or only looks wrong. Pick `defer`.
+   - `nit` — style, names, taste. Pick `skip`.
+   On the last round (the show says so), and past `review_rounds`, only a P1 is `fix`.
+   Two kinds are the process's own work, not findings:
+   - `test-bug`: start one `spex:test-developer` with `<dir> TSxx: <what is wrong>`, then
+     `SPEX run <dir> --test TSxx`: red makes it a finding (the code met a wrong test).
+   - `spec-gap`: route it as `/spex:verify` step 4 C does (read its SKILL.md).
+5. Write the findings file the show named, worst first. You found it, so you plan its
+   fix: what and where, never code. Others build and prove it.
+   ```yaml
+   feature: "028"
+   round: 3
+   findings:
+     - id: F1
+       severity: P1
+       title: A retry takes an earlier night's merge commit as its own
+       file: platform/nex/temporal/activities/promote.py
+       line: 84
+       when: develop is unchanged, and the first attempt fails on a token error
+       effect: the record says merged, but dev did not move
+       fix: on a retry, also need the commit time at or after the first schedule, less 60 s
+       done_when: a retry on an earlier run's merge commit of the same heads answers nothing
+       requirements: [REQ-028-010]
+       paths: [platform/nex/temporal/activities/promote.py]
+       pick: fix
+   ```
+   A `fix` pick needs `done_when` and `paths`. A `defer` or `skip` pick has a `why`. No
+   finding: write `findings: []`.
+6. Print the list (Reply), then: no finding, or auto mode, run
+   `SPEX review accept <dir> ok --by agent` and print its output. Otherwise stop: the
+   person answers. Never ask the user anything but this one answer, and never write
+   `tasks.yaml` yourself.
 
 ## Reply
 
-At most 15 lines. `STATUS:` first. Then the spec verdict (one line per requirement), the
-unrequested changes, the blocking findings with their route, and the deferred items. Last,
-the output of `SPEX next <dir>`, as printed.
+In the frame of `${CLAUDE_PLUGIN_ROOT}/reply.md` (read it first). `✅ REVIEWED` (no
+finding) or `❓ QUESTIONS`, then the spec verdict and unrequested changes in at most 5
+lines. Then one block per finding, worst first, a rule of `─` above each and below the
+last; the size is 🟥 P1, 🟧 P2, 🟨 P3, ⬜ nit:
 
-The NEXT block is copied as `SPEX next` printed it, the two rules included, never rewritten
-into prose or shortened, and it does not count toward the line cap.
+```
+1 · 🟥 P1 ── promote.py:84 ──────────────────────────── 👉 FIX
+    A retry takes an earlier night's merge commit as its own.
+    When: develop is unchanged, and the first attempt fails.
+    Effect: the record says merged, but dev did not move.
+    Fix: also need the commit time ≥ first schedule − 60 s.
+```
+
+The answer line: `Reply ok to take every pick, or change one: 2=defer 3=fix.`

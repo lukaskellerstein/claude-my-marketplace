@@ -2,12 +2,12 @@
 name: requirements
 description: Turn an approved spec folder (made by /spex:new) into requirements.yaml — EARS records with real-valued scenarios, questions, unknowns — make it pass spex check, settle the questions (the decider in auto mode, the user otherwise) and the unknowns, then have a test-analyst subagent write the proof plan (tests.yaml) for every scenario, so the next stop is /spex:approve. Use when the user says "requirements", "spex requirements", "write the records", or after /spex:new ends.
 disable-model-invocation: true
-allowed-tools: Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Read(${CLAUDE_PLUGIN_ROOT}/skills/*/SKILL.md), Agent, WebSearch, WebFetch
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Read(${CLAUDE_PLUGIN_ROOT}/reply.md), Read(${CLAUDE_PLUGIN_ROOT}/skills/*/SKILL.md), Agent, WebSearch, WebFetch
 ---
 
 # spex requirements
 
-`SPEX` = `node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs`, from the repo root. Every finding
+`SPEX` = `${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs` (it runs as it is), from the repo root. Every finding
 has a `fix` text: the only place the rule is explained; read it.
 
 You are the analyst: you write the claim (the records and their scenarios), never its proof:
@@ -78,10 +78,7 @@ question or an unknown opens later.
 
 ## Reply
 
-At most 15 lines. `STATUS:` first, then the folder, the record count, the questions with
-their answers and who gave them, the research decisions, the assumptions, the plan
-(scripts, sessions with `why`, `needs`, `touches`). Last, the output of `SPEX next <dir>`,
-as printed: it picks the next command from the data, never from the path taken.
-
-The NEXT block is copied as `SPEX next` printed it, the two rules included, never rewritten
-into prose or shortened, and it does not count toward the line cap.
+In the frame of `${CLAUDE_PLUGIN_ROOT}/reply.md` (read it first), at most 15 lines.
+`✅ RECORDS WRITTEN`, then the record count, the questions with their answers and who gave
+them, the research decisions, the assumptions, the plan (scripts, sessions with `why`,
+`needs`, `touches`). NEXT picks the next command from the data, never from the path taken.
