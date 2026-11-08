@@ -24,13 +24,13 @@
     },
     "repos": {
       "type": "object",
-      "description": "Other git repos a task may write, by name: `dashboard: {path: ../forks/odh-dashboard}`. Specs and .spex/ stay in this repo. A task names one with `repo:`, a driver with `repo:`.",
+      "description": "Other git repos a task may write, by name: `web: {path: ../web-ui}`. Specs and .spex/ stay in this repo. A task names one with `repo:`, a driver with `repo:`.",
       "additionalProperties": {
         "type": "object",
         "required": ["path"],
         "additionalProperties": false,
         "properties": {
-          "path": { "type": "string", "minLength": 1, "description": "From this repo's root (../forks/odh-dashboard), or absolute (/… or ~/…). In git worktrees use an absolute one: a worktree's root is another folder." },
+          "path": { "type": "string", "minLength": 1, "description": "From this repo's root (../web-ui), or absolute (/… or ~/…). In git worktrees use an absolute one: a worktree's root is another folder." },
           "base": { "type": "string", "minLength": 1, "description": "The branch its review diff starts from. Absent: the commit it was at when its first task opened." },
           "fast_checks": { "type": "array", "items": { "type": "string", "minLength": 1 }, "description": "Run in that repo when a task writes it." },
           "protected": { "type": "array", "items": { "type": "string", "minLength": 1 }, "description": "No task writes these, inside that repo. Its drivers' folders are protected too." },

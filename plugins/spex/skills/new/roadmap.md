@@ -6,7 +6,8 @@ design says for its step, so no later round has to find it again.
 
 ## 1. The units come from the design, not from a reading of it
 
-1. `SPEX outline <file>` for every design file. Its sections are the units.
+1. `SPEX outline <file>` for every design file. Its sections are the units. Another format than
+   Markdown or HTML: convert it as the error says, and cite the copy.
 2. The design's own list of work comes first, when it has one: a gaps table, phases, a "what is left"
    or today-against-target table, the "designed, not built" Status lines of its ADRs. So does its own
    order of work. Mark each unit from those and from the code: built, partly built (what is left), new.
@@ -29,7 +30,7 @@ their answer. Cut fresh, never offer to restore them, and name them once under W
 
 It is in the first reply, drafted with every pick taken, so the person sees the scale before
 any answer. One table: number, slug, goal in one line, `depends_on`, the sections it covers.
-Each question says what its other options change in it (`B drops 031–034`). "ok" takes the
+Each question says what its other options change in it (`B drops 012–015`). "ok" takes the
 picks and the table; the next reply writes it (§ 4). Round 0 is these two replies. Under it:
 
 - **Not planned**, each with its reason.
@@ -50,12 +51,19 @@ the steps or outside. The same answers must give the same list.
    folders that build it, or `built` (by what), `not planned` (why), `outside` (who), `context` (why).
    A row covers the sections under it; give a child its own row when it differs.
 2. One `SPEX new` per step, in order: the first `--shaping` (with `--number <n>` when the repo
-   numbers its specs elsewhere too, as `docs/my-specs/28`), the rest `--planned`, each with
+   numbers its specs elsewhere too, as `docs/briefs/28`), the rest `--planned`, each with
    `--roadmap <name> --step <n> --depends-on <dirs>` and a `--source <file#anchor>` for every section its
    rows give it and every section that defines a name it uses (a config file, a signal list, a record
    layout, a policy file are often in a reference chapter, not in the story).
 3. Fill every stub (below), then run `SPEX roadmap <name> --coverage` and `SPEX check` until
-   neither has an error or a warning you did not answer under Decisions.
+   neither has an error or a warning you did not answer under Decisions. `ROADMAP-NAMES` lists
+   what a step's section fixes and no stub carries: write each into that stub, or under Names
+   left out in the roadmap file with why (built, an example); a `file#section` there leaves out all.
+4. Review: one `spex:roadmap-reviewer` per 10 stubs, in one message, each told its folders, the
+   roadmap file and the design files. Apply each finding to its stub (a `tag` becomes an Open
+   question), or answer it under Decisions. Then step 3 again.
+5. Reply 2: `✅ ROADMAP WRITTEN`, the counts, what changed since the table. No question is open, so
+   the answer line says what ok does: `ok starts round 1 of <first step's folder>`.
 
 ## A stub
 
@@ -70,6 +78,6 @@ the steps or outside. The same answers must give the same list.
 - **Open questions**: the design's open items for this step, sized, with the design's pick.
 - Its Success, the design's "done when", names only what this step or its dependencies build.
 - When it narrows or moves what the design says (a station to a later step, another value), say so
-  under Not this and as a Decision in both steps: "narrows #deploy: the smoke moves to 030-test-on-dev".
-- Name another step by its folder, `041-the-weekly-cut-onto-staging`, never "step 041".
+  under Not this and as a Decision in both steps: "narrows #export: the PDF moves to 014-pdf-export".
+- Name another step by its folder, `014-pdf-export`, never "step 014".
 - What the code says (Constraints, research) waits for its shaping: the steps before it change the code.

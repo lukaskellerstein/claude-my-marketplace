@@ -20,7 +20,7 @@ test('the plugin lists fourteen skills, each named for what it leaves behind, an
   assert.ok(pw.args.includes('.spex/artifacts'), 'its screenshots land under .spex/, which the work gitignore covers');
 });
 
-// The seven subagents: each is small (its brief is sent once per dispatch), inherits the session's tools (LSP, MCP
+// The eight subagents: each is small (its brief is sent once per dispatch), inherits the session's tools (LSP, MCP
 // servers, other plugins) and names only what it must never do, has its own color and model, and returns a fixed shape.
 // The researcher gathers facts on sonnet; the rest work from prose on the session's model. The wall: the test analyst
 // plans the proof and never writes the claim or the code; the test developer writes test code and never reads the
@@ -34,17 +34,19 @@ const AGENTS = {
   developer: { denied: 'Agent', model: 'inherit', color: 'green', script: true, returns: [/^STATUS: done \| test-bug \| blocked \| too-big$/m, /^files:/m, /Do not run `spex done`/, /never a test of\s+the plan/, /`LSP`/, /SPEX gate develop/] },
   tester: { denied: 'Edit, Write, NotebookEdit, Agent', model: 'inherit', color: 'blue', script: true, returns: [/^STATUS: pass \| fail$/m, /^observed:/m, /^artifacts:/m, /browser_snapshot/, /SPEX session <dir> <TS> --result pass\|fail --observed/, /never fix anything/] },
   reviewer: { denied: 'Edit, Write, NotebookEdit, Agent', model: 'inherit', color: 'orange', script: true, returns: [/^verdict:/m, /^blocking:$/m, /You read; you change nothing/, /`LSP`/, /do not run the tests/] },
+  // round 0 of a roadmap: the agent that wrote the stubs was their only reader, and nex's stubs left out 222 names
+  'roadmap-reviewer': { denied: 'Edit, Write, NotebookEdit, Agent', model: 'inherit', color: 'red', script: true, returns: [/^roadmap: <name>/m, /^  missing: #<anchor>/m, /^  tag: /m, /You read; you change nothing/, /never a verdict/, /Never judge the order, the cut or the size/] },
 };
 const COLORS = ['red', 'blue', 'green', 'yellow', 'purple', 'orange', 'pink', 'cyan']; // the ones Claude Code shows
 const AGENT_CAP = 3300; // the test analyst and the decider carry the rules of the plan; the rest stay under 3000
 
-test('the plugin ships seven subagents in agents/, each inheriting the session tools minus a denylist, with a color, a model and a fixed return shape', () => {
+test('the plugin ships eight subagents in agents/, each inheriting the session tools minus a denylist, with a color, a model and a fixed return shape', () => {
   // The manifest names no `agents`: Claude Code then scans agents/ itself. With the array form, `claude plugin details`
   // reported `Agents (0)` (measured on 2.1.319), so the folder scan is the one that is known to load them.
   const manifest = JSON.parse(readFileSync(join(PLUGIN, '.claude-plugin', 'plugin.json'), 'utf8'));
   assert.equal(manifest.agents, undefined, 'no agents field: the default agents/ scan loads them');
   assert.deepEqual(readdirSync(join(PLUGIN, 'agents')).sort(), Object.keys(AGENTS).map((a) => `${a}.md`).sort());
-  assert.equal(new Set(Object.values(AGENTS).map((a) => a.color)).size, 7, 'seven different colors');
+  assert.equal(new Set(Object.values(AGENTS).map((a) => a.color)).size, 8, 'eight different colors');
   for (const [name, want] of Object.entries(AGENTS)) {
     const text = readFileSync(join(PLUGIN, 'agents', `${name}.md`), 'utf8');
     assert.ok(Buffer.byteLength(text, 'utf8') <= AGENT_CAP, `${name} is small`);
@@ -144,13 +146,19 @@ test('every reply is in one frame: reply.md holds it, and every skill reads it a
     assert.ok(!/`STATUS:[^`]*` first|First line `STATUS:|^STATUS: done \|/m.test(text), `${s} prints no STATUS: code to the person`);
   }
   const shaping = readFileSync(join(skillsDir, 'new', 'SKILL.md'), 'utf8');
-  assert.ok(/\*\*💎 SHAPING · 029 Deploy One Push\*\*/.test(shaping) && /spec 2 of 29 in roadmap nex-target ·\s+question round 1/.test(shaping), 'the shaping banner names the roadmap, so 29 never reads as 29 questions');
+  assert.ok(/\*\*💎 SHAPING · 012 Bulk Delete\*\*/.test(shaping) && /spec 2 of 9 in roadmap reports ·\s+question round 1/.test(shaping), 'the shaping banner names the roadmap, so 9 never reads as 9 questions');
   assert.ok(/Round 1 drafts first: fill every section/.test(shaping) && /one Mermaid diagram/.test(shaping), 'the person reads a whole draft, with a picture, before the questions');
   // Round 0 of a roadmap lives in a reference file the skill reads only then: the skill stays under its cap.
   assert.ok(shaping.includes('`${CLAUDE_PLUGIN_ROOT}/skills/new/roadmap.md`') && /Read\(\$\{CLAUDE_PLUGIN_ROOT\}\/skills\/new\/roadmap\.md\)/.test(shaping), 'new reads the roadmap round, without a prompt');
   assert.ok(/first line\s+names the phase instead of `❓ QUESTIONS`/.test(shaping) && /round 0 · reply 1 of 2 · 31 steps in the draft/.test(shaping), 'one banner for sizing in every session, with the replies left');
   const round0 = readFileSync(join(skillsDir, 'new', 'roadmap.md'), 'utf8');
-  assert.ok(/It is in the first reply, drafted with every pick taken/.test(round0) && /Round 0 is these two replies/.test(round0) && /`B drops 031–034`/.test(round0), 'the person sees the whole step list before any answer, and what each other option changes in it');
+  assert.ok(/It is in the first reply, drafted with every pick taken/.test(round0) && /Round 0 is these two replies/.test(round0) && /`B drops 012–015`/.test(round0), 'the person sees the whole step list before any answer, and what each other option changes in it');
+  // Both reply 2s of round 0 ended with "ok takes every pick" and no question open: the person did not know what to type.
+  assert.ok(/`✅ ROADMAP WRITTEN`/.test(round0) && /`ok starts round 1 of <first step's folder>`/.test(round0) && reply.includes('new SHAPED (ROADMAP WRITTEN after round 0)'), 'the end of round 0 says what ok does next');
+  assert.ok(/one `spex:roadmap-reviewer` per 10 stubs, in one message/.test(round0) && /Then step 3 again/.test(round0), 'a second reader checks the stubs against the design before reply 2');
+  assert.ok(/convert it as the error says, and cite the copy/.test(round0), 'a design in another format is converted first');
+  assert.ok(!/\bnex\b|nex-target|k3s|GHCR|promote\.py|docs\/my-specs/i.test(round0 + shaping + reply), 'the examples a skill reads come from no one project');
+  assert.ok(/`ROADMAP-NAMES` lists/.test(round0) && /under Names\s+left out in the roadmap file with why/.test(round0), 'a name the design fixes goes into a stub, or the file says why not');
   assert.ok(/the person deleted: that is\s+their answer\. Cut fresh, never offer to restore them/.test(round0), 'folders the person deleted stay deleted');
   assert.ok(/`--number <n>` when the repo\s+numbers its specs elsewhere too/.test(round0), 'a number the repo uses elsewhere is a flag, not a hand-made folder');
   assert.ok(Buffer.byteLength(round0, 'utf8') <= 6000, 'the roadmap round is small too');
@@ -161,7 +169,7 @@ test('every reply is in one frame: reply.md holds it, and every skill reads it a
   assert.ok(/\*\*The design's open items\*\*/.test(round0) && /Never a fact/.test(round0), 'a proposal in the design is an open question, not a fact');
   assert.ok(/\*\*From the design\*\*: all its sections say/.test(round0) && /`\[new\]`, `\[built: spec 24\]` or `\[changes: spec 21\]`/.test(round0), 'a stub holds all its design says, each bullet tagged');
   assert.ok(/\*\*Uses\*\*/.test(round0) && /\*\*Introduces\*\*/.test(round0) && /missing `depends_on`/.test(round0), 'a stub says what it takes and gives, so a program finds a missing dependency');
-  assert.ok(/as a Decision in both steps/.test(round0) && /never "step 041"/.test(round0), 'a move of design scope is a decision; a step is named by its folder');
+  assert.ok(/as a Decision in both steps/.test(round0) && /never "step 014"/.test(round0), 'a move of design scope is a decision; a step is named by its folder');
 });
 
 test('README.html, the one-picture guide, names every skill, the version, every stop and the film that moves through them', () => {

@@ -111,7 +111,7 @@ const usage = (message: string, fix: string): CmdResult => ({ ok: false, finding
 export function newFeature(root: string, slug: string, opts: NewOptions): CmdResult {
   if (!SLUG.test(slug)) return usage(`slug "${slug}" must be lower-case words joined by dashes`, 'Example: csv-export');
   if (opts.planned && opts.shaping) return usage('--planned and --shaping exclude each other', 'A stub of a roadmap is --planned; the step being shaped now is --shaping.');
-  if (opts.roadmap !== undefined && !SLUG.test(opts.roadmap)) return usage(`roadmap "${opts.roadmap}" must be lower-case words joined by dashes`, 'Example: --roadmap nex-platform');
+  if (opts.roadmap !== undefined && !SLUG.test(opts.roadmap)) return usage(`roadmap "${opts.roadmap}" must be lower-case words joined by dashes`, 'Example: --roadmap reports');
   if (opts.step !== undefined && (!Number.isInteger(opts.step) || opts.step < 1)) return usage(`step must be a whole number from 1, not ${opts.step}`, 'Example: --step 3');
   const next = nextNumber(root);
   if (opts.number !== undefined && (!Number.isInteger(opts.number) || opts.number < 1 || opts.number > 999)) return usage(`--number must be a whole number from 1 to 999, not ${opts.number}`, 'Example: --number 29');

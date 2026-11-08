@@ -9,7 +9,7 @@ description: >
 
   <example>
   Context: /spex:new on a planned step, auto mode on
-  user: "specs/028-promote-dev. Settle Q1 to Q4 below from docs/nex-design.md#4.2 and #4.3, the stub, spex show --inherited, and src/promote/. Q1: Who may press the cut button? options A operators, B mergers …"
+  user: "specs/012-bulk-delete. Settle Q1 to Q4 below from docs/design.md#4.2 and #4.3, the stub, spex show --inherited, and src/delete/. Q1: Who may delete in bulk? options A owners, B editors …"
   </example>
 disallowedTools: Edit, Write, NotebookEdit, Agent
 model: inherit
@@ -49,7 +49,7 @@ At most 8 lines per question, in this shape and nothing else:
 ```
 Q1 — <the question, short>
   answer: <option key, or the text when no option fits>
-  evidence: <design §4.2 "…", src/promote/cut.ts:40, or the researcher finding>
+  evidence: <design §4.2 "…", src/delete/bulk.ts:40, or the researcher finding>
   confidence: high | medium | low — <why, one line>
   needs: <a file, a section, "a person reads this at approval", or "nothing">
 ```

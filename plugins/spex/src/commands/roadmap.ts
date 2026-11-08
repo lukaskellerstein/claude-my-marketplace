@@ -5,10 +5,10 @@
 
 import { join } from 'node:path';
 import { loadConfig } from '../config.js';
-import { designOutline, resolveAnchor, splitRef, type DesignSection } from '../design.js';
-import { fileExists, writeText } from '../io.js';
+import { DESIGN_FORMAT, convertHint, designNames, designOutline, resolveAnchor, splitRef, type DesignSection } from '../design.js';
+import { fileExists, readText, writeText } from '../io.js';
 import { nextPlanned, roadmapNames, roadmapSteps } from '../roadmap.js';
-import { readRoadmapFile, roadmapFilePath, roadmapTemplate } from '../roadmapfile.js';
+import { readRoadmapFile, roadmapFilePath, roadmapTemplate, type CoverageRow } from '../roadmapfile.js';
 import { loadFeature } from '../specs.js';
 import type { Finding } from '../types.js';
 import { whatNext, type CmdResult } from './lifecycle.js';
@@ -47,12 +47,13 @@ export function roadmap(root: string, name?: string, opts: { coverage?: boolean;
 }
 
 function initRoadmap(root: string, name: string, design: string[], force: boolean): CmdResult {
-  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(name)) return usage(`roadmap "${name}" must be lower-case words joined by dashes`, 'Example: spex roadmap nex-target --init --source docs/design.html');
-  if (!design.length) return usage('--init needs the design: --source <file>, once per file', 'Example: spex roadmap nex-target --init --source nex-design.html');
+  if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(name)) return usage(`roadmap "${name}" must be lower-case words joined by dashes`, 'Example: spex roadmap reports --init --source docs/design.md');
+  if (!design.length) return usage('--init needs the design: --source <file>, once per file', 'Example: spex roadmap reports --init --source docs/design.md');
   const path = roadmapFilePath(name);
   if (fileExists(join(root, path)) && !force) return { ok: false, findings: [{ severity: 'error', code: 'ROADMAP-FILE', message: `${path} exists`, path, fix: 'Edit it. --force writes a new skeleton and loses the rows.' }], exit: 6, text: '' };
   const outlines = new Map<string, DesignSection[]>();
   for (const file of design) {
+    if (!DESIGN_FORMAT.test(file)) return usage(`--source ${file}: spex reads Markdown and HTML designs, not this format`, convertHint(file));
     const o = designOutline(root, file);
     if (!o) return usage(`--source ${file}: no such file`, 'Name the design file as a path from the repo root.');
     outlines.set(file, o);
@@ -96,6 +97,10 @@ export function roadmapCoverage(root: string, name: string): CmdResult {
   if (!file.design.length) findings.push({ severity: 'warning', code: 'ROADMAP-FILE', message: `${path} names no design: in its front matter; the steps' sources stand in (${design.join(', ') || 'none'})`, path, fix: 'Add design: ["<file>", …] to the front matter: every file the roadmap must cover.' });
   const outlines = new Map<string, DesignSection[]>();
   for (const f of design) {
+    if (!DESIGN_FORMAT.test(f)) {
+      findings.push({ severity: 'error', code: 'ROADMAP-DESIGN', message: `${f}: spex reads Markdown and HTML designs, not this format`, path, fix: `${convertHint(f)} Then name the copy in design:.` });
+      continue;
+    }
     const o = designOutline(root, f);
     if (o) outlines.set(f, o);
     else findings.push({ severity: 'error', code: 'ROADMAP-DESIGN', message: `the design file ${f} does not exist`, path, fix: 'Point design: at the file as it is now.' });
@@ -103,6 +108,8 @@ export function roadmapCoverage(root: string, name: string): CmdResult {
   const direct = new Map<string, Set<string>>(design.map((f) => [f, new Set<string>()]));
   const whole = new Set<string>();
   const covers = new Map<string, { file: string; section: DesignSection | null }[]>();
+  const rowsAt = new Map<string, CoverageRow[]>(); // `file#anchor`, or `file#` for a row of the whole file
+  const rowAt = (key: string, row: CoverageRow): void => void rowsAt.set(key, [...(rowsAt.get(key) ?? []), row]);
   for (const row of file.rows) {
     const at = `line ${row.line}`;
     const { file: f, anchor } = splitRef(row.ref, design);
@@ -111,14 +118,17 @@ export function roadmapCoverage(root: string, name: string): CmdResult {
       continue;
     }
     let section: DesignSection | null = null;
-    if (anchor === null) whole.add(f);
-    else {
+    if (anchor === null) {
+      whole.add(f);
+      rowAt(`${f}#`, row);
+    } else {
       section = resolveAnchor(outlines.get(f)!, anchor);
       if (!section) {
         findings.push({ severity: 'error', code: 'ROADMAP-ROW', message: `${at}: ${row.ref} is no section of ${f}`, path, fix: `spex outline ${f} lists its sections and their anchors.` });
         continue;
       }
       direct.get(f)!.add(section.anchor);
+      rowAt(`${f}#${section.anchor}`, row);
     }
     if (!row.where.trim()) {
       findings.push({ severity: 'error', code: 'ROADMAP-ROW', message: `${at}: ${row.ref} has an empty Where`, path, fix: 'Name the step folders that build it, or write built, not planned, outside or context, with the reason under Why.' });
@@ -151,8 +161,45 @@ export function roadmapCoverage(root: string, name: string): CmdResult {
       if (!ok) findings.push({ severity: 'warning', code: 'ROADMAP-SOURCE', message: `${step.name} covers ${r.file}#${r.section.cite} in the table, but its source does not name it`, path: step.dir, fix: 'Add it to source in the front matter: the shaping of a step reads only its source.' });
     }
   }
+  // Every name a section fixes (a key, a command, a label, a record path) is in a stub of the roadmap, or the file
+  // says why not. A row says where a section goes; this says that what the section fixes went there too.
+  const corpus = [...steps.map((s) => join(root, s.dir, 'spec.md')).filter(fileExists).map(readText), readText(join(root, path))].join('\n').toLowerCase();
+  const leftOut = new Set<string>();
+  for (const m of (file.sections.get('names left out') ?? '').matchAll(/([\w./-]*)#([\w.-]+)/g)) {
+    const { file: f, anchor } = splitRef(`${m[1]}#${m[2]}`, design);
+    const s = f && anchor && outlines.has(f) ? resolveAnchor(outlines.get(f)!, anchor) : null;
+    if (s) leftOut.add(`${f}#${s.anchor}`);
+  }
+  let unplaced = 0;
+  for (const [f, o] of outlines) {
+    const names = designNames(root, f);
+    if (!names) continue;
+    let stepSections = 0;
+    let stepNames = 0;
+    const byAnchor = new Map(o.map((s) => [s.anchor, s]));
+    for (const s of o) {
+      // the rows that govern it: its own, or those of the nearest section above it that has one
+      let gov: CoverageRow[] | undefined;
+      let out = false;
+      for (let a: string | null = s.anchor; a && !gov && !out; a = byAnchor.get(a)?.parent ?? null) {
+        out = leftOut.has(`${f}#${a}`);
+        gov = rowsAt.get(`${f}#${a}`);
+      }
+      gov ??= rowsAt.get(`${f}#`);
+      const by = [...new Set((gov ?? []).flatMap((r) => r.steps))];
+      if (out || !by.length) continue;
+      stepSections++;
+      stepNames += (names.get(s.anchor) ?? []).length;
+      const missing = (names.get(s.anchor) ?? []).filter((n) => !corpus.includes(n.toLowerCase()));
+      if (!missing.length) continue;
+      unplaced += missing.length;
+      findings.push({ severity: 'warning', code: 'ROADMAP-NAMES', message: `${f}#${s.cite} (${by.join(', ')}): ${missing.length} name(s) it fixes are in no stub: ${missing.slice(0, 15).map((n) => `\`${n}\``).join(' · ')}${missing.length > 15 ? ' …' : ''}`, path, fix: 'Write each into From the design of the step that uses it, tagged; or list it under ## Names left out in the roadmap file, with why (built, an example). A file#section there leaves out all its names.' });
+    }
+    // A design in prose marks few names: then a clean names check proves little, and the review carries the weight.
+    if (stepSections >= 3 && stepNames < 2 * stepSections) findings.push({ severity: 'warning', code: 'ROADMAP-PROSE', message: `${f}: ${stepNames} name(s) in code across the ${stepSections} section(s) the steps cover: the names check sees little of this design`, path, fix: 'The round-0 review reads each stub against its sections in full. Once it ran and its findings are in, say so under Decisions.' });
+  }
   const total = [...outlines.values()].reduce((n, o) => n + o.length, 0);
   const errors = findings.filter((f) => f.severity === 'error').length;
-  const text = `# coverage of roadmap ${name} — ${total} design section(s) in ${outlines.size} file(s), ${file.rows.length} row(s), ${uncovered.length} without a row${errors ? `, ${errors} error(s)` : ''}`;
-  return { ok: errors === 0, findings, exit: errors ? 4 : 0, text, data: { roadmap: name, file: path, design, sections: total, rows: file.rows.length, uncovered } };
+  const text = `# coverage of roadmap ${name} — ${total} design section(s) in ${outlines.size} file(s), ${file.rows.length} row(s), ${uncovered.length} without a row${unplaced ? `, ${unplaced} design name(s) in no stub` : ''}${errors ? `, ${errors} error(s)` : ''}`;
+  return { ok: errors === 0, findings, exit: errors ? 4 : 0, text, data: { roadmap: name, file: path, design, sections: total, rows: file.rows.length, uncovered, unplaced } };
 }

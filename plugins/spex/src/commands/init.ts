@@ -119,7 +119,7 @@ function render(s: Scan): string {
     `acceptance_cmd: ${q(s.acceptance_cmd)}`,
     `# more ways to run script tests, by name; a test record picks one with driver:. shell is built in (the steps run as commands)`,
     s.playwright ? `drivers: {playwright: {cmd: ${q(s.playwright.cmd)}, dir: ${s.playwright.dir}}}` : `drivers: {}                         # playwright: {cmd: 'npx playwright test --grep "{ids}"', dir: tests/e2e}`,
-    `repos: {}                           # other git repos a task may write (repo: in the task): dashboard: {path: ../forks/odh-dashboard}`,
+    `repos: {}                           # other git repos a task may write (repo: in the task): web: {path: ../web-ui}`,
     `fast_checks: [${s.fast_checks.map(q).join(', ')}]`,
     `source_dirs: [${s.source_dirs.join(', ')}]              # the test developer and the tester never read these`,
     `protected: [specs/, .spex/, ${s.acceptance_dir}/, .github/]   # no task may write these; every test folder is protected too`,

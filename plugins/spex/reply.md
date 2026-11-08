@@ -11,8 +11,8 @@ sentences, one idea each.
 
    ```
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   **✅ IMPLEMENTED · T13 · a retry after a merged cut answers "nothing"**
-   🔨 develop · specs/028-the-daily-cut-into-dev · 12 of 13 tasks done
+   **✅ IMPLEMENTED · T13 · an export of an empty table keeps its header row**
+   🔨 develop · specs/007-csv-export · 12 of 13 tasks done
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    ```
 
@@ -34,7 +34,7 @@ banner: those are for the agents. No `---`: the terminal shows three dashes.
 ## Verdicts
 
 - `✅ <WORD>`: it finished. The word is the skill's: approve APPROVED, clarify CLARIFIED,
-  develop IMPLEMENTED, fix FIXED, init SET UP, new SHAPED, requirements RECORDS WRITTEN,
+  develop IMPLEMENTED, fix FIXED, init SET UP, new SHAPED (ROADMAP WRITTEN after round 0), requirements RECORDS WRITTEN,
   research DECIDED, review REVIEWED, ship SHIPPED, tasks PLANNED, tests TESTS WRITTEN,
   update UPDATED, verify VERIFIED.
 - `⏸ WAITING FOR YOU`: it did what it could; one step is the person's (`You:`).
@@ -51,14 +51,14 @@ Phase icons: 🧭 init, update · 🔍 sizing · 💎 shaping · ✍️ approve 
 ```
 ────────────────────────────────────────
 
-### 1 · 🟥 BIG · Where is the image built, and where does k3s pull it from?
+### 1 · 🟥 BIG · Does a big export run in the request, or in a background job?
 
-**Context:** the laptop cluster has no registry, and GitHub's runners cannot reach it.
+**Context:** a 50 MB export takes about 40 s, and the proxy ends a request at 30 s.
 
-- **A** — Actions pushes to GHCR, k3s pulls from ghcr.io · GitLab waits for step 043
-- **B** — GitLab's registry for both repos · costs a registry, TLS, registries.yaml
+- **A** — a background job, then a download link · costs a job queue
+- **B** — in the request, streamed · fails past 30 s
 
-👉 **Pick: A.** It needs no new infrastructure.
+👉 **Pick: A.** It is the only one that works for big tables.
 
 ────────────────────────────────────────
 ```

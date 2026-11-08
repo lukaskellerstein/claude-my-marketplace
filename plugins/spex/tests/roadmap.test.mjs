@@ -148,8 +148,80 @@ test('roadmap --init writes one empty row per section; --coverage names every ga
   assert.equal(r.code, 0, r.stdout);
   assert.deepEqual(r.json.uncovered, []);
   assert.equal(r.json.sections, 12);
-  assert.deepEqual(codes(r), []);
+  // this design is headings and no names: a clean names check would prove nothing, so it says so
+  assert.deepEqual(codes(r), ['ROADMAP-PROSE']);
+  assert.ok(r.json.findings[0].message.startsWith('docs/design.md: 0 name(s) in code across the 3 section(s) the steps cover'), r.json.findings[0].message);
   assert.deepEqual(codes(spex(repo, 'roadmap', 'r')), [], 'the file exists now');
+});
+
+test('coverage: every name a section of a step fixes is in a stub, or the roadmap file says why not', () => {
+  // nex 029 to 073: every section had a row, and still 222 names of those sections were in no stub (the cycle
+  // config keys, the run index's record paths, the deploy port's calls). A row says where a section goes; the
+  // names say that what it fixes went there too.
+  const repo = roadmapRepo();
+  writeFileSync(join(repo, 'docs/design.md'), DESIGN_MD
+    .replace('### 2.1 The record\n', '### 2.1 The record\n\nThe record keeps `brain_hash` and `max_wait_days: 7`, as of main at `0dae3af1`.\n')
+    .replace('### 2.2 Stop\n', '### 2.2 Stop\n\nStop answers within `30 s` to `/stop <run>`.\n'));
+  assert.equal(spex(repo, 'roadmap', 'r', '--init', '--source', 'docs/design.md').code, 0);
+  const file = join(repo, 'specs/r.roadmap.md');
+  writeFileSync(file, readFileSync(file, 'utf8').replace(/\| Section \| Where \| Why \|\n\|:--\|:--\|:--\|\n[\s\S]*?\n\n## Outside/, `| Section | Where | Why |\n|:--|:--|:--|\n${[
+    '| docs/design.md#0 | context | how to read the rest |',
+    '| docs/design.md#1 | built | spec 02 |',
+    '| docs/design.md#2.1 | 008-record | |',
+    '| docs/design.md#2.2 | 009-stop | |',
+    '| docs/design.md#2.3 | 010-brains | |',
+    '| docs/design.md#phase-6 | not planned | waits for a second use case |',
+    '| docs/design.md#3 | context | the sources |',
+  ].join('\n')}\n\n## Outside`));
+  let r = spex(repo, 'roadmap', 'r', '--coverage');
+  assert.equal(r.code, 0, 'a warning: the session answers it before the shaping');
+  const names = r.json.findings.filter((f) => f.code === 'ROADMAP-NAMES');
+  assert.equal(names.length, 2, r.stdout);
+  assert.ok(names[0].message.includes('#2.1 (008-record)') && names[0].message.includes('`brain_hash` · `max_wait_days: 7`') && !names[0].message.includes('0dae3af1'), 'a commit hash is no name');
+  assert.ok(names[1].message.includes('`30 s` · `/stop <run>`'), names[1].message);
+  assert.equal(r.json.unplaced, 4);
+  assert.ok(r.json.text.endsWith('4 design name(s) in no stub'), r.json.text);
+
+  // a stub carries the record's names; the file leaves out Stop's, with the reason
+  setSection(repo, '008-record', 'From the design', '- The record keeps `brain_hash` and `max_wait_days: 7` (#2.1) [new]');
+  writeFileSync(file, readFileSync(file, 'utf8').replace('## Names left out\n', '## Names left out\n\n- docs/design.md#2.2: built by spec 02, Stop exists\n'));
+  r = spex(repo, 'roadmap', 'r', '--coverage');
+  assert.deepEqual(codes(r).filter((c) => c === 'ROADMAP-NAMES'), [], r.stdout);
+  assert.equal(r.json.unplaced, 0);
+});
+
+test('names: the keys of a config block count; a design in another format, or with no headings, is said so', () => {
+  // A cycle's config file was a YAML block in the design, and its keys were what the stubs left out. A design as a
+  // PDF had no outline at all, and a converted one was one long text with no sections to name.
+  const repo = roadmapRepo();
+  writeFileSync(join(repo, 'docs/design.md'), DESIGN_MD.replace('### 2.2 Stop\n', [
+    '### 2.2 Stop', '', 'The file:', '', '```yaml', '# platform/stop.yaml', 'stop:', '  grace_seconds: 30   # then the pod is killed', '  keep_best: true', '```', '',
+    '```json', '{ "stop_reason": "user", "stopped_at": "…" }', '```', '',
+    '```sh', 'kubectl delete job train-1', 'echo done', '```', '',
+  ].join('\n')));
+  assert.equal(spex(repo, 'roadmap', 'r', '--init', '--source', 'docs/design.md').code, 0);
+  const file = join(repo, 'specs/r.roadmap.md');
+  writeFileSync(file, readFileSync(file, 'utf8').replace(/\| Section \| Where \| Why \|\n\|:--\|:--\|:--\|\n[\s\S]*?\n\n## Outside/, '| Section | Where | Why |\n|:--|:--|:--|\n| docs/design.md | 009-stop | all of it |\n\n## Outside'));
+  const r = spex(repo, 'roadmap', 'r', '--coverage');
+  const names = r.json.findings.find((f) => f.code === 'ROADMAP-NAMES' && f.message.includes('#2.2'));
+  assert.ok(names, r.stdout);
+  for (const k of ['grace_seconds', 'keep_best', 'stop_reason', 'stopped_at']) assert.ok(names.message.includes(`\`${k}\``), `${k}: ${names.message}`);
+  assert.ok(!/kubectl|echo/.test(names.message), 'a shell block is no config: its words are no keys');
+
+  // another format: no outline, and the fix says how to convert it
+  writeFileSync(join(repo, 'docs/brief.pdf'), '%PDF-1.4');
+  let o = spex(repo, 'outline', 'docs/brief.pdf');
+  assert.equal(o.code, 2);
+  assert.equal(o.json.findings[0].code, 'DESIGN-FORMAT');
+  assert.ok(o.json.findings[0].fix.includes('markitdown') && o.json.findings[0].fix.includes('docs/brief.md'), o.stdout);
+  assert.ok(spex(repo, 'outline', 'docs/brief.docx').json?.findings?.[0]?.fix.includes('pandoc'), 'a Word file: pandoc');
+  assert.equal(spex(repo, 'roadmap', 'q', '--init', '--source', 'docs/brief.pdf').code, 2);
+
+  // a long text with one heading: the sections cannot be named
+  writeFileSync(join(repo, 'docs/flat.md'), '# Brief\n\n' + 'The export writes a file for each report and mails it to the owner. '.repeat(400));
+  o = spex(repo, 'outline', 'docs/flat.md');
+  assert.equal(o.code, 0);
+  assert.ok(codes(o).includes('DESIGN-HEADINGS'), o.stdout);
 });
 
 test('Uses and Introduces: a name comes from a step it depends on, which lists it; one name, one step', () => {

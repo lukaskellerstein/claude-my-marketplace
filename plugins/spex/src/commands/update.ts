@@ -24,7 +24,7 @@ const KEYS: { key: string; value: unknown; comment?: string; flow?: boolean }[] 
   { key: 'acceptance_dir', value: DEFAULT_CONFIG.acceptance_dir },
   { key: 'acceptance_cmd', value: '', comment: 'the default driver. {ids} becomes the test names joined by | (a regex); {ids_k} the "A or B" form (pytest -k)' },
   { key: 'drivers', value: {}, flow: true, comment: 'more ways to run script tests: playwright: {cmd: \'npx playwright test --grep "{ids}"\', dir: tests/e2e}' },
-  { key: 'repos', value: {}, flow: true, comment: 'other git repos a task may write (repo: in the task): dashboard: {path: ../forks/odh-dashboard}' },
+  { key: 'repos', value: {}, flow: true, comment: 'other git repos a task may write (repo: in the task): web: {path: ../web-ui}' },
   { key: 'fast_checks', value: [], flow: true },
   { key: 'source_dirs', value: DEFAULT_CONFIG.source_dirs, flow: true, comment: 'the test developer and the tester never read these' },
   { key: 'protected', value: DEFAULT_CONFIG.protected, flow: true, comment: 'no task may write these; every test folder is protected too' },

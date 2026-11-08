@@ -9,7 +9,7 @@ description: >
 
   <example>
   Context: /spex:verify, one session pending
-  user: "specs/028-promote TS07. Perform it and record it."
+  user: "specs/007-csv-export TS07. Perform it and record it."
   </example>
 disallowedTools: Edit, Write, NotebookEdit, Agent
 model: inherit

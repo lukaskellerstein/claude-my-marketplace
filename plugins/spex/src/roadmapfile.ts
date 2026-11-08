@@ -136,5 +136,9 @@ export function roadmapTemplate(name: string, design: string[], outlines: Map<st
     '',
     '<!-- The round-0 decisions: scope, order, what is not planned. Who said it, and when. -->',
     '',
+    '## Names left out',
+    '',
+    '<!-- A name a section of a step fixes that no stub carries, with why: built (by what), an example. A file#section leaves out all its names. -->',
+    '',
   ].join('\n');
 }

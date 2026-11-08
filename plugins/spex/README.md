@@ -1222,7 +1222,7 @@ in plan frontmatter.)*
 |:--|:--|:--|:--|:--|
 | `init` | the `spex init` scan | `.spex/config.yaml`, `.spex/.gitignore` | — | 4 KB |
 | `update` | `spex update`, then `spex check` | `.spex/config.yaml`: the keys a newer plugin needs, the format line, the migrations; every value of yours kept | a test analyst per migrated folder | 3 KB |
-| `new` | the user's raw text or design, `README.md`/`CLAUDE.md`, `spex index`, the first line of other specs, what the `researcher` subagents return; for a planned step also `spex gate new`, its `source` sections, `spex show --inherited` and the questions routed into it | `spec.md`, round by round; for a roadmap one stub per step | researcher per fact, decider in auto mode | 6 KB |
+| `new` | the user's raw text or design, `README.md`/`CLAUDE.md`, `spex index`, the first line of other specs, what the `researcher` and `roadmap-reviewer` subagents return; for a planned step also `spex gate new`, its `source` sections, `spex show --inherited` and the questions routed into it | `spec.md`, round by round; for a roadmap one stub per step | researcher per fact, decider in auto mode | 6 KB |
 | `approve` | `spex next` for what waits; the file it names, cut to a digest | runs `spex approve <dir> [stage]` on the person's yes, never without it | — | 3 KB |
 | `requirements` | `spex gate requirements`, `spec.md`, `spex show --inherited`, `spex index --scope`, named contracts | `requirements.yaml` | decider, researcher per unknown, one test analyst | 6 KB |
 | `clarify` | `requirements.yaml` | answers, edited records back to `draft` | researcher, decider in auto mode | 4 KB |
@@ -2087,7 +2087,7 @@ of the roadmap file and the stubs, once, in round 0.
 The later two come with Dex's any-agent spec. The skill text is portable from the
 start (rule 9), so adding them is delivery work, not a rewrite.
 
-**Subagents.** The plugin ships seven, each with a one-line brief in and a
+**Subagents.** The plugin ships eight, each with a one-line brief in and a
 fixed shape out, so the main context never holds what they read. A skill says
 `Research: 3 questions → 3 agents`, `Plan the tests → 1 analyst`,
 `Write: TS01 TS02 → 1 developer`, `Develop: T03 + T04 → 2 agents`,
@@ -2105,6 +2105,7 @@ those four may hold the same claim and its proof.
 | `developer` | `develop` with only the folder: one per task in a wave | `<dir> <task>. Build it; the orchestrator runs spex done.` | at most 11 lines: `STATUS: done \| test-bug \| blocked \| too-big`, the run result, files, pulls, concerns, an `ask` | edits a test or `tests.yaml`, writes outside `paths`, runs `spex done`, flips a status, starts agents | `inherit` | green |
 | `tester` | `verify`: one per session that is pending or stale | `<dir> TS07. Perform it and record it.` | at most 8 lines: `STATUS: pass \| fail`, the session and its claims, every value seen next to the value expected, artifacts, the step it failed at | writes anything (`Edit`, `Write`, `NotebookEdit`), fixes anything, records a `pass` for a step it did not see, starts agents | `inherit` | blue |
 | `reviewer` | `review` with more than three tasks: one per task slice | `<dir> <task>` | at most 20 lines: spec verdict, unrequested changes, blocking findings with file and line, a finding for a person | writes anything, reruns the tests, starts agents | `inherit` | orange |
+| `roadmap-reviewer` | `new` at the end of round 0 of a roadmap: one per 10 stubs, in parallel | the roadmap, its file, the design files, the step folders | at most 60 lines: per step with a finding, what its design sections fix that the stub lacks (quoted, with the anchor), a `[new]` name the code has, a Success no step builds, a design open item that is no Open question | writes anything, judges the order, the cut or the size, starts agents | `inherit` | red |
 
 The manifest names no `agents` field: Claude Code scans `agents/` itself. With
 the documented array form (`"agents": ["./agents/researcher.md", …]`),
@@ -2468,6 +2469,10 @@ question, not a hole.
 |:--|:--|
 | the step list came from a free reading of the design | round 0 (`skills/new/roadmap.md`) starts from `spex outline`, the design's own sections, and from its own list of work and order; each merge, split and change of order is a line with its reason |
 | nothing said which design section went to which step | `spex roadmap <name> --init` writes `specs/<name>.roadmap.md`, one coverage row per section; `--coverage` fails on a section with no row (`ROADMAP-UNCOVERED`), a row with no reason (`ROADMAP-WHY`), a row that names a step that is gone (`ROADMAP-STEP`), and a step that covers nothing (`ROADMAP-IDLE`) |
+| every section had a row, and still the nex stubs left out 222 names those sections fix: the cycle config keys, the run index's record paths, the deploy port's calls | `--coverage` warns (`ROADMAP-NAMES`) for each name in `code` in a section a step covers that no stub carries; the stub takes it, or `## Names left out` in the roadmap file says why (built, an example) |
+| the names check saw only names in `code`: config files shown as blocks, a design in prose, a PDF or a Word file passed with nothing checked | the keys of YAML, JSON and TOML blocks count as names; a design whose step sections mark fewer than 2 names each gets `ROADMAP-PROSE`, so a clean check never reads as "all good"; `spex outline` refuses another format with the command that converts it (`DESIGN-FORMAT`: pandoc, markitdown) and warns when a long text has too few headings to name (`DESIGN-HEADINGS`) |
+| the agent that wrote the stubs was their only reader | round 0 ends with one `roadmap-reviewer` per 10 stubs: what each step's sections fix that the stub lacks, quoted with the anchor; a `[new]` name the code already has; a Success no step builds. The writer applies each finding or answers it under Decisions |
+| the examples that skills and agents read came from nex (k3s, promote.py, 029 Deploy One Push) | neutral examples, and a test that keeps every project's names out of them |
 | a stub held what the agent remembered of the design | From the design holds every name, key, value, file, command and signal its sections fix, each with its `#anchor` and a tag (`[new]`, `[built: spec 24]`, `[changes: spec 21]`, `SPEC-TAG`); another step is named by its folder, never by a number (`SPEC-STEPREF`) |
 | a missing dependency showed up when a later step's shaping failed | Uses and Introduces in each stub: `USES-DEPENDS` fails when a name comes from a step outside `depends_on`, `USES-FROM` when that step does not introduce it, `INTRODUCES-TWICE` when two steps bring one name; `← outside (who)` for what the Outside section lists |
 | the design's picks and TBDs were lost, or written as facts | each one is an Open question of its step, with the design's pick as the recommendation |

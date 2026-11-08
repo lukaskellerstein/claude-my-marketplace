@@ -47,20 +47,20 @@ findings file again and stop: the round is written already.
 5. Write the findings file the show named, worst first. You found it, so you plan its
    fix: what and where, never code. Others build and prove it.
    ```yaml
-   feature: "028"
+   feature: "007"
    round: 3
    findings:
      - id: F1
        severity: P1
-       title: A retry takes an earlier night's merge commit as its own
-       file: platform/nex/temporal/activities/promote.py
-       line: 84
-       when: develop is unchanged, and the first attempt fails on a token error
-       effect: the record says merged, but dev did not move
-       fix: on a retry, also need the commit time at or after the first schedule, less 60 s
-       done_when: a retry on an earlier run's merge commit of the same heads answers nothing
-       requirements: [REQ-028-010]
-       paths: [platform/nex/temporal/activities/promote.py]
+       title: An export of an empty table writes no header row
+       file: src/cli/commands/export.ts
+       line: 42
+       when: the table has no rows
+       effect: the file is empty, and an import of it fails
+       fix: write the header before the loop over the rows, not with the first row
+       done_when: an export of an empty table holds the header line
+       requirements: [REQ-007-002]
+       paths: [src/cli/commands/export.ts]
        pick: fix
    ```
    A `fix` pick needs `done_when` and `paths`. A `defer` or `skip` pick has a `why`. No
@@ -78,11 +78,11 @@ lines. Then one block per finding, worst first, a rule of `─` above each and b
 last; the size is 🟥 P1, 🟧 P2, 🟨 P3, ⬜ nit:
 
 ```
-1 · 🟥 P1 ── promote.py:84 ──────────────────────────── 👉 FIX
-    A retry takes an earlier night's merge commit as its own.
-    When: develop is unchanged, and the first attempt fails.
-    Effect: the record says merged, but dev did not move.
-    Fix: also need the commit time ≥ first schedule − 60 s.
+1 · 🟥 P1 ── export.ts:42 ──────────────────────────── 👉 FIX
+    An export of an empty table writes no header row.
+    When: the table has no rows.
+    Effect: the file is empty, and an import of it fails.
+    Fix: write the header before the loop over the rows.
 ```
 
 The answer line: `Reply ok to take every pick, or change one: 2=defer 3=fix.`

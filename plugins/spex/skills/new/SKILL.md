@@ -29,7 +29,7 @@ In the frame of `${CLAUDE_PLUGIN_ROOT}/reply.md` (read it first). The banner's f
 names the phase instead of `❓ QUESTIONS`:
 
 - `**🔍 SIZING · <idea>**`, then `round 0 · reply 1 of 2 · 31 steps in the draft`
-- `**💎 SHAPING · 029 Deploy One Push**`, then `spec 2 of 29 in roadmap nex-target ·
+- `**💎 SHAPING · 012 Bulk Delete**`, then `spec 2 of 9 in roadmap reports ·
   question round 1` and the sizes, as `gate new` printed.
 
 The answer line: `ok takes every pick · answer by number · done approves the spec and ends

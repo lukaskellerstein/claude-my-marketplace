@@ -49,31 +49,80 @@ interface Heading {
   level: number;
   title: string;
   id: string | null;
+  /** The text under the heading, up to the next heading of any level; fenced blocks left out in Markdown. */
+  body: string;
+  /** Markdown's fenced blocks under it; HTML keeps its blocks in body, as multi-line <code>. */
+  blocks: string[];
 }
 
 function htmlHeadings(text: string): Heading[] {
   const out: Heading[] = [];
-  for (const m of text.matchAll(/<h([1-6])\b([^>]*)>([\s\S]*?)<\/h\1>/gi)) {
+  const all = [...text.matchAll(/<h([1-6])\b([^>]*)>([\s\S]*?)<\/h\1>/gi)];
+  all.forEach((m, i) => {
     const id = m[2].match(/\bid\s*=\s*["']([^"']+)["']/i)?.[1] ?? null;
     const title = unescape(m[3].replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
-    out.push({ level: Number(m[1]), title, id });
-  }
+    const end = (m.index ?? 0) + m[0].length;
+    out.push({ level: Number(m[1]), title, id, body: text.slice(end, i + 1 < all.length ? all[i + 1].index : text.length), blocks: [] });
+  });
   return out;
 }
 
 function markdownHeadings(text: string): Heading[] {
   const out: Heading[] = [];
   let fence: string | null = null;
+  let block = '';
   for (const line of text.split('\n')) {
     const f = line.match(/^\s*(```+|~~~+)/);
     if (f) {
-      if (!fence) fence = f[1][0];
-      else if (f[1][0] === fence) fence = null;
+      if (!fence) {
+        fence = f[1][0];
+        block = '';
+      } else if (f[1][0] === fence) {
+        fence = null;
+        if (out.length) out[out.length - 1].blocks.push(block);
+      }
       continue;
     }
-    if (fence) continue;
+    if (fence) {
+      block += line + '\n';
+      continue;
+    }
     const m = line.match(/^(#{1,6})\s+(.+?)\s*#*\s*$/);
-    if (m) out.push({ level: m[1].length, title: m[2].replace(/[*_`]/g, ''), id: null });
+    if (m) out.push({ level: m[1].length, title: m[2].replace(/[*_`]/g, ''), id: null, body: '', blocks: [] });
+    else if (out.length) out[out.length - 1].body += line + '\n';
+  }
+  return out;
+}
+
+/** The sections of a design text, each with its own text: a heading with no id gives its text to the section above it. */
+function parseDesign(text: string, file: string): { section: DesignSection; body: string; blocks: string[] }[] {
+  const html = /\.html?$/i.test(file);
+  const headings = html ? htmlHeadings(text) : markdownHeadings(text);
+  const out: { section: DesignSection; body: string; blocks: string[] }[] = [];
+  const stack: { section: DesignSection; body: string; blocks: string[] }[] = [];
+  const seen = new Map<string, number>();
+  for (const h of headings) {
+    while (stack.length && stack[stack.length - 1].section.level >= h.level) stack.pop();
+    let anchor = html ? h.id : slugOf(h.title);
+    if (!anchor) {
+      // an HTML heading with no id cannot be named, so it is no section; it still ends the ones above it
+      if (stack.length) {
+        stack[stack.length - 1].body += h.body;
+        stack[stack.length - 1].blocks.push(...h.blocks);
+      }
+      continue;
+    }
+    if (!html) {
+      // GitHub numbers a repeated slug: intro, intro-1, intro-2
+      const n = seen.get(anchor) ?? 0;
+      seen.set(anchor, n + 1);
+      if (n) anchor = `${anchor}-${n}`;
+    }
+    const num = numberOf(h.title);
+    const section: DesignSection = { file, anchor, aliases: num ? [num] : [], cite: html ? anchor : (num ?? anchor), level: h.level, title: h.title, parent: stack.length ? stack[stack.length - 1].section.anchor : null };
+    const entry = { section, body: h.body, blocks: [...h.blocks] };
+    out.push(entry);
+    stack.push(entry);
   }
   return out;
 }
@@ -82,26 +131,48 @@ function markdownHeadings(text: string): Heading[] {
 export function designOutline(root: string, file: string): DesignSection[] | null {
   const abs = join(root, file);
   if (!fileExists(abs)) return null;
-  const text = readText(abs);
+  return parseDesign(readText(abs), file).map((e) => e.section);
+}
+
+/** The keys of a block that reads as config (YAML, JSON, TOML): most of its lines are `key:` or `"key":`. Else none. */
+function blockKeys(block: string): string[] {
+  const lines = block.split('\n').map((l) => l.replace(/(^|\s)#.*$/, '')).filter((l) => l.trim() && !/^\s*[[\]{}],?\s*$/.test(l));
+  // a line's keys: `key:` or `key =` at its start (YAML, TOML), and every `"key":` in it (JSON, also on one line)
+  const per = lines.map((l) => [...new Set([l.match(/^\s*(?:-\s+)?["']?([A-Za-z_][\w.-]*)["']?\s*[:=](?:\s|$)/)?.[1], ...[...l.matchAll(/"([A-Za-z_][\w.-]*)"\s*:/g)].map((m) => m[1])].filter((k): k is string => !!k))]);
+  const keyed = per.filter((k) => k.length).length;
+  return keyed >= Math.max(1, lines.length / 2) && per.flat().length >= 2 ? per.flat() : [];
+}
+
+/** The design formats spex reads: Markdown and HTML. Plain text reads as Markdown. */
+export const DESIGN_FORMAT = /\.(md|markdown|mdx|txt|html?)$/i;
+
+/** How to turn a design of another format into Markdown beside it, for the fix of an error. */
+export function convertHint(file: string): string {
+  const md = file.replace(/\.[^./]+$/, '') + '.md';
+  if (/\.(docx?|odt|rtf|epub)$/i.test(file)) return `Convert it, then cite the copy: pandoc -t gfm "${file}" -o "${md}".`;
+  if (/\.(pdf|pptx?|xlsx?)$/i.test(file)) return `Convert it, then cite the copy: uvx markitdown "${file}" > "${md}". Then make each of its sections a # heading: spex reads sections from headings.`;
+  return `Save it as Markdown (a Google Doc: File, Download, Markdown; Notion or Confluence: export to Markdown) as ${md}, and cite that.`;
+}
+
+/**
+ * The names each section fixes in its own text: `code` in Markdown, <code> in HTML, and the keys of its config
+ * blocks (YAML, JSON). A commit hash and a name longer than 60 characters are left out: nobody looks one up.
+ */
+export function designNames(root: string, file: string): Map<string, string[]> | null {
+  const abs = join(root, file);
+  if (!fileExists(abs)) return null;
   const html = /\.html?$/i.test(file);
-  const headings = html ? htmlHeadings(text) : markdownHeadings(text);
-  const out: DesignSection[] = [];
-  const stack: DesignSection[] = [];
-  const seen = new Map<string, number>();
-  for (const h of headings) {
-    while (stack.length && stack[stack.length - 1].level >= h.level) stack.pop();
-    let anchor = html ? h.id : slugOf(h.title);
-    if (!anchor) continue; // an HTML heading with no id cannot be named, so it is no section; it still ends the ones above it
-    if (!html) {
-      // GitHub numbers a repeated slug: intro, intro-1, intro-2
-      const n = seen.get(anchor) ?? 0;
-      seen.set(anchor, n + 1);
-      if (n) anchor = `${anchor}-${n}`;
+  const out = new Map<string, string[]>();
+  for (const { section, body, blocks } of parseDesign(readText(abs), file)) {
+    const raw = html ? [...body.replace(/<(script|style)\b[\s\S]*?<\/\1>/gi, '').matchAll(/<code\b[^>]*>([\s\S]*?)<\/code>/gi)].map((m) => unescape(m[1].replace(/<[^>]+>/g, ''))) : [...body.matchAll(/`([^`\n]+)`/g)].map((m) => m[1]);
+    const all = [...blocks, ...raw.filter((r) => r.includes('\n'))].flatMap(blockKeys);
+    const names = new Set<string>();
+    for (const r of [...raw.filter((x) => !x.includes('\n')), ...all]) {
+      const n = r.replace(/\s+/g, ' ').trim(); // Markdown keeps `<run>` as it is
+      if (n.length < 3 || n.length > 60 || !/[\p{L}\p{N}]/u.test(n) || /^[0-9a-f]{7,40}(…|\.\.\.)?$/i.test(n)) continue;
+      names.add(n);
     }
-    const num = numberOf(h.title);
-    const section: DesignSection = { file, anchor, aliases: num ? [num] : [], cite: html ? anchor : (num ?? anchor), level: h.level, title: h.title, parent: stack.length ? stack[stack.length - 1].anchor : null };
-    out.push(section);
-    stack.push(section);
+    out.set(section.anchor, [...names]);
   }
   return out;
 }
