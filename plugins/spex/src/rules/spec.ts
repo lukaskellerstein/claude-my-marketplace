@@ -147,6 +147,16 @@ export function openQuestions(sections: Map<string, string>): OpenCounts {
   return counts;
 }
 
+/** The Open questions with neither a pick nor what settles it: the person cannot answer them with "ok". */
+export function openWithoutPick(sections: Map<string, string>): string[] {
+  const out: string[] = [];
+  for (const line of (sections.get('open questions') ?? '').split('\n')) {
+    const m = line.match(/^\s*(?:[-*+]|\d+[.)])\s+(.*)$/);
+    if (m && !/\bpick\b|\bsettles:/i.test(m[1])) out.push(m[1].trim());
+  }
+  return out;
+}
+
 /** `🟥 1 big · 🟧 2 medium · 🟨 0 small`, plus the unsized ones when there are any. */
 export function openSummary(c: OpenCounts): string {
   const parts = (Object.keys(SIZE_MARKS) as Size[]).map((s) => `${SIZE_MARKS[s]} ${c[s]} ${s}`);
@@ -231,6 +241,11 @@ export function checkSpec(ctx: { root: string; feature: Feature }): Finding[] {
   if (meta.status === 'shaping') {
     const open = openQuestions(sections);
     findings.push({ severity: 'info', code: 'SPEC-SHAPING', message: `${doc.path} is still shaping: ${open.total ? `${openSummary(open)} open` : 'no open question'}`, path: doc.path, fix: `Continue with /spex:new ${ctx.feature.dir}. When the person says done, \`spex approve ${ctx.feature.dir}\` marks it ready.` });
+  }
+  // SPEC-OPEN-PICK: a step's Open question carries the best pick, or what settles it
+  if (meta.status === 'planned' || meta.status === 'shaping') {
+    const bare = openWithoutPick(sections);
+    if (bare.length) findings.push({ severity: 'warning', code: 'SPEC-OPEN-PICK', message: `${doc.path}: ${bare.length} Open question(s) with no pick: ${bare.slice(0, 3).map((q) => `"${q.slice(0, 80)}"`).join(', ')}`, path: doc.path, fix: 'End each with "Pick: <the best option> (why)", the design\'s pick when it has one, or with "Settles: <the measurement or the named person>". A wait for a board, a review or a PR is an Outside line of the roadmap. A statement is a Decision, not a question.' });
   }
 
   // SPEC-DEPENDS: every dependency is a folder under specs/, not this one

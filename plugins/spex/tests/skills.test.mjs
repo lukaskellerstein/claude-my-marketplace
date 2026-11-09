@@ -162,7 +162,12 @@ test('every reply is in one frame: reply.md holds it, and every skill reads it a
   assert.ok(/convert it as the error says, and cite the copy/.test(round0), 'a design in another format is converted first');
   // nex, second cut: the backlog row said built, and ADR-027's status line says "not built: the groom agent". No check read
   // a row that names no step, so the work fell out silently. A built row names its builder; the reviewer reads those rows.
-  assert.ok(/A `built` row names what built it/.test(round0) && /not planned only by a question/.test(round0) && /one only the person settles is a question\s+of reply 2/.test(round0), 'a row that drops work is checked or asked');
+  assert.ok(/A `built` row names what built it/.test(round0) && /What the design lists to build is in scope unless the design\s+or the person drops it: a pick keeps it/.test(round0) && /one only the person settles is a question\s+of reply 2/.test(round0), 'a row that drops work is checked or asked');
+  // A lab run on a folder of three designs read only the newest, and its picks left out what waited for a board or a PR:
+  // 15 steps where the run before cut 29 from the same input. A folder is every file in it, and a wait is an Outside line.
+  assert.ok(/a folder is every file in it/.test(round0) && /a wait \(a board, a review, a PR\) is an Outside line/.test(round0), 'the same input gives the same scope');
+  // It also asked "is the cluster date still 2026-11-12?" with two options that planned the same 15 steps, and picked a guess.
+  assert.ok(/options that give the same list are no question/.test(round0) && /A fact only the\s+person knows \(a date, an account\) is a `You:` line, never a pick/.test(round0), 'a question changes the list, and a pick is never a guess at a fact');
   assert.ok(!/\bnex\b|nex-target|k3s|GHCR|promote\.py|docs\/my-specs/i.test(round0 + shaping + reply), 'the examples a skill reads come from no one project');
   assert.ok(/`ROADMAP-NAMES` lists/.test(round0) && /under Names\s+left out in the roadmap file with why/.test(round0), 'a name the design fixes goes into a stub, or the file says why not');
   assert.ok(/the person deleted: that is\s+their answer\. Cut fresh, never offer to restore them/.test(round0), 'folders the person deleted stay deleted');
@@ -171,7 +176,7 @@ test('every reply is in one frame: reply.md holds it, and every skill reads it a
   assert.ok(/`SPEX outline <file>`/.test(round0) && /design's own list of work comes first/.test(round0), 'the steps start from the design\'s own units and order, so a second session cuts the same list');
   assert.ok(/A re-cut starts from what exists/.test(round0) && /`SPEX drop <dir> --reason/.test(round0) && /Never delete a folder by hand/.test(round0), 'a re-cut is keep, change, add, drop; a dropped step keeps its work');
   assert.ok(/`SPEX roadmap <name> --init --source/.test(round0) && /`SPEX roadmap <name> --coverage`/.test(round0), 'every design section gets a row: a step or a reason');
-  assert.ok(/\*\*Outside\*\*/.test(round0) && /code in a repository that is not in `repos`/.test(round0) && /Code in a repo of `repos` is a step/.test(round0), 'what no step builds has an owner; a listed repo is steps');
+  assert.ok(/\*\*Outside\*\*/.test(round0) && /code in a repo not in `repos`/.test(round0) && /Code in a repo of `repos` is a step/.test(round0), 'what no step builds has an owner; a listed repo is steps');
   assert.ok(/\*\*The design's open items\*\*/.test(round0) && /Never a fact/.test(round0), 'a proposal in the design is an open question, not a fact');
   assert.ok(/\*\*From the design\*\*: all its sections say/.test(round0) && /`\[new\]`, `\[built: spec 24\]` or `\[changes: spec 21\]`/.test(round0), 'a stub holds all its design says, each bullet tagged');
   assert.ok(/\*\*Uses\*\*/.test(round0) && /\*\*Introduces\*\*/.test(round0) && /missing `depends_on`/.test(round0), 'a stub says what it takes and gives, so a program finds a missing dependency');

@@ -1848,6 +1848,7 @@ The spec in words:
 | `SPEC-POINTER` | error | `spec:` names a file that exists |
 | `SPEC-SECTIONS` | warning | `spec.md` has words under Why, What, Not this and Success; a template hint does not count |
 | `SPEC-SHAPING` | info | `spec.md` still says `status: shaping`; the message counts the open questions by size |
+| `SPEC-OPEN-PICK` | warning | a planned or shaping step has an Open question with no `Pick:` and no `Settles:`, so "ok" takes nothing for it |
 | `SPEC-PLANNED` | info | `spec.md` says `status: planned`; the message names the dependencies that are not built yet |
 | `SPEC-DEPENDS` | error | every `depends_on` entry is a folder under `specs/`, and not this one |
 | `SPEC-CYCLE` | error | `depends_on` across folders forms no cycle |
@@ -2486,6 +2487,7 @@ question, not a hole.
 | headless lab runs of round 0 in copies of both repos: the reviewers found 25 and 99 gaps, most of them a name that another step brings, used with no Uses line, or a failure path | `spex check` warns `USES-MISSING` when What, From the design or Success names a name that another step of the roadmap introduces and no Uses line says so; a stub's sources take the failure tables, and each failure with what follows it is a bullet |
 | a lab pick dropped a decision from the person's own design as "not planned"; a Notes line hid a second way out; a reply still put `❓ QUESTIONS` in line 1, as `reply.md`'s verdict list said | a decision in the person's design is their answer, and a pick never drops it; a concern with another way out is a question with its pick; `reply.md` gives way to a skill's own line 1 |
 | 63 of 79 Open questions in one lab roadmap had no pick | a stub's Open question that the design gives no pick gets the writer's best pick and its reason, or what settles it |
+| lab round 2 still left 20 of 40 Open questions with no pick, and read a folder of three designs as its newest file only | `spex check` warns `SPEC-OPEN-PICK` for a planned or shaping step's Open question with no `Pick:` and no `Settles:`; a wait for a board or a review is an Outside line, not a question; `--init --source` takes a folder, and a design in it of another format gets its convert command |
 
 ## Open questions
 

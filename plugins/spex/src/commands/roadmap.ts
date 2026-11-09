@@ -6,7 +6,7 @@
 import { join } from 'node:path';
 import { loadConfig } from '../config.js';
 import { DESIGN_FORMAT, convertHint, designNames, designOutline, resolveAnchor, splitRef, type DesignSection } from '../design.js';
-import { fileExists, readText, writeText } from '../io.js';
+import { fileExists, isDir, readText, walk, writeText } from '../io.js';
 import { nextPlanned, roadmapNames, roadmapSteps } from '../roadmap.js';
 import { readRoadmapFile, roadmapFilePath, roadmapTemplate, type CoverageRow } from '../roadmapfile.js';
 import { loadFeature } from '../specs.js';
@@ -46,11 +46,30 @@ export function roadmap(root: string, name?: string, opts: { coverage?: boolean;
   return { ok: true, findings, exit: 0, text: lines.join('\n'), data: { roadmap: name, file: fileExists(join(root, file)) ? file : null, steps: rows, next: next?.dir ?? null } };
 }
 
-function initRoadmap(root: string, name: string, design: string[], force: boolean): CmdResult {
+/** A design given as a folder is every design file in it, so a run that reads only the newest one leaves no file out. */
+function expandDesign(root: string, given: string[]): { design: string[]; findings: Finding[] } {
+  const design: string[] = [];
+  const findings: Finding[] = [];
+  for (const g of given) {
+    const dir = g.replace(/\/+$/, '');
+    if (!isDir(join(root, dir))) {
+      design.push(g);
+      continue;
+    }
+    const files = walk(root, join(root, dir)).sort();
+    design.push(...files.filter((f) => DESIGN_FORMAT.test(f)));
+    for (const f of files.filter((f) => /\.(docx?|odt|rtf|epub|pdf|pptx?|xlsx?)$/i.test(f))) findings.push({ severity: 'warning', code: 'DESIGN-FORMAT', message: `${f} is in ${dir}/ and is not read: spex reads Markdown and HTML designs`, path: f, fix: convertHint(f) });
+  }
+  return { design: [...new Set(design)], findings };
+}
+
+function initRoadmap(root: string, name: string, given: string[], force: boolean): CmdResult {
   if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(name)) return usage(`roadmap "${name}" must be lower-case words joined by dashes`, 'Example: spex roadmap reports --init --source docs/design.md');
-  if (!design.length) return usage('--init needs the design: --source <file>, once per file', 'Example: spex roadmap reports --init --source docs/design.md');
+  if (!given.length) return usage('--init needs the design: --source <file or folder>, once per file', 'Example: spex roadmap reports --init --source docs/design.md');
   const path = roadmapFilePath(name);
   if (fileExists(join(root, path)) && !force) return { ok: false, findings: [{ severity: 'error', code: 'ROADMAP-FILE', message: `${path} exists`, path, fix: 'Edit it. --force writes a new skeleton and loses the rows.' }], exit: 6, text: '' };
+  const { design, findings } = expandDesign(root, given);
+  if (!design.length) return usage(`--source ${given.join(' ')}: no Markdown or HTML design in it`, findings[0]?.fix ?? 'Name the design file as a path from the repo root.');
   const outlines = new Map<string, DesignSection[]>();
   for (const file of design) {
     if (!DESIGN_FORMAT.test(file)) return usage(`--source ${file}: spex reads Markdown and HTML designs, not this format`, convertHint(file));
@@ -60,7 +79,7 @@ function initRoadmap(root: string, name: string, design: string[], force: boolea
   }
   writeText(join(root, path), roadmapTemplate(name, design, outlines));
   const counts = design.map((f) => `${f}: ${outlines.get(f)!.length} section(s)`);
-  return { ok: true, findings: [], exit: 0, text: `${path} written: one empty coverage row per section of the top two levels\n${counts.join('\n')}\nFill Where and Why in every row; a row covers the sections under it. Then spex roadmap ${name} --coverage.`, data: { file: path, design, sections: Object.fromEntries([...outlines].map(([f, o]) => [f, o.length])) } };
+  return { ok: true, findings, exit: 0, text: `${path} written: one empty coverage row per section of the top two levels\n${counts.join('\n')}\nFill Where and Why in every row; a row covers the sections under it. Then spex roadmap ${name} --coverage.`, data: { file: path, design, sections: Object.fromEntries([...outlines].map(([f, o]) => [f, o.length])) } };
 }
 
 /** The sections no row covers: a row covers its section and everything under it; a section is covered when all its children are. */

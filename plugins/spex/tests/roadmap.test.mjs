@@ -222,6 +222,13 @@ test('names: the keys of a config block count; a design in another format, or wi
   o = spex(repo, 'outline', 'docs/flat.md');
   assert.equal(o.code, 0);
   assert.ok(codes(o).includes('DESIGN-HEADINGS'), o.stdout);
+
+  // a folder is every design in it: a lab run given a folder of three designs read only the newest one
+  const all = spex(repo, 'roadmap', 'all', '--init', '--source', 'docs/');
+  assert.equal(all.code, 0, all.stdout);
+  assert.deepEqual(all.json.design, ['docs/design.html', 'docs/design.md', 'docs/flat.md']);
+  assert.ok(readFileSync(join(repo, 'specs/all.roadmap.md'), 'utf8').includes('design: ["docs/design.html", "docs/design.md", "docs/flat.md"]'));
+  assert.ok(all.json.findings.some((f) => f.code === 'DESIGN-FORMAT' && f.message.includes('docs/brief.pdf')), all.stdout);
 });
 
 test('Uses and Introduces: a name comes from a step it depends on, which lists it; one name, one step', () => {

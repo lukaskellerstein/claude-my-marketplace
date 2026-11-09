@@ -177,7 +177,12 @@ const BROKEN = [
     mkdirSync(join(d, 'specs/008-step'));
     writeFileSync(join(d, 'specs/008-step/spec.md'), '---\nstatus: planned\nroadmap: r\nstep: 2\ndepends_on: [007-csv-export]\n---\n# Step\n\n## Why\nw\n\n## What\nw\n\n## Not this\nw\n');
   }],
-  ['FILE-SIZE', 0, (d) => writeFileSync(join(d, '.spex/config.yaml'), readFileSync(join(d, '.spex/config.yaml'), 'utf8').replace('file_kb: 40', 'file_kb: 1'))],
+  ['SPEC-OPEN-PICK', 0, (d) => {
+    // a lab run left half its stubs' Open questions with no pick, so "ok" took nothing for them
+    mkdirSync(join(d, 'specs/008-step'));
+    writeFileSync(join(d, 'specs/008-step/spec.md'), '---\nstatus: planned\nroadmap: r\nstep: 2\ndepends_on: [007-csv-export]\n---\n# Step\n\n## Why\nw\n\n## What\nw\n\n## Not this\nw\n\n## Open questions\n\n- 🟨 The page size. Pick: 50 (the design\'s).\n- 🟨 The time cap. Settles: one run on the full set.\n- 🟧 Where the cost comes from: the gateway or the job.\n');
+  }],
+  ['FILE-SIZE', 0,(d) => writeFileSync(join(d, '.spex/config.yaml'), readFileSync(join(d, '.spex/config.yaml'), 'utf8').replace('file_kb: 40', 'file_kb: 1'))],
   ['CONFIG-SCHEMA', 4, (d) => writeFileSync(join(d, '.spex/config.yaml'), 'acceptance_dir: tests/acceptance\nmystery: 1\n')],
 ];
 

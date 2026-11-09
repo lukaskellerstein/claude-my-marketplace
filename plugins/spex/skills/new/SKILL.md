@@ -7,19 +7,19 @@ allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUD
 
 # spex new
 
-`SPEX` = `${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs` (it runs as it is), from the repo root.
+`SPEX` = `${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs`, from the repo root.
 
 The thinking phase: the user ends it, never you. `spec.md` is the spec in words, and
 `/spex:requirements` makes the records from it once approved.
 
 ## Inputs you read
 
-- The user's text, pasted or a file. A big design stays where it is: `SPEX outline <file>`
-  lists its sections; read the ones you need, never copy it in.
+- The user's text: pasted, a file, or a folder (all its files). A big design stays where it
+  is: `SPEX outline <file>` lists its sections; read what you need, never copy it in.
 - The repo's `README.md` or `CLAUDE.md`; `SPEX index` for the capabilities the idea touches
   (overlap with a live record is the first thing you say); the first line of every other
   `spec.md`; `SPEX roadmap`, for a roadmap of this idea that exists.
-- To resume, the argument is a folder: `SPEX gate new <dir>`. A `shaping` spec goes on from
+- To resume, the argument is a step folder: `SPEX gate new <dir>`. A `shaping` spec goes on from
   its open questions; a `planned` step opens once every `depends_on` folder is built, else
   the gate refuses: stop.
 

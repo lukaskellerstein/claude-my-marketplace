@@ -6,8 +6,8 @@ design says for its step, so no later round has to find it again.
 
 ## 1. The units come from the design, not from a reading of it
 
-1. `SPEX outline <file>` for every design file. Its sections are the units. Another format than
-   Markdown or HTML: convert it as the error says, and cite the copy.
+1. `SPEX outline <file>` for every design file; a folder is every file in it. Its sections are the
+   units. Another format than Markdown or HTML: convert it as the error says, and cite the copy.
 2. The design's own list of work comes first, when it has one: a gaps table, phases, a "what is left"
    or today-against-target table, the "designed, not built" Status lines of its ADRs. So does its own
    order of work. Mark each unit from those and from the code: built, partly built (what is left), new.
@@ -29,25 +29,26 @@ their answer. Cut fresh, never offer to restore them, and name them once under W
 
 ## 3. The list the person edits
 
-It is in the first reply, drafted with every pick taken, so the person sees the scale before
-any answer. One table: number, slug, goal in one line, `depends_on`, the sections it covers.
+It is in the first reply, drafted with every pick taken: the person sees the scale first. One
+table: number, slug, goal in one line, `depends_on`, the sections it covers.
 Each question says what its other options change in it (`B drops 012–015`). "ok" takes the
 picks and the table; the next reply writes it (§ 4). Round 0 is these two replies. Under it:
 
-- **Not planned**, each with its reason. What the design lists to build is not planned only by a question.
-- **Outside**: what a Success needs that no step builds (a service, a test suite, a test account, an
-  environment, code in a repository that is not in `repos` of `.spex/config.yaml`): where it lives,
-  who does it, which step waits for it. Code in a repo of `repos` is a step: its tasks name the repo.
+- **Not planned**, each with its reason. What the design lists to build is in scope unless the design
+  or the person drops it: a pick keeps it, and a wait (a board, a review, a PR) is an Outside line.
+- **Outside**: what a Success needs that no step builds (a service, a test account, an environment,
+  code in a repo not in `repos` of `.spex/config.yaml`): where it lives, who does it, which step
+  waits. Code in a repo of `repos` is a step: its tasks name the repo.
 - **The design's open items**: every proposal, "my pick", "X picks", TBD and "open for you" entry, with
   the step it changes. It becomes that step's Open question, with the design's pick as the
   recommendation. Never a fact.
 
-The questions are what changes the list: which documents are in scope, whether UI work is in
-the steps or outside. The same answers must give the same list.
+Ask only what changes the list; options that give the same list are no question. A fact only the
+person knows (a date, an account) is a `You:` line, never a pick.
 
 ## 4. Write it, then check it
 
-1. `SPEX roadmap <name> --init --source <file>…` writes `specs/<name>.roadmap.md`. Fill Idea, Order,
+1. `SPEX roadmap <name> --init --source <file or folder>…` writes `specs/<name>.roadmap.md`. Fill Idea, Order,
    Outside, Decisions (scope, not planned, order: who said it, when) and every Coverage row: the step
    folders that build it, or `built` (by what), `not planned` (why), `outside` (who), `context` (why).
    A row covers the sections under it; give a child its own row when it differs.
@@ -78,8 +79,8 @@ the steps or outside. The same answers must give the same list.
   `← outside (who)` for what the Outside section lists. A name from a step it does not depend on is a
   missing `depends_on`: add it.
 - **Introduces**: each name it brings, `` `name`: what it is ``. One name, one step.
-- **Open questions**: the design's open items for this step, sized, with the design's pick. It has
-  none: your best pick and its reason, or what settles it (a measurement, a named person).
+- **Open questions**: the design's open items for this step, sized. Each ends `Pick:` (the design's,
+  else your best, and why) or `Settles:` (a measurement, a named person); else SPEC-OPEN-PICK.
 - Its Success, the design's "done when", names only what this step or its dependencies build.
 - When it narrows or moves what the design says (a station to a later step, another value), say so
   under Not this and as a Decision in both steps: "narrows #export: the PDF moves to 014-pdf-export".
