@@ -2,8 +2,7 @@
 
 Every spex skill ends its turn with one reply in this frame. The skill says what goes in
 it; this file says how it looks. The person is busy: they read the banner, then what needs
-them, then NEXT. The terminal colors no text, so the emoji carry the color. Short, plain
-sentences, one idea each.
+them, then NEXT. The emoji carry the color. Short, plain sentences, one idea each.
 
 ## The frame, in order
 
@@ -24,7 +23,8 @@ sentences, one idea each.
 3. **Questions**, if any: one block each, as below, big first.
 4. **You:** one line, only when the person acts before NEXT works: the click, the
    variable, the yes. Never hidden in a paragraph.
-5. **Notes:** one line, only with concerns: how many, and the first.
+5. **Notes:** one line, only with concerns: how many, and the first. A concern with another
+   way out is a question with its pick.
 6. **NEXT:** `SPEX next <dir>` as printed, the two rules included, never rewritten or
    shortened. It does not count toward the skill's line cap.
 
@@ -40,7 +40,8 @@ banner: those are for the agents. No `---`: the terminal shows three dashes.
 - `⏸ WAITING FOR YOU`: it did what it could; one step is the person's (`You:`).
 - `⛔ NOT STARTED`: a gate refused, nothing changed. What says what is missing.
 - `⛔ STOPPED`: it started and could not finish. What says what is done, what is not.
-- `❓ QUESTIONS`: it goes on with the answers (the blocks).
+- `❓ QUESTIONS`: it goes on with the answers (the blocks). A skill that names its own
+  line 1 for this uses that one (new: `🔍 SIZING`).
 
 Phase icons: 🧭 init, update · 🔍 sizing · 💎 shaping · ✍️ approve · 📜 requirements ·
 ❓ clarify · 🔬 research · 🗂️ tasks · 🧪 tests · 🔨 develop · 🔎 verify · 👀 review ·
@@ -71,8 +72,8 @@ Phase icons: 🧭 init, update · 🔍 sizing · 💎 shaping · ✍️ approve 
 - **👉 Pick** is what "ok" takes, and the person says ok nearly every time. So it is the
   option with the best result for their goal, and its reason names that result: never
   "the rule says" alone, never a work-around for a missing spex feature (name the gap).
-  What the person did already (deleted folders, a branch) is their answer, not a
-  question. Read each pick as them before you send it. Money, time or no undo: say it,
+  What the person did or decided already (deleted folders, a branch, a decision in
+  their design) is their answer: a pick never drops it. Read each pick as them before you send it. Money, time or no undo: say it,
   with the number.
 - A question with one option is no question. List those once, after the blocks, under
   `I do this unless you say no:`, one line each, numbered on.

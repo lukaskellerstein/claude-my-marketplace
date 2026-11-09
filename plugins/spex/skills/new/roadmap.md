@@ -54,8 +54,9 @@ the steps or outside. The same answers must give the same list.
 2. One `SPEX new` per step, in order: the first `--shaping` (with `--number <n>` when the repo
    numbers its specs elsewhere too, as `docs/briefs/28`), the rest `--planned`, each with
    `--roadmap <name> --step <n> --depends-on <dirs>` and a `--source <file#anchor>` for every section its
-   rows give it and every section that defines a name it uses (a config file, a signal list, a record
-   layout, a policy file are often in a reference chapter, not in the story).
+   rows give it and every section that defines a name it uses or what happens when it fails (a config
+   file, a signal list, a record layout, a policy file, a failure table are often in a reference
+   chapter, not in the story).
 3. Fill every stub (below), then run `SPEX roadmap <name> --coverage` and `SPEX check` until
    neither has an error or a warning you did not answer under Decisions. `ROADMAP-NAMES` lists
    what a step's section fixes and no stub carries: write each into that stub, or under Names
@@ -71,13 +72,14 @@ the steps or outside. The same answers must give the same list.
 
 - **Why, What, Not this**: three lines each.
 - **From the design**: all its sections say for this step: every name, key, value, file, command,
-  label, check, signal and record path, one bullet each, with its `#anchor` and a tag at the end:
+  label, check, signal, record path and failure with what follows it, one bullet each, with its `#anchor` and a tag at the end:
   `[new]`, `[built: spec 24]` or `[changes: spec 21]`. No cap: what the design fixes is written now.
 - **Uses**: each name it needs from another step, `` `name` ← <folder> ``, `← built (where)`, or
   `← outside (who)` for what the Outside section lists. A name from a step it does not depend on is a
   missing `depends_on`: add it.
 - **Introduces**: each name it brings, `` `name`: what it is ``. One name, one step.
-- **Open questions**: the design's open items for this step, sized, with the design's pick.
+- **Open questions**: the design's open items for this step, sized, with the design's pick. It has
+  none: your best pick and its reason, or what settles it (a measurement, a named person).
 - Its Success, the design's "done when", names only what this step or its dependencies build.
 - When it narrows or moves what the design says (a station to a later step, another value), say so
   under Not this and as a Decision in both steps: "narrows #export: the PDF moves to 014-pdf-export".

@@ -99,14 +99,23 @@ export function checkLinks(ctx: { root: string; config: Config; feature: Feature
 
   // INTRODUCES: one name, one step of the roadmap; and a step that brings too much is two steps
   const mine = introducesOf(sections);
-  if (meta.roadmap && mine.length) {
-    for (const other of roadmapSteps(ctx.root, meta.roadmap)) {
-      if (other.dir === here) continue;
-      const o = specDocPath(ctx.root, loadFeature(ctx.root, other.dir));
-      if (!o || o.missing) continue;
-      const both = introducesOf(sectionBodies(readText(join(ctx.root, o.path)))).filter((n) => mine.includes(n));
-      if (both.length) findings.push({ severity: 'warning', code: 'INTRODUCES-TWICE', message: `${other.name} introduces ${both.map((n) => `\`${n}\``).join(', ')} too`, path: doc.path, fix: 'One step brings a name; the other uses it (← that step) or changes it (say how under What).' });
-    }
+  const others = !meta.roadmap ? [] : roadmapSteps(ctx.root, meta.roadmap).filter((o) => o.dir !== here).map((other) => {
+    const o = specDocPath(ctx.root, loadFeature(ctx.root, other.dir));
+    return { name: other.name, brings: !o || o.missing ? [] : introducesOf(sectionBodies(readText(join(ctx.root, o.path)))) };
+  });
+  for (const other of others) {
+    const both = other.brings.filter((n) => mine.includes(n));
+    if (both.length) findings.push({ severity: 'warning', code: 'INTRODUCES-TWICE', message: `${other.name} introduces ${both.map((n) => `\`${n}\``).join(', ')} too`, path: doc.path, fix: 'One step brings a name; the other uses it (← that step) or changes it (say how under What).' });
+  }
+
+  // USES-MISSING: what the step builds or proves names a name another step brings, and no Uses line says so. The
+  // writer of a stub knows the steps before it best; a reviewer found most of these by hand.
+  const listed = new Set(usesOf(sections).map((u) => u.name));
+  const said = ['what', DESIGN_SECTION.toLowerCase(), 'success'].map((k) => sections.get(k) ?? '').join('\n');
+  const spans = new Set([...said.matchAll(/`([^`\n]+)`/g)].map((m) => m[1].trim()));
+  for (const other of others) {
+    const names = other.brings.filter((n) => spans.has(n) && !listed.has(n) && !mine.includes(n));
+    if (names.length) findings.push({ severity: 'warning', code: 'USES-MISSING', message: `names ${names.map((n) => `\`${n}\``).join(', ')}, which ${other.name} introduces, with no Uses line`, path: doc.path, fix: `Add \`${names[0]}\` ← ${other.name} under Uses and ${other.name} to depends_on, so it comes first. Or, when this step does not need it, move it to Not this; when it means another thing by the name, give one of them another name.` });
   }
   const cap = ctx.config.limits.step_introduces;
   if (mine.length > cap) findings.push({ severity: 'warning', code: 'SPEC-SIZE', message: `introduces ${mine.length} names, over limits.step_introduces (${cap})`, path: doc.path, fix: 'Split the step where its names fall into two groups, or say under Decisions why it stays one.' });

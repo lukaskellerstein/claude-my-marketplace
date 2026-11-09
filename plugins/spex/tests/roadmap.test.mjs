@@ -241,6 +241,12 @@ test('Uses and Introduces: a name comes from a step it depends on, which lists i
   assert.ok(msg('USES-FROM').includes('`recipe` says no source'), r.stdout);
   assert.ok(msg('INTRODUCES-TWICE').includes('009-stop introduces `stopped` too'), r.stdout);
   assert.ok(!msg('USES-DEPENDS').includes('brain_hash') && !msg('USES-INTRODUCES').includes('AutoMerge'), 'a built name and a name from a dependency pass');
+  // a name another step brings, named in what this step builds, with no Uses line (a reviewer found 99 such in one roadmap)
+  setSection(repo, '009-stop', 'What', '- Stop keeps the best brain, by its `recipe`, and logs `stop_reason`.');
+  r = spex(repo, 'check', 'specs/009-stop');
+  const missing = r.json.findings.filter((f) => f.code === 'USES-MISSING').map((f) => f.message).join(' | ');
+  assert.ok(missing.includes('`recipe`, which 008-record introduces, with no Uses line'), r.stdout);
+  assert.ok(!missing.includes('brain_hash') && !missing.includes('stop_reason'), 'a listed name and a name no step brings pass');
   // fixed: 010 depends on 009 (and through it on 008), uses only what 009 lists, brings only its own name
   writeFileSync(specPath(repo, '010-brains'), readFileSync(specPath(repo, '010-brains'), 'utf8').replace('depends_on: [008-record]', 'depends_on: [009-stop]'));
   setSection(repo, '010-brains', 'Introduces', '- `catalog`: every brain');

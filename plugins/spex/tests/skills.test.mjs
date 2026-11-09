@@ -132,7 +132,10 @@ test('every reply is in one frame: reply.md holds it, and every skill reads it a
   // Round 0 in agent-flywheel-os picked "restore the folders you deleted" because a rule said HEAD wins, and nex
   // picked a hand-made folder because spex could not set a number. The person answers ok nearly every time, so a
   // pick is the best result for their goal, never a rule alone or a work-around, and what they did is an answer.
-  assert.ok(/best result for their goal/.test(reply) && /never a work-around for a missing spex feature/.test(reply) && /is their answer, not a\s+question/.test(reply), 'a pick is the best result, never a rule alone or a work-around');
+  // A lab run then picked "not planned" for a decision the person wrote in their design: that is an answer too.
+  assert.ok(/best result for their goal/.test(reply) && /never a work-around for a missing spex feature/.test(reply) && /a decision in\s+their design\) is their answer: a pick never drops it/.test(reply), 'a pick is the best result, never a rule alone or a work-around');
+  // One lab run put ❓ QUESTIONS on line 1 of a sizing reply: the verdict list must give way to the skill's own line 1.
+  assert.ok(/names its own\s+line 1 for this/.test(reply), 'a skill that names its own line 1 uses it');
   assert.ok(/the\s+replies left when the skill knows them \(`reply 1 of 2`\)/.test(reply), 'the banner says how many replies are left'); 
   assert.ok(reply.includes('━'.repeat(40)) && reply.includes('─'.repeat(40)), 'a heavy rule around the banner, a light one around each question');
   for (const needle of ['👉 **Pick:', '🟥 BIG', '🟧 MEDIUM', '🟨 SMALL', '⏸ WAITING FOR YOU', '⛔ NOT STARTED', 'I do this unless you say no', 'No `STATUS:` code']) assert.ok(reply.includes(needle), `reply.md has ${needle}`);
