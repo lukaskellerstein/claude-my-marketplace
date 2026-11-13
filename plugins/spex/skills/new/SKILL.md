@@ -1,105 +1,98 @@
 ---
 name: new
-description: Shape a raw idea into a spec in rounds — size it (one step, or a roadmap where every design section has a step or a reason), then every open question on one screen per round, each with a pick, until the user says done. Resumes a shaping spec, opens a planned step. With "auto" a decider answers and nobody is asked.
+description: Turn an idea (pasted text, a file or a folder) into one note for each spec, at the end of the list. Keeps the person's words, sizes the idea, asks only about the split, and checks that every detail is in a note. Type it for a new idea, or again with "split it". With "auto" nobody is asked.
 disable-model-invocation: true
-allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Read(${CLAUDE_PLUGIN_ROOT}/reply.md), Read(${CLAUDE_PLUGIN_ROOT}/skills/new/roadmap.md), Agent, WebSearch, WebFetch
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Read(${CLAUDE_PLUGIN_ROOT}/reply.md), Read(${CLAUDE_PLUGIN_ROOT}/skills/*/*.md), Agent
 ---
 
 # spex new
 
-`SPEX` = `${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs`, from the repo root.
+`SPEX` = `${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs`, from the repo root. Every finding has a
+`fix` text: read it.
 
-The thinking phase. `spec.md` is the spec in words;
-`/spex:requirements` makes the records from it.
+new writes notes, in the main folder, on the base branch. A note holds the boundary of a
+spec and every detail the person gave, nothing more: `/spex:plan` does the thinking when
+the turn of the spec comes. new only adds. It never changes or drops a spec that exists.
 
-## Inputs you read
+## 1. Keep the words
 
-- The user's text: pasted, a file, or a folder (all its files). A big design stays where it
-  is: `SPEX outline <file>` lists its sections; read what you need, never copy it in.
-- The repo's `README.md` or `CLAUDE.md`; `SPEX index` for the capabilities the idea touches
-  (overlap with a live record is the first thing you say); the first line of every other
-  `spec.md`; `SPEX roadmap`, for a roadmap of this idea that exists.
-- To resume, the argument is a step folder: `SPEX gate new <dir>`. A `shaping` spec goes on from
-  its open questions; a `planned` step opens once every `depends_on` folder is built, else
-  the gate refuses: stop.
+- Pasted text: write it word for word to `.spex/runs/words.md` (git ignores that folder).
+  No summary, no tidy copy: the script links each line by its number.
+- A file or a folder stays where it is; a folder is every file in it. `SPEX outline
+  <file>…` lists the sections of a design: read what you need, never copy it in. Another
+  format than Markdown or HTML: convert it as the error says, and cite the copy.
+- Read the repo's `README.md` or `CLAUDE.md`, and `SPEX index` for the capabilities the
+  idea touches. Overlap with a live record is the first thing you say.
 
-## Every reply
+## 2. A list exists?
 
-In the frame of `${CLAUDE_PLUGIN_ROOT}/reply.md` (read it first). The banner's first line
-names the phase instead of `❓ QUESTIONS`:
+`SPEX list`: every spec with its state, and the next number. It is a fact, not a
+comparison: never match the new text against the old specs. The new specs go at the end.
+Spec folders that git holds and the working tree lacks, the person deleted: that is
+their answer. Never offer to restore them.
 
-- `**🔍 SIZING · <idea>**`, then `round 0 · reply 1 of 2 · 31 steps in the draft`
-- `**💎 SHAPING · 012 Bulk Delete**`, then `spec 2 of 9 in roadmap reports ·
-  question round 1` and the sizes, as `gate new` printed.
+## 3. Split it into specs
 
-No answer line: NEXT is it. Reply 1 prints `SPEX next --sizing roadmap|step --asked
-<n>`, a round `SPEX next <dir> --asked <n>`: n question blocks. A round is its own reply, and so is a side job.
+Say the idea back in three sentences: what, for whom, why now. Then size it.
 
-## Round 0: restate, then size
+- One spec has one Success you can show, touches one or two scopes, fits `limits` in
+  `.spex/config.yaml`, and ships alone. More is many specs.
+- For a design, the units come from the design, not from a reading of it: its sections,
+  and first its own list of work when it has one (a gaps table, phases, "what is left",
+  "designed, not built" lines). Mark each unit from those and from the code: built (name
+  what built it), built in part (a spec for the rest), new.
+- One unit is one spec. Merge two only when one cannot show a Success alone. Split a
+  unit with more than 3 new parts or more than 2 scopes.
+- Order: the design's own order, then the dependencies. "Thin path first" is no reason
+  alone: name what the earlier spec unblocks.
+- What the design lists to build is in scope unless the design or the person drops it:
+  a pick keeps it. A wait (a board, a review, a PR) and code in a repo not in `repos` are
+  **Outside** lines. Code in a repo of `repos` is a spec.
 
-1. Restate the idea in three sentences: what, for whom, why now. Name the one thing most
-   unclear. The user confirms.
-2. Size it. One step has one Success you can show, touches one or two scopes, fits `limits`
-   and ships alone: `SPEX new <slug> --shaping` prints `specs/NNN-slug`. More is a roadmap,
-   and so is a roadmap of this idea that exists: read
-   `${CLAUDE_PLUGIN_ROOT}/skills/new/roadmap.md` and follow it.
-3. Write Why and What into `spec.md`. Each answer goes into the file in the round it
-   arrives: the file is the memory. Round 1 is the next reply.
+## 4. One spec, or many?
 
-## A planned step
+**One:** do not stop. Go to step 5. The reply ends What with: `Type /spex:new split it
+if you do not agree.`
 
-`SPEX gate new <dir>` opens it and adds the missing sections. Then read, in order: the stub;
-the sections its `source` names; `SPEX show <dir> --inherited` (use its names); `SPEX index
---scope`; its Open questions: the design's open items, and those an earlier step's ship
-routed there, each sized with a `←` source; those come first. Check each Uses line against
-the code; a missing name is a question.
+**Many:** the list is the person's to check. Stop once, with `❓ QUESTIONS`:
 
-## Every round after that
+- One table, drafted with every pick taken: number, name, goal in one line, depends on,
+  the sections it covers. When a list existed, only the new lines.
+- Under it, when there are any: **Not planned** (each with its reason), **Outside** (where
+  it lives, who does it, which spec waits), **The design's open items** (every proposal,
+  "my pick", TBD, with the spec it changes: it becomes an Open question of that note,
+  with the design's pick. Never a fact).
+- Ask only what changes the list, never about the content: plan asks that. Each block
+  says what its other options change (`B drops 012–015`). Options that give the same
+  list are no question. A fact only the person knows (a date, an account) is a `You:`
+  line, never a pick.
+- The person can merge, split, reorder or drop a line. "ok" takes the list. Show it
+  again only when they changed it.
 
-Round 1 drafts first: fill every section of `spec.md` from the design, the code and the
-inherited steps, and draw the step under What as one Mermaid diagram (trigger, steps,
-result). A question is only what the draft cannot settle, and names the line it changes.
+**`split it`** among the words: the idea is the last note of the list, with its
+`source.md` or the files its `source` names. Cut it as many and get the ok. Then
+`SPEX delete <dir> --reason "split on your word into …"`, and write the new notes.
 
-1. Collect: the Open questions of `spec.md` and the holes the last answers opened. Order:
-   goal, users, boundaries, constraints, success with a number.
-2. Research when a pick needs facts, never from memory: `Research: 3 questions → 3 agents`,
-   one `spex:researcher` per question in one message, each told what its answer decides;
-   one line per answer, source and confidence.
-3. Ask: one question block of `reply.md` each, big first. `falls away if 2 is B` when one
-   answer settles another; `new` on a hole the last round opened. At most 5 blocks; the
-   rest one line each, `not asked yet`.
+**Auto** (`auto` among the words, or `auto: true` in the config): nobody is asked. One
+`spex:decider` answers the questions of the list. The list and its answers go into the
+reply.
 
-Then update `spec.md`: answers under their sections, decisions under Decisions with reason
-and source, open holes under Open questions, size mark first; delete the `<!-- hint -->`
-of every section you fill. A step of a roadmap keeps Uses and Introduces true, names other
-steps by folder, and writes a move of design scope as a Decision in both steps; `SPEX check
-<dir>` tests the first two.
+## 5. Write and check the notes
 
-## Auto mode
+Read `${CLAUDE_PLUGIN_ROOT}/skills/new/notes.md` and do it: one note for each spec, the
+check, the second read, the commit.
 
-On with `auto` among the arguments or `auto: true` in `.spex/config.yaml`:
-nobody is asked. Round 0 goes into the reply and on; the user can stop you. Then:
+## Reply
 
-1. List every open question with its options and your recommendation. Never tell the
-   decider a question is the user's: none is.
-2. Facts first: one `spex:researcher` per question that needs facts, in parallel.
-3. One `spex:decider` for the whole step: every question, the stub and the design sections
-   it names, `SPEX show <dir> --inherited`, the code a question points at, the findings.
-   Per question: answer, evidence, confidence, needs.
-4. Every verdict → Decisions, with evidence, confidence and `(by agent)`, and one line each
-   in the reply. A `needs` you can meet, or a new question → the same agent again. Then
-   The end, steps 2 and 4, without "done": the user reads the decisions at `/spex:approve`.
+In the frame of `${CLAUDE_PLUGIN_ROOT}/reply.md` (read it first), at most 12 lines.
 
-## The end
-
-"done" or "good enough" ends this step's shaping and approves the spec. The user says it,
-never you. Then:
-
-1. A question still open: say what "done" does, ask once, with no question block: NEXT
-   is `SPEX next <dir> --ending` (ok takes my picks and ends, done leaves them open).
-   A carried question becomes a question or an unknown in the next step.
-2. Finish the file: every hint gone, Alternatives with the pick, Decisions with reasons.
-   Plain words, real values, no code but the one Mermaid diagram.
-3. `SPEX approve specs/NNN-slug` flips `status: shaping` to `ready`. It refuses while a
-   section is empty: fill it, run it again.
-4. Reply `✅ SHAPED`: the path, the questions carried over, at most 10 lines.
+- `**✅ SPECS WRITTEN · <the idea in a few words>**`, then `🔍 new · 1 spec · 7 details
+  kept of 7`: the counts the check printed.
+- What: one spec is enough and its folder, or how many and the first. Every detail of
+  the text is in a note. How many things are open: `2 things are open. plan settles
+  them.`
+- `You:` the files to commit, when `SPEX commit` named them (`COMMIT-YOURS`), or the
+  push it could not do (`COMMIT-PUSH`, with its fix text): plan refuses until then.
+- A check that still fails after 3 tries: `⛔ STOPPED`, with the lines that are in no
+  note.
+- NEXT: the block `SPEX commit` printed, as it is.

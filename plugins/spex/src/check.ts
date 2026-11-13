@@ -33,13 +33,11 @@ export function runCheck(root: string, dirs: string[], opts: { base?: string; br
     const spec = checkSpec(ctx);
     findings.push(...spec, ...checkLinks(ctx));
     if (!feature.requirements && !feature.tasks && !feature.tests && feature.errors.length === 0) {
-      // A folder with only spec.md is a feature being shaped or waiting for its records, not an error.
-      const shaping = spec.some((f) => f.code === 'SPEC-SHAPING');
-      const planned = spec.some((f) => f.code === 'SPEC-PLANNED');
+      // A folder with only spec.md is a note, or a spec whose plan has just started: not an error.
       findings.push(
         specDocPath(root, feature)
-          ? { severity: 'info', code: 'REQ-MISSING', message: `${dir} has a spec.md and no requirements.yaml yet`, path: dir, fix: planned ? `A planned step: /spex:new ${dir} shapes it when its dependencies are built.` : shaping ? `Still shaping: finish in /spex:new ${dir} first.` : `Next: /spex:requirements ${dir}.` }
-          : { severity: 'error', code: 'SPEC-MISSING', message: `${dir} has no spec.md, requirements.yaml, tasks.yaml or tests.yaml`, path: dir, fix: 'Run /spex:new to shape the idea, or /spex:requirements to write the records.' },
+          ? { severity: 'info', code: 'REQ-MISSING', message: `${dir} has a spec.md and no requirements.yaml yet`, path: dir, fix: `A note: /spex:plan ${dir} writes the full spec and the records when its turn comes.` }
+          : { severity: 'error', code: 'SPEC-MISSING', message: `${dir} has no spec.md, requirements.yaml, tasks.yaml or tests.yaml`, path: dir, fix: 'Run /spex:new: it writes the note of each spec.' },
       );
       continue;
     }

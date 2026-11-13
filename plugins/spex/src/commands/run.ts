@@ -14,7 +14,7 @@ export function run(root: string, dir: string, taskId: string | undefined, opts:
   const feature = loadFeature(root, resolveFeatureDir(root, dir));
   findings.push(...feature.errors);
   if (findings.some((f) => f.severity === 'error')) return { ok: false, findings, exit: 4, text: '' };
-  if (!feature.tasks || !feature.requirements || !feature.tests) return { ok: false, findings: [{ severity: 'error', code: 'SPEC-MISSING', message: `${feature.dir} needs requirements.yaml, tasks.yaml and tests.yaml`, fix: 'Run /spex:tasks first; the test analyst writes tests.yaml.' }], exit: 4, text: '' };
+  if (!feature.tasks || !feature.requirements || !feature.tests) return { ok: false, findings: [{ severity: 'error', code: 'SPEC-MISSING', message: `${feature.dir} needs requirements.yaml, tasks.yaml and tests.yaml`, fix: 'Run /spex:plan first; the test analyst writes tests.yaml.' }], exit: 4, text: '' };
   if (!isGitRepo(root)) return { ok: false, findings: [{ severity: 'error', code: 'GIT-REQUIRED', message: 'run needs a git repository to identify the tree', fix: 'Run inside the repository.' }], exit: 2, text: '' };
   let v: VerifyResult;
   let label: string;
@@ -27,7 +27,7 @@ export function run(root: string, dir: string, taskId: string | undefined, opts:
   } else {
     if (!taskId) return { ok: false, findings: [{ severity: 'error', code: 'USAGE', message: 'run needs a task id, --test <id>, or --all', fix: 'spex run <dir> T01 | spex run <dir> --test TS01 | spex run <dir> --all' }], exit: 2, text: '' };
     const task = feature.tasks.tasks.find((t) => t.id === taskId);
-    if (!task) return { ok: false, findings: [{ severity: 'error', code: 'TASK-UNKNOWN', message: `${taskId} is not in ${feature.tasksPath}`, fix: 'Run `spex next`.' }], exit: 2, text: '' };
+    if (!task) return { ok: false, findings: [{ severity: 'error', code: 'TASK-UNKNOWN', message: `${taskId} is not in ${feature.tasksPath}`, fix: 'Check the id: tasks.yaml lists the tasks.' }], exit: 2, text: '' };
     v = verifyTask(root, config, feature, task, opts.expect);
     label = taskId;
   }

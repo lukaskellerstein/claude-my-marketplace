@@ -36,10 +36,16 @@ allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUD
      so the user adds the ones they allow.
    - `people`: the names that never appear as an actor in a task or a test step. Put the
      user's first name there, from the git author of the last commits.
-   - `ship`: `commit: true` and the command that pushes, opens the request and merges it,
-     from the remote: `gh pr create --fill && gh pr merge --squash --delete-branch` on GitHub,
-     `glab mr create --fill --yes && glab mr merge --yes` on GitLab. Leave `cmd` empty
-     when the user merges by hand: `/spex:ship --merged` then closes the feature.
+   - `close.cmd`: the command that pushes, opens the request and merges it, from the
+     remote: `gh pr create --fill && gh pr merge --squash --delete-branch` on GitHub,
+     `glab mr create --fill --yes && glab mr merge --yes` on GitLab. A repo with no remote:
+     `local`, and the script merges in the main folder. Empty when the user merges by
+     hand: the close waits, and `/spex:review` typed again finishes it.
+   - `commit` stays `false` unless the user says the script may commit notes on the base
+     branch. On the branch of a spec the script always commits.
+   - `worktree.setup`: what a fresh worktree needs one time, from the repo (`npm ci`,
+     `uv sync`, a copy of `.env`). `env` only when the tests need a running environment
+     and the repo has scripts for it: `up`, `deploy`, `check`, `down`, `url`.
 4. Prove `acceptance_cmd` before anyone relies on it. Write one throwaway test under
    `acceptance_dir`, named `REQ_000_000_AC_0_probe`, that fails on purpose. Run the command
    with `{ids}` replaced by that name. The runner must list the test and report it as failed.
@@ -54,5 +60,5 @@ allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUD
 
 In the frame of `${CLAUDE_PLUGIN_ROOT}/reply.md` (read it first), at most 15 lines, no NEXT.
 `✅ SET UP`, or `⛔ STOPPED`. Then the runner it found, the drivers, the fast checks,
-`ship.cmd`, and every guess the user must confirm under You: `live` above all, because
+`close.cmd`, `worktree.setup`, and every guess the user must confirm under You: `live` above all, because
 nothing writes a real system until it is listed there.

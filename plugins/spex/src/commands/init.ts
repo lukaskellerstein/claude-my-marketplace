@@ -105,7 +105,7 @@ function scan(root: string): Scan {
     notes.push('cargo filters by one substring; {ids_k} may need a hand edit.');
   }
   if (!acceptance_cmd) notes.push('No test runner found. Set acceptance_cmd by hand: the command that runs the acceptance tests whose names match {ids}.');
-  if (!isDir(join(root, acceptance_dir))) notes.push(`${acceptance_dir} does not exist yet; /spex:develop-tests creates it.`);
+  if (!isDir(join(root, acceptance_dir))) notes.push(`${acceptance_dir} does not exist yet; the test developers of /spex:implement create it.`);
   return { runner, acceptance_dir, acceptance_cmd, playwright, fast_checks, source_dirs: source_dirs.length ? source_dirs : ['src'], notes };
 }
 
@@ -130,9 +130,12 @@ function render(s: Scan): string {
     `limits: {task_files: 12, instructions_bytes: 1500, approach_bytes: 1200, context_kb: 24, diff_kb: 120, file_kb: 40, tests_scenarios: 12, verify_minutes: 20, step_introduces: 10}`,
     `review_rounds: 3`,
     `verify_rounds: 3                    # whole-feature verify rounds before a person reads it`,
-    `approvals: [tasks]                  # stages past gate 1 a person approves with /spex:approve: tasks, tests. The spec and the records always need one`,
-    `auto: false                         # true: nobody is asked; the decider agent answers every question with evidence, and you read the answers at the gates`,
-    `ship: {commit: false, cmd: ""}      # commit: commit the tree first; cmd: push, open the request, merge it (gh pr create --fill && gh pr merge --squash --delete-branch). Empty cmd: a person merges, then spex ship --merged`,
+    `auto: false                         # true: nobody is asked; the decider agent answers every question with evidence, and each digest lists its answers`,
+    `commit: false                       # true: the script commits the notes of new, new-bug and delete on the base branch, and with a merge command and a remote it pushes them. On the branch of a spec it always commits`,
+    `base: ""                            # the branch a spec starts from and merges into. Empty: the branch the main folder is on`,
+    `close: {cmd: ""}                    # cmd: push, open the request, merge it (gh pr create --fill && gh pr merge --squash --delete-branch). local: the script merges in the main folder. Empty: you merge, then type /spex:review again`,
+    `worktree: {setup: ""}               # setup: runs one time in a new worktree (npm ci, cp ../../../.env .env)`,
+    `# env: {up: ./scripts/env/up.sh, deploy: ./scripts/env/deploy.sh, check: ./scripts/env/check.sh, down: ./scripts/env/down.sh, url: "http://localhost:8080"}   # the environment the tests need, as scripts of this project`,
     '',
   ].join('\n');
 }

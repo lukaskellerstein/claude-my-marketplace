@@ -4,13 +4,12 @@ description: >
   Writes the proof plan of a spex feature, tests.yaml: one test per claim — a scenario of a
   record, or a task's done_when — as a script a driver runs, a shell test, or a session a
   tester performs when no script can judge. It never wrote the claim and never writes the
-  test code. /spex:requirements starts one for the scenarios, /spex:tasks one for the
-  tasks, /spex:update one per migrated folder, and /spex:develop-tests, /spex:develop or
-  /spex:run-tests one for a record that proved wrong.
+  test code. /spex:plan starts one for every claim, and /spex:implement and /spex:comment
+  one for each claim that changes or a test record that proved wrong.
 
   <example>
-  Context: /spex:requirements, the records pass spex check
-  user: "specs/007-csv-export. Plan a test for every scenario spex show --plan lists."
+  Context: /spex:plan, the records and the tasks pass spex check
+  user: "specs/007-csv-export. Plan a test for every claim spex show --plan lists."
   </example>
 disallowedTools: Agent
 model: inherit

@@ -22,9 +22,15 @@
     "approvals": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Written by `spex approve`, never by a skill: the hash of this file as a person read it (statuses left out).",
+      "description": "Written by the script when it stamps the plan, never by a skill: the hash of spec.md, of the records and of this file as the plan ended (statuses left out).",
       "properties": {
         "tasks": {
+          "type": "string"
+        },
+        "spec": {
+          "type": "string"
+        },
+        "requirements": {
           "type": "string"
         }
       }

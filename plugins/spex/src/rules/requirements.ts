@@ -105,7 +105,7 @@ export function checkRequirements(ctx: RuleContext): Finding[] {
 
   // REQ-QUESTION-OPEN (info) · REQ-AGENT-EVIDENCE (warning): an agent's answer without the evidence it rests on is a guess
   for (const q of file.questions ?? []) {
-    if (!q.answer) f('info', 'REQ-QUESTION-OPEN', `${q.id} has no answer: ${q.ask}`, 'Run /spex:clarify. With nobody to ask, the recommended option is taken as `by: default`.', q.id);
+    if (!q.answer) f('info', 'REQ-QUESTION-OPEN', `${q.id} has no answer: ${q.ask}`, 'The part clarify.md of /spex:plan asks it. With nobody to ask, the recommended option is taken as `by: default`.', q.id);
     else if (q.by === 'agent' && !q.evidence) f('warning', 'REQ-AGENT-EVIDENCE', `${q.id} was answered by the decider agent without evidence`, 'Add `evidence:` (the design section, file and line, or finding the answer rests on), or ask a person and set `by: human`.', q.id);
   }
 

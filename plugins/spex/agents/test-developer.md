@@ -4,11 +4,11 @@ description: >
   Writes the code of one or more script tests of a spex proof plan (tests.yaml), each from
   its record alone, and proves each red with spex run --test --expect fail before the code
   exists, or by a mutation when the code is there already. It never reads the source and
-  never edits tests.yaml. /spex:develop-tests starts one per group of a batch; /spex:develop,
-  /spex:run-tests and /spex:review start one to rewrite a test a decider judged wrong.
+  never edits tests.yaml. /spex:implement starts one per group of a batch, and one to rewrite a
+  test a decider judged wrong.
 
   <example>
-  Context: /spex:develop-tests dispatches a batch
+  Context: /spex:implement dispatches a batch
   user: "specs/007-csv-export TS01 TS02. Write them; the orchestrator checks."
   </example>
 disallowedTools: Agent

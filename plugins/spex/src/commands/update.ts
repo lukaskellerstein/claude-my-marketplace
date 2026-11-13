@@ -5,17 +5,20 @@
 
 import { join } from 'node:path';
 import { isMap, isScalar, isSeq, stringify, type Document, type Pair } from 'yaml';
-import { tasksHash } from '../approvals.js';
+import { stampPlan, tasksHash } from '../approvals.js';
 import { CONFIG_PATH, DEFAULT_CONFIG, DEFAULT_LIMITS, FORMAT } from '../config.js';
 import { testId } from '../ears.js';
 import { fileExists, loadYaml, openDocument, readText, saveDocument, walk, writeText } from '../io.js';
-import { featureDirs } from '../specs.js';
+import { isBuilt } from '../rules/spec.js';
+import { featureDirs, loadFeature } from '../specs.js';
+import { readState, writeState } from '../state.js';
 import type { TasksFile } from '../types.js';
 import type { CmdResult } from './lifecycle.js';
 
 /** One entry per format step: MIGRATIONS[n] takes a repo from format n to n + 1. */
 const MIGRATIONS: Record<number, (root: string, doc: Document, changes: string[]) => void> = {
   1: migrateToFormat2,
+  2: migrateToFormat3,
 };
 
 /** The top-level keys in file order, each with the default and the comment `init` writes, for the ones a person's file lacks. */
@@ -35,10 +38,76 @@ const KEYS: { key: string; value: unknown; comment?: string; flow?: boolean }[] 
   { key: 'limits', value: { ...DEFAULT_LIMITS }, flow: true },
   { key: 'review_rounds', value: DEFAULT_CONFIG.review_rounds },
   { key: 'verify_rounds', value: DEFAULT_CONFIG.verify_rounds, comment: 'whole-feature verify rounds before a person reads it' },
-  { key: 'approvals', value: DEFAULT_CONFIG.approvals, flow: true, comment: 'stages past gate 1 a person approves with /spex:approve: tasks, tests. The spec and the records always need one' },
-  { key: 'auto', value: DEFAULT_CONFIG.auto, comment: 'true: nobody is asked; the decider agent answers every question with evidence, and you read the answers at the gates' },
-  { key: 'ship', value: { ...DEFAULT_CONFIG.ship }, flow: true, comment: 'commit: commit the tree first; cmd: push, open the request, merge it. Empty cmd: a person merges, then spex ship --merged' },
+  { key: 'auto', value: DEFAULT_CONFIG.auto, comment: 'true: nobody is asked; the decider agent answers every question with evidence, and each digest lists its answers' },
+  { key: 'commit', value: DEFAULT_CONFIG.commit, comment: 'true: the script commits the notes of new, new-bug and delete on the base branch, and with a merge command and a remote it pushes them. On the branch of a spec it always commits' },
+  { key: 'base', value: DEFAULT_CONFIG.base, comment: 'the branch a spec starts from and merges into. Empty: the branch the main folder is on' },
+  { key: 'close', value: { ...DEFAULT_CONFIG.close }, flow: true, comment: 'cmd: push, open the request, merge it. `local`: the script merges in the main folder. Empty: you merge, then type /spex:review again' },
+  { key: 'worktree', value: { ...DEFAULT_CONFIG.worktree }, flow: true, comment: 'setup: runs one time in a new worktree (install the packages, copy .env)' },
 ];
+
+/**
+ * Format 2 → 3 (spex 3.0). The config: `ship.commit` becomes `commit`, `ship.cmd` becomes `close.cmd` (also in each
+ * repo), and `approvals` goes: the next command is the approval. The specs: the `status:` line leaves spec.md, and
+ * status.yaml says where each spec stands. A shipped spec is `review, done`. A spec with no records is a note, with
+ * no file. A spec that is in the middle keeps its files: a full plan is stamped as `plan, done`, or as
+ * `implement, started` when a task is done; less than a full plan is `plan, started`, and /spex:plan finishes it.
+ */
+function migrateToFormat3(root: string, doc: Document, changes: string[]): void {
+  const map = doc.contents;
+  if (isMap(map)) {
+    const ship = map.get('ship');
+    if (isMap(ship)) {
+      if (!map.has('commit') && ship.has('commit')) map.set('commit', ship.get('commit'));
+      if (!map.has('close')) {
+        const close = doc.createNode({ cmd: String(ship.get('cmd') ?? '') });
+        (close as { flow?: boolean }).flow = true;
+        map.set('close', close);
+      }
+      changes.push('ship: → commit: and close: {cmd}');
+    }
+    if (map.has('ship')) map.delete('ship');
+    if (map.has('approvals')) {
+      map.delete('approvals');
+      changes.push('approvals: removed (the next command is the approval)');
+    }
+    const repos = map.get('repos');
+    if (isMap(repos)) {
+      for (const item of repos.items) {
+        if (!isMap(item.value) || !item.value.has('ship')) continue;
+        item.value.set('close', item.value.get('ship'));
+        item.value.delete('ship');
+        changes.push(`repos.${keyOf(item)}.ship → close`);
+      }
+    }
+  }
+  for (const dir of featureDirs(root)) {
+    const spec = join(root, dir, 'spec.md');
+    if (fileExists(spec)) {
+      const text = readText(spec);
+      const fm = text.match(/^---\n([\s\S]*?)\n---\n?/);
+      if (fm && /^status:.*$/m.test(fm[1])) {
+        const body = fm[1].split('\n').filter((l) => !/^status:/.test(l)).join('\n');
+        writeText(spec, body.trim() ? text.replace(fm[0], `---\n${body}\n---\n`) : text.replace(fm[0], ''));
+        changes.push(`${dir}/spec.md: the status line is gone`);
+      }
+    }
+    if (readState(root, dir)) continue;
+    const feature = loadFeature(root, dir);
+    if (!feature.requirements) continue; // a note: no status.yaml
+    if (isBuilt(root, dir)) {
+      writeState(root, dir, { command: 'review', state: 'done' });
+      changes.push(`${dir}/status.yaml: review, done (it was shipped)`);
+    } else if (feature.tasks && feature.tests) {
+      const started = feature.tasks.tasks.some((t) => t.status === 'done');
+      stampPlan(root, feature);
+      writeState(root, dir, started ? { command: 'implement', state: 'started' } : { command: 'plan', state: 'done' });
+      changes.push(`${dir}/status.yaml: ${started ? 'implement, started' : 'plan, done'}; the plan is stamped as it is`);
+    } else {
+      writeState(root, dir, { command: 'plan', state: 'started' });
+      changes.push(`${dir}/status.yaml: plan, started (/spex:plan ${dir} finishes it)`);
+    }
+  }
+}
 
 const keyOf = (p: Pair<unknown, unknown>): string => (isScalar(p.key) ? String(p.key.value) : String(p.key));
 

@@ -24,11 +24,11 @@ export function checkTests(ctx: RuleContext): Finding[] {
     out.push({ severity, code, message, fix, path, id });
   };
   if (!file) {
-    if (reqs) out.push({ severity: 'info', code: 'TEST-MISSING', message: `${feature.dir} has no tests.yaml: no proof plan yet`, path: feature.dir, fix: '/spex:requirements starts the test analyst, which writes it from the records; /spex:tasks adds the task tests.' });
+    if (reqs) out.push({ severity: 'info', code: 'TEST-MISSING', message: `${feature.dir} has no tests.yaml: no proof plan yet`, path: feature.dir, fix: '/spex:plan starts the test analyst, which writes it from the records; /spex:plan adds the task tests.' });
     return out;
   }
   if (!reqs) {
-    f('error', 'TEST-REQ', `${path} has no requirements.yaml next to it`, 'A proof plan answers a spec. Run /spex:requirements first.');
+    f('error', 'TEST-REQ', `${path} has no requirements.yaml next to it`, 'A proof plan answers a spec. Run /spex:plan first.');
     return out;
   }
   if (file.feature !== reqs.feature) f('error', 'TEST-FEATURE', `tests.yaml feature "${file.feature}" differs from requirements.yaml feature "${reqs.feature}"`, 'Use the same feature id in both files.');
@@ -54,7 +54,7 @@ export function checkTests(ctx: RuleContext): Finding[] {
     for (const c of t.covers) {
       const s = splitCover(c);
       if (s.task) {
-        if (!feature.tasks) f('error', 'TEST-COVERS', `${t.id} covers ${c}, but there is no tasks.yaml yet`, 'Task tests come after /spex:tasks. Cover a record or a scenario, or wait for the plan.', t.id);
+        if (!feature.tasks) f('error', 'TEST-COVERS', `${t.id} covers ${c}, but there is no tasks.yaml yet`, 'Task tests come after /spex:plan. Cover a record or a scenario, or wait for the plan.', t.id);
         else if (!tasks.has(s.task)) f('error', 'TEST-COVERS', `${t.id} covers ${c}, which is not in tasks.yaml`, 'Fix the id, or drop the test.', t.id);
       } else if (s.ac) {
         if (!scenarios.has(c)) f('error', 'TEST-COVERS', `${t.id} covers ${c}, which is not a scenario in requirements.yaml`, 'Fix the id: REQ-007-001/AC-1 names a record and one of its acceptance entries.', t.id);
@@ -79,13 +79,13 @@ export function checkTests(ctx: RuleContext): Finding[] {
           // TEST-FILE: the file, once named, holds the test
           if (t.file) {
             const abs = join(ctx.root, t.file);
-            if (!fileExists(abs)) f('info', 'TEST-FILE', `${t.id}: ${t.file} does not exist yet`, 'The test developer writes it: /spex:develop-tests.', t.id);
+            if (!fileExists(abs)) f('info', 'TEST-FILE', `${t.id}: ${t.file} does not exist yet`, 'The test developer writes it, in /spex:implement.', t.id);
             else if (!readText(abs).includes(t.name)) {
               // A later batch often writes into a file an earlier batch created: with no run on record, the test is
               // not written yet. Only a test that ran once, red or green, and is now gone from its file is a broken record.
               const ran = (['fail', 'pass'] as const).some((e) => fileExists(evidencePath(ctx.root, reqs.feature, t.id, e)));
               if (ran) f('error', 'TEST-FILE', `${t.id}: ${t.file} holds no test named ${t.name}, but ${t.id} ran before`, 'Fix `file` or `name`: the file is where the test developer put it, the name is what it is called there.', t.id);
-              else f('info', 'TEST-FILE', `${t.id}: ${t.file} has no test named ${t.name} yet`, 'The test developer writes it: /spex:develop-tests.', t.id);
+              else f('info', 'TEST-FILE', `${t.id}: ${t.file} has no test named ${t.name} yet`, 'The test developer writes it, in /spex:implement.', t.id);
             }
           }
         }
@@ -112,12 +112,12 @@ export function checkTests(ctx: RuleContext): Finding[] {
   for (const r of reqs.requirements) {
     if (r.status === 'retired') continue;
     for (const a of r.acceptance) {
-      if (!covered.has(r.id) && !covered.has(`${r.id}/${a.id}`)) out.push({ severity: 'gap', code: 'TEST-COVER', message: `${r.id}/${a.id} has no test in tests.yaml`, fix: `The test analyst adds one: /spex:requirements ${feature.dir} runs it for the scenarios that lack a test.`, path, id: r.id });
+      if (!covered.has(r.id) && !covered.has(`${r.id}/${a.id}`)) out.push({ severity: 'gap', code: 'TEST-COVER', message: `${r.id}/${a.id} has no test in tests.yaml`, fix: `The test analyst adds one: /spex:plan ${feature.dir} runs it for the scenarios that lack a test.`, path, id: r.id });
     }
   }
   for (const t of feature.tasks?.tasks ?? []) {
     const claims = claimsOf(feature, t);
-    if (![...claims].some((c) => covered.has(c))) out.push({ severity: 'gap', code: 'TEST-COVER', message: `${t.id} has no test in tests.yaml`, fix: `The test analyst adds one from its done_when: /spex:tasks ${feature.dir} runs it for the tasks that lack a test.`, path, id: t.id });
+    if (![...claims].some((c) => covered.has(c))) out.push({ severity: 'gap', code: 'TEST-COVER', message: `${t.id} has no test in tests.yaml`, fix: `The test analyst adds one from its done_when: /spex:plan ${feature.dir} runs it for the tasks that lack a test.`, path, id: t.id });
   }
 
   // TEST-STALE: a test of a record this feature supersedes

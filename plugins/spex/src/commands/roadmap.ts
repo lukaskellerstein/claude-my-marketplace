@@ -4,43 +4,41 @@
 // real steps, every step covers a section and cites it in its source. Dex reads --json.
 
 import { join } from 'node:path';
-import { loadConfig } from '../config.js';
 import { DESIGN_FORMAT, convertHint, designNames, designOutline, resolveAnchor, splitRef, type DesignSection } from '../design.js';
 import { fileExists, isDir, readText, walk, writeText } from '../io.js';
 import { nextPlanned, roadmapNames, roadmapSteps } from '../roadmap.js';
 import { readRoadmapFile, roadmapFilePath, roadmapTemplate, type CoverageRow } from '../roadmapfile.js';
-import { loadFeature } from '../specs.js';
+import { stateWord } from '../state.js';
 import type { Finding } from '../types.js';
-import { whatNext, type CmdResult } from './lifecycle.js';
+import type { CmdResult } from './lifecycle.js';
 
 const usage = (message: string, fix: string): CmdResult => ({ ok: false, findings: [{ severity: 'error', code: 'USAGE', message, fix }], exit: 2, text: '' });
 
 export function roadmap(root: string, name?: string, opts: { coverage?: boolean; init?: boolean; source?: string[]; force?: boolean } = {}): CmdResult {
   if (!name) {
     const rows = roadmapNames(root);
-    const text = rows.length ? rows.map((r) => `${r.name}  ${r.steps} step(s): ${r.built} built · ${r.steps - r.built - r.planned} in progress · ${r.planned} planned`).join('\n') : '(no roadmap: no spec.md under specs/ names one)';
+    const text = rows.length ? rows.map((r) => `${r.name}  ${r.steps} step(s): ${r.built} built · ${r.steps - r.built - r.planned} open · ${r.planned} note(s)`).join('\n') : '(no roadmap: no spec.md under specs/ names one)';
     return { ok: true, findings: [], exit: 0, text, data: { roadmaps: rows } };
   }
   if (opts.init) return initRoadmap(root, name, opts.source ?? [], opts.force === true);
   if (opts.coverage) return roadmapCoverage(root, name);
   const steps = roadmapSteps(root, name);
   if (!steps.length) return usage(`no folder under specs/ names roadmap ${name}`, 'Run `spex roadmap` for the names on disk.');
-  const { config } = loadConfig(root);
   const rows = steps.map((s) => {
-    const stage = whatNext(root, config, loadFeature(root, s.dir)).stage;
-    return { step: s.meta.step, dir: s.dir, status: s.meta.status, stage, built: s.built, depends_on: s.meta.depends_on, waits: s.waits.map((w) => w.dir), source: s.meta.source };
+    const stage = s.built ? 'closed' : stateWord(s.state);
+    return { step: s.meta.step, dir: s.dir, note: s.state === null && !s.built, stage, built: s.built, depends_on: s.meta.depends_on, waits: s.waits.map((w) => w.dir), source: s.meta.source };
   });
   const next = nextPlanned(steps);
   const lines = rows.map((r) => {
     const stepNo = r.step === null ? '?' : String(r.step);
-    const where = r.built ? 'built' : r.stage;
+    const where = r.stage;
     const extra = r.waits.length ? `  waits: ${r.waits.map((w) => w.split('/').pop()).join(', ')}` : r.depends_on.length ? `  after: ${r.depends_on.join(', ')}` : '';
     return `${stepNo.padStart(2)}. ${r.dir}  ${where}${extra}`;
   });
   const built = rows.filter((r) => r.built).length;
-  const planned = rows.filter((r) => r.status === 'planned').length;
-  lines.unshift(`# roadmap ${name} — ${rows.length} step(s): ${built} built · ${rows.length - built - planned} in progress · ${planned} planned`);
-  lines.push('', next ? `next planned step: ${next.dir} (its dependencies are built) → /spex:new ${next.dir}` : planned ? 'every planned step waits for one that is not built' : 'every step is shaped or built');
+  const planned = rows.filter((r) => r.note).length;
+  lines.unshift(`# roadmap ${name} — ${rows.length} spec(s): ${built} closed · ${rows.length - built - planned} open · ${planned} note(s)`);
+  lines.push('', next ? `next note: ${next.dir} → /spex:plan ${next.dir}, when every spec with a lower number is closed` : planned ? 'every note waits for a spec that is not closed' : 'every spec is open or closed');
   const file = roadmapFilePath(name);
   const findings: Finding[] = fileExists(join(root, file)) ? [] : [{ severity: 'warning', code: 'ROADMAP-FILE', message: `${file} does not exist: nothing says which design sections the steps leave out`, path: file, fix: `spex roadmap ${name} --init --source <design file>, fill its Coverage table, then spex roadmap ${name} --coverage.` }];
   return { ok: true, findings, exit: 0, text: lines.join('\n'), data: { roadmap: name, file: fileExists(join(root, file)) ? file : null, steps: rows, next: next?.dir ?? null } };
@@ -166,7 +164,7 @@ export function roadmapCoverage(root: string, name: string): CmdResult {
   for (const step of steps) {
     const rows = covers.get(step.name);
     if (!rows) {
-      findings.push({ severity: 'warning', code: 'ROADMAP-IDLE', message: `${step.name} covers no design section in ${path}`, path: step.dir, fix: 'Add its sections to the table, or drop the step (spex drop) when the design does not ask for it.' });
+      findings.push({ severity: 'warning', code: 'ROADMAP-IDLE', message: `${step.name} covers no design section in ${path}`, path: step.dir, fix: 'Add its sections to the table, or delete the spec (spex delete) when the design does not ask for it.' });
       continue;
     }
     // The shaping of a step reads only its source: every section the table gives it must be there, or above it.

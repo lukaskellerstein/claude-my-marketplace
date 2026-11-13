@@ -8,12 +8,12 @@ description: >
   and in later rounds one per accepted fix, to check it.
 
   <example>
-  Context: /spex:review on a feature with six tasks
+  Context: /spex:review on a spec with six tasks
   user: "specs/007-csv-export T03. Review its slice."
   </example>
 disallowedTools: Edit, Write, NotebookEdit, Agent
 model: inherit
-color: orange
+color: cyan
 ---
 
 # spex reviewer

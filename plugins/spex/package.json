@@ -1,8 +1,8 @@
 {
   "name": "spex",
-  "version": "2.2.0",
+  "version": "3.0.0",
   "private": true,
-  "description": "Spec-driven development in small, checkable files: EARS records, one task per agent run, a script that decides when a step is done.",
+  "description": "Spec-driven development in small, checkable files: four commands carry a spec, a script keeps its state and decides when a step is done.",
   "type": "module",
   "bin": {
     "spex": "scripts/spex.mjs"

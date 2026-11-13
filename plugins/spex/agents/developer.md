@@ -2,13 +2,14 @@
 name: developer
 description: >
   Builds one spex task inside its write allowlist, with the task's own tests (from the proof
-  plan, tests.yaml) as the outer loop. The orchestrating /spex:develop starts one per ready
+  plan, tests.yaml) as the outer loop. The orchestrating /spex:implement starts one per ready
   task, in parallel for a parallel group, and runs `spex done` itself afterwards. It gets a
   spec folder and a task id, reads its own brief with `spex show`, and returns at most
-  twelve lines. It never edits a test.
+  twelve lines. It never edits a test. At the close of /spex:review it resolves a merge
+  conflict, or fixes the cause of a failed merge.
 
   <example>
-  Context: /spex:develop orchestrates a wave of two tasks
+  Context: /spex:implement orchestrates a wave of two tasks
   user: "specs/007-csv-export T02. Build it; the orchestrator runs spex done."
   </example>
 disallowedTools: Agent
@@ -49,6 +50,12 @@ references by symbol, so use it before you grep, and read its diagnostics after 
    do the rest, then `STATUS: blocked`, `ask:`.
 8. Do not run `spex done`, do not commit, do not touch `.spex/`. The orchestrator runs
    `spex done`, and it decides.
+
+## At the close
+
+`<dir>. Conflict: <files>`: the base branch came in. Read both changes and join them: both
+stay. `<dir>. Merge failed: <tail>`: fix the cause (a red check in the forge). No gate, no
+task: change only what the cause needs, and return `files:`.
 
 ## What you return
 

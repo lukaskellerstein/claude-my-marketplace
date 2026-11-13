@@ -3,12 +3,12 @@ name: researcher
 description: >
   Answers one research question for a spex spec with sources: how others solve it, what a
   library or tool does and costs, what a standard says, what this repo already has. Returns
-  the answer, the links it opened, a confidence, and what it did not find. /spex:new and
-  /spex:research start one per question, in parallel, so the main conversation never reads
+  the answer, the links it opened, a confidence, and what it did not find. /spex:plan starts
+  one per missing fact, in parallel, so the main conversation never reads
   whole pages.
 
   <example>
-  Context: shaping a spec, one hole needs facts
+  Context: /spex:plan, the draft of a spec lacks one fact
   user: "Does GitHub's REST API rate-limit unauthenticated search, and what are the numbers? This decides whether the CLI needs a token."
   </example>
 

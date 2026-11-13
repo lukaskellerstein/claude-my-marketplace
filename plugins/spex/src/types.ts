@@ -167,8 +167,8 @@ export interface TasksFile {
   boundaries?: { always?: string[]; never?: string[] };
   design?: Design;
   deferred?: { finding: string; why: string; by: string; severity?: FindingSeverity }[];
-  /** Written by `spex approve`, never by a skill: a hash of tasks.yaml as a person read it. */
-  approvals?: { tasks?: string };
+  /** Written by the script when it stamps the plan, never by a skill: a hash of spec.md, of the records and of this file as the plan ended. */
+  approvals?: { tasks?: string; spec?: string; requirements?: string };
   tasks: Task[];
 }
 
@@ -204,7 +204,7 @@ export interface TestRecord {
 
 export interface TestsFile {
   feature: string;
-  /** Written by `spex approve`, never by a skill: a hash of tests.yaml as a person read it. */
+  /** Written by the script when it stamps the plan, never by a skill: a hash of tests.yaml as the plan ended. */
   approvals?: { tests?: string };
   tests: TestRecord[];
 }
@@ -240,8 +240,8 @@ export interface RepoConfig {
   fast_checks?: string[];
   /** No task writes these, inside it; its drivers' folders are protected too. */
   protected?: string[];
-  /** How ship merges it. Absent commit: this repo's ship.commit. Empty cmd: a person merges it. */
-  ship?: { commit?: boolean; cmd?: string };
+  /** How the close merges it. commit false: the script does not commit the branch of that repo, a person did. Absent: it commits, as on every branch of a spec. Empty cmd: a person merges it. */
+  close?: { commit?: boolean; cmd?: string };
 }
 
 export interface Config {
@@ -265,12 +265,39 @@ export interface Config {
   limits: Limits;
   review_rounds: number;
   verify_rounds: number;
-  /** The stages past gate 1 that need a person's `spex approve`: tasks, tests. Spec and records always do. */
-  approvals: ('tasks' | 'tests')[];
-  /** Auto mode: nobody is asked; the decider agent settles every question with evidence, and the person reads the answers at the gates. */
+  /** Auto mode: nobody is asked; the decider agent settles every question with evidence, and the person reads the answers in each digest. */
   auto: boolean;
-  /** How `spex ship` merges: commit the working tree first, then run cmd (push, open the request, merge it). Empty cmd: a person merges, then `spex ship --merged`. */
-  ship: { commit: boolean; cmd: string };
+  /** The script commits on the base branch (the notes of new, new-bug and delete) only when this is true. On the branch of a spec it always commits. */
+  commit: boolean;
+  /** The branch a spec starts from and merges into. Empty: the branch the main folder is on. */
+  base: string;
+  /** How the close merges: cmd pushes, opens the request and merges it. Empty cmd: a person merges, then types review again. */
+  close: { cmd: string };
+  /** What runs one time in a new worktree: install the packages, copy .env. */
+  worktree: { setup: string };
+  /** The environment the tests need, as scripts of the project: spex knows no tool. Absent: no environment. */
+  env?: EnvConfig;
+}
+
+/** The environment contract: four scripts and one address. */
+export interface EnvConfig {
+  /** Start it, or do nothing when it runs. At the start of implement. */
+  up?: string;
+  /** Put the code of this folder into it. Before every full test run. */
+  deploy?: string;
+  /** Exit 0 when the app answers. After every deploy. */
+  check?: string;
+  /** Stop it, never delete it. At the close. */
+  down?: string;
+  /** Where the tests find the app. Given to every test command as SPEX_ENV_URL. */
+  url?: string;
+}
+
+/** The phase a spec is in. status.yaml in the folder of the spec holds it, and nothing else does. No file: the spec is a note. */
+export type Phase = 'plan' | 'implement' | 'review';
+export interface SpecState {
+  command: Phase;
+  state: 'started' | 'done';
 }
 
 /** One feature folder as loaded from disk. Any file may be missing. */
@@ -316,6 +343,8 @@ export type SessionStatus = 'pass' | 'fail' | 'pending' | 'stale';
 export interface VerifyEvidence {
   feature: string;
   tree: string;
+  /** The tree without specs/: when only notes changed since, the proof still holds for the code. */
+  code?: string;
   ok: boolean;
   round: number;
   at: string;

@@ -1,11 +1,10 @@
 // Git helpers. Every command tolerates a repo with no commits yet; only `run` and `done` need git
 // at all, because the tree id is what ties evidence to code.
 
-import { createHash } from 'node:crypto';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { copyFileSync, existsSync, rmSync, statSync, utimesSync } from 'node:fs';
 import { join } from 'node:path';
-import { WORK_DIRS } from './config.js';
+import { STATE_FILES, WORK_DIRS } from './config.js';
 
 export function git(root: string, args: string[], opts: { allowFail?: boolean; maxBuffer?: number } = {}): string {
   try {
@@ -26,30 +25,71 @@ export function head(root: string): string {
 }
 
 /**
- * The tree id: HEAD plus a hash of the working tree's changes. `.spex/` is left out even when it
- * is not ignored, so writing evidence never moves the id it is keyed by.
+ * The tree id: git's own hash of every file as it is on disk now, tracked or new. It is the same before and after
+ * a commit, so the commit that ends a phase never makes a proof stale. `.spex/`'s work folders are left out, and so
+ * are status.yaml and corrections.md of every spec: the script writes them, and they are no part of what is proved.
+ * `exclude` leaves out more (`specs`, for the id of the code alone).
  */
-export function treeId(root: string): string {
-  const h = head(root);
-  const hash = createHash('sha256');
-  // The config counts (it names the checks); the script's own work folders do not.
-  const excludes = WORK_DIRS.map((d) => `:(exclude)${d}`);
-  const diff = h === 'empty' ? '' : git(root, ['diff', 'HEAD', '--', '.', ...excludes], { allowFail: true });
-  hash.update(diff);
-  const untracked = git(root, ['ls-files', '--others', '--exclude-standard', '--', '.', ...excludes], { allowFail: true })
-    .split('\n')
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .sort();
-  for (const file of untracked) {
-    hash.update('\0' + file + '\0');
-    try {
-      hash.update(readFileSync(join(root, file)));
-    } catch {
-      hash.update('unreadable');
+export function treeId(root: string, exclude: string[] = []): string {
+  const dir = git(root, ['rev-parse', '--absolute-git-dir'], { allowFail: true }).trim();
+  if (!dir) return 'no-git';
+  const index = join(dir, 'index');
+  const tmp = join(dir, `spex-index-${process.pid}-${Date.now()}`);
+  const env = { ...process.env, GIT_INDEX_FILE: tmp };
+  const run = (args: string[]): string => {
+    const res = spawnSync('git', args, { cwd: root, encoding: 'utf8', env, maxBuffer: 64 * 1024 * 1024 });
+    return res.status === 0 ? (res.stdout ?? '') : '';
+  };
+  try {
+    // Start from the real index, so git reads only the files that changed since. The copy keeps the time of the
+    // real index: git trusts the size and the time of a file only when the index is newer than the file, and a copy
+    // made now would look newer than a file that was written in the same second.
+    if (existsSync(index)) {
+      const st = statSync(index);
+      copyFileSync(index, tmp);
+      utimesSync(tmp, st.atime, st.mtime);
     }
+    run(['add', '-A', '--', '.']);
+    const out = [...WORK_DIRS, ...STATE_FILES.map((f) => `:(glob)specs/*/${f}`), ...exclude];
+    run(['rm', '-r', '-q', '--cached', '--ignore-unmatch', '--', ...out]);
+    const tree = run(['write-tree']).trim();
+    return tree ? tree.slice(0, 24) : `${head(root).slice(0, 12)}+unreadable`;
+  } finally {
+    rmSync(tmp, { force: true });
+    rmSync(`${tmp}.lock`, { force: true });
   }
-  return `${h.slice(0, 12)}+${hash.digest('hex').slice(0, 12)}`;
+}
+
+/** The tree id of the code alone: specs/ left out. When only notes changed since a proof, the proof still holds. */
+export function codeId(root: string): string {
+  return treeId(root, ['specs']);
+}
+
+/** Run git and return its exit code with its output: for a merge, a commit, a worktree, where a failure is an answer. */
+export function gitTry(root: string, args: string[], env?: NodeJS.ProcessEnv): { ok: boolean; code: number | null; out: string } {
+  const res = spawnSync('git', args, { cwd: root, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, ...(env ? { env: { ...process.env, ...env } } : {}) });
+  return { ok: res.status === 0, code: res.status, out: `${res.stdout ?? ''}${res.stderr ?? ''}`.trim() };
+}
+
+/** `git status --porcelain` for some paths: the files that are changed or new, repo-relative. */
+export function dirty(root: string, paths: string[] = []): string[] {
+  const out = git(root, ['status', '--porcelain', '--untracked-files=all', '--', ...(paths.length ? paths : ['.'])], { allowFail: true });
+  return out.split('\n').filter((l) => l.trim()).map((l) => l.slice(3).replace(/^.* -> /, '').replace(/^"|"$/g, ''));
+}
+
+/**
+ * Commit some paths (all of the tree when none is named). The script's work folders never go in. Returns committed:
+ * false when nothing changed. The commit is made with the identity of the repo: with none set, git refuses, and the
+ * finding of the caller shows its words.
+ */
+export function commitPaths(root: string, message: string, paths: string[] = []): { ok: boolean; committed: boolean; tail: string } {
+  const add = gitTry(root, ['add', '-A', '--', ...(paths.length ? paths : ['.'])]);
+  if (!add.ok) return { ok: false, committed: false, tail: add.out.slice(-1000) };
+  gitTry(root, ['reset', '-q', '--', ...WORK_DIRS]);
+  const staged = git(root, ['diff', '--cached', '--name-only', '--', ...(paths.length ? paths : ['.'])], { allowFail: true }).trim();
+  if (!staged) return { ok: true, committed: false, tail: '' };
+  const commit = gitTry(root, ['commit', '-q', '-m', message, ...(paths.length ? ['--', ...paths] : [])]);
+  return { ok: commit.ok, committed: commit.ok, tail: commit.out.slice(-1000) };
 }
 
 /** The content of a repo-relative file at a ref, or null when it does not exist there. */

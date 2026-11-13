@@ -1,6 +1,6 @@
 ---
 name: update
-description: After a spex plugin update, bring the repo to the plugin's format — run spex update, which adds the keys the newer plugin needs with their defaults and comments, runs the format migrations (1 → 2 moves every record's verification and every task's verify commands into a tests.yaml per folder) and sets format, keeping every value and comment of yours — then have a test-analyst subagent complete each migrated proof plan, and show what changed. Use when the user says "spex update", "update the config", "update spex", or right after the plugin was updated.
+description: After a spex plugin update, bring the repo to the plugin's format — run spex update, which adds the keys the newer plugin needs with their defaults and comments, runs the format migrations (2 → 3 moves the state of each spec from spec.md to status.yaml, and ship to close and commit in the config) and sets format, keeping every value and comment of yours — then show what changed. Use when the user says "spex update", "update the config", "update spex", or right after the plugin was updated.
 disable-model-invocation: true
 allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Read(${CLAUDE_PLUGIN_ROOT}/reply.md), Agent
 ---
@@ -23,15 +23,22 @@ allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUD
    `spex:test-analyst` with `<dir>. Complete tests.yaml: every claim spex show --plan
    lists, a name per script, a session where no script can judge.` Then `SPEX check <dir>`;
    a `TEST-*` error goes back to a fresh test analyst with the findings, once.
-3. `SPEX check`. Fix nothing else yourself. Relay errors by their `fix` text. A new default
-   that does not fit this repo is the user's call, so name it: `approvals: [tasks]` asks a
-   person to approve `tasks.yaml` before the tests and develop gates open; `live: []` lets
-   no test write a real system; `ship.cmd` empty means a person merges.
-4. Do not commit. Say which files changed, so the user can.
+3. Format 2 → 3 (spex 3.0) moves the state of each spec out of `spec.md` into
+   `status.yaml`: a shipped spec is `review, done`, a spec with no records is a note with
+   no file, and a spec in the middle keeps its files and is stamped as it is. In the
+   config, `ship` becomes `commit` and `close.cmd`, and `approvals` goes: the next command
+   is the approval. A spec in the middle has no branch `spex/<spec>` yet: its next
+   command makes the worktree from the base branch, so its files must be committed there.
+4. `SPEX check`. Fix nothing else yourself. Relay errors by their `fix` text. A new default
+   that does not fit this repo is the user's call, so name it: `commit: false` means the
+   user commits the notes of new; `close.cmd` empty means a person merges; `live: []`
+   lets no test write a real system.
+5. Do not commit. Say which files changed, so the user can. Then `SPEX status`.
 
 ## Reply
 
-In the frame of `${CLAUDE_PLUGIN_ROOT}/reply.md` (read it first), at most 12 lines, no NEXT.
+In the frame of `${CLAUDE_PLUGIN_ROOT}/reply.md` (read it first), at most 12 lines, then
+the NEXT block `SPEX status` printed.
 `✅ UPDATED`, then one line per change `spex update` printed
 (`added live: []`, `specs/007-csv-export/tests.yaml: written from 2 scenario(s) …`), the
 plans completed, the warnings of `check`, then the output of `SPEX --version`, as printed:

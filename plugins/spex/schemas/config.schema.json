@@ -5,20 +5,43 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
-    "format": { "type": "integer", "minimum": 1, "description": "The shape of the files in specs/ and .spex/, as one integer. Missing means 1. The script refuses a newer format and asks for `spex update` on an older one." },
-    "acceptance_dir": { "type": "string", "minLength": 1, "description": "Where the default driver's test files live. Every driver dir is protected: no task writes a test." },
-    "acceptance_cmd": { "type": "string", "description": "The default driver. Shell command; {ids} becomes the test names joined by |, {ids_k} the names joined by ' or ' (pytest -k)." },
+    "format": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "The shape of the files in specs/ and .spex/, as one integer. Missing means 1. The script refuses a newer format and asks for `spex update` on an older one."
+    },
+    "acceptance_dir": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Where the default driver's test files live. Every driver dir is protected: no task writes a test."
+    },
+    "acceptance_cmd": {
+      "type": "string",
+      "description": "The default driver. Shell command; {ids} becomes the test names joined by |, {ids_k} the names joined by ' or ' (pytest -k)."
+    },
     "drivers": {
       "type": "object",
       "description": "More ways to run script tests, by name: `playwright: {cmd: 'npx playwright test --grep \"{ids}\"', dir: tests/e2e}`. A test names one with `driver:`; `shell` is built in and runs the steps as commands.",
       "additionalProperties": {
         "type": "object",
-        "required": ["cmd"],
+        "required": [
+          "cmd"
+        ],
         "additionalProperties": false,
         "properties": {
-          "cmd": { "type": "string", "minLength": 1 },
-          "dir": { "type": "string", "minLength": 1 },
-          "repo": { "type": "string", "minLength": 1, "description": "A key of repos: the command runs in that repo, and dir is inside it." }
+          "cmd": {
+            "type": "string",
+            "minLength": 1
+          },
+          "dir": {
+            "type": "string",
+            "minLength": 1
+          },
+          "repo": {
+            "type": "string",
+            "minLength": 1,
+            "description": "A key of repos: the command runs in that repo, and dir is inside it."
+          }
         }
       }
     },
@@ -27,59 +50,209 @@
       "description": "Other git repos a task may write, by name: `web: {path: ../web-ui}`. Specs and .spex/ stay in this repo. A task names one with `repo:`, a driver with `repo:`.",
       "additionalProperties": {
         "type": "object",
-        "required": ["path"],
+        "required": [
+          "path"
+        ],
         "additionalProperties": false,
         "properties": {
-          "path": { "type": "string", "minLength": 1, "description": "From this repo's root (../web-ui), or absolute (/… or ~/…). In git worktrees use an absolute one: a worktree's root is another folder." },
-          "base": { "type": "string", "minLength": 1, "description": "The branch its review diff starts from. Absent: the commit it was at when its first task opened." },
-          "fast_checks": { "type": "array", "items": { "type": "string", "minLength": 1 }, "description": "Run in that repo when a task writes it." },
-          "protected": { "type": "array", "items": { "type": "string", "minLength": 1 }, "description": "No task writes these, inside that repo. Its drivers' folders are protected too." },
-          "ship": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "description": "From this repo's root (../web-ui), or absolute (/… or ~/…). In git worktrees use an absolute one: a worktree's root is another folder."
+          },
+          "base": {
+            "type": "string",
+            "minLength": 1,
+            "description": "The branch its review diff starts from. Absent: the commit it was at when its first task opened."
+          },
+          "fast_checks": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Run in that repo when a task writes it."
+          },
+          "protected": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "No task writes these, inside that repo. Its drivers' folders are protected too."
+          },
+          "close": {
             "type": "object",
             "additionalProperties": false,
-            "description": "How ship merges it. Absent commit: this repo's ship.commit. Empty cmd: a person merges it.",
-            "properties": { "commit": { "type": "boolean" }, "cmd": { "type": "string" } }
+            "description": "How the close merges this repo. commit false: the script does not commit the branch of that repo, a person did. Absent: it commits, as on every branch of a spec. Empty cmd: a person merges it.",
+            "properties": {
+              "commit": {
+                "type": "boolean"
+              },
+              "cmd": {
+                "type": "string"
+              }
+            }
           }
         }
       }
     },
-    "fast_checks": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-    "source_dirs": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-    "protected": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-    "scopes": { "type": "array", "items": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" } },
-    "banned_words": { "type": "array", "items": { "type": "string", "minLength": 1 } },
-    "live": { "type": "array", "items": { "type": "string", "minLength": 1 }, "description": "The real systems a test may write: github:org/repo, gitlab:group/project, cluster:laptop. The one-time yes; a test whose `touches` names anything else fails `spex check`." },
-    "people": { "type": "array", "items": { "type": "string", "minLength": 1 }, "description": "Names that must not appear as an actor in a task or a test step: the person at the keyboard. A step that needs them is a manual step, and the process has none." },
+    "fast_checks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "source_dirs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "protected": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "scopes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+      }
+    },
+    "banned_words": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "live": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "The real systems a test may write: github:org/repo, gitlab:group/project, cluster:laptop. The one-time yes; a test whose `touches` names anything else fails `spex check`."
+    },
+    "people": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Names that must not appear as an actor in a task or a test step: the person at the keyboard. A step that needs them is a manual step, and the process has none."
+    },
     "limits": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "task_files": { "type": "integer", "minimum": 1 },
-        "instructions_bytes": { "type": "integer", "minimum": 100 },
-        "approach_bytes": { "type": "integer", "minimum": 100 },
-        "context_kb": { "type": "integer", "minimum": 1 },
-        "diff_kb": { "type": "integer", "minimum": 1 },
-        "file_kb": { "type": "integer", "minimum": 1 },
-        "tests_scenarios": { "type": "integer", "minimum": 1, "description": "How many script tests one /spex:develop-tests batch writes at most; the skill takes batch after batch in one run." },
-        "verify_minutes": { "type": "integer", "minimum": 1 },
-        "step_introduces": { "type": "integer", "minimum": 1, "description": "How many names one step of a roadmap lists under Introduces before spex check warns that it is two steps." }
+        "task_files": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "instructions_bytes": {
+          "type": "integer",
+          "minimum": 100
+        },
+        "approach_bytes": {
+          "type": "integer",
+          "minimum": 100
+        },
+        "context_kb": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "diff_kb": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "file_kb": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "tests_scenarios": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "How many script tests one batch of /spex:implement writes at most; the skill takes batch after batch in one run."
+        },
+        "verify_minutes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "step_introduces": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "How many names one step of a roadmap lists under Introduces before spex check warns that it is two steps."
+        }
       }
     },
-    "review_rounds": { "type": "integer", "minimum": 1 },
-    "verify_rounds": { "type": "integer", "minimum": 1, "description": "How many whole-feature verify rounds the loop may take before a person reads it." },
-    "approvals": {
-      "type": "array",
-      "items": { "type": "string", "enum": ["tasks", "tests"] },
-      "description": "The stages past gate 1 that need a person's `spex approve`: tasks (tasks.yaml), tests (tests.yaml after it changed past gate 1). The spec and the records always do. Default: [tasks]."
+    "review_rounds": {
+      "type": "integer",
+      "minimum": 1
     },
-    "auto": { "type": "boolean", "description": "Auto mode: nobody is asked. The decider agent settles every question (by: agent, with evidence and confidence) and the person reads the answers at the gates. Default: false." },
-    "ship": {
+    "verify_rounds": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "How many whole-feature verify rounds the loop may take before a person reads it."
+    },
+    "auto": {
+      "type": "boolean",
+      "description": "Auto mode: nobody is asked. The decider agent answers every question with evidence, and each digest lists its answers."
+    },
+    "commit": {
+      "type": "boolean",
+      "description": "The script commits on the base branch (the notes of new, new-bug and delete) only when this is true. With a merge command in close.cmd and a remote, it also pushes these commits: the request of a spec must not carry the notes. Without it, the reply names the files, and you commit and push them. On the branch of a spec the script always commits, at the end of each phase."
+    },
+    "base": {
+      "type": "string",
+      "description": "The branch a spec starts from and merges into. Empty: the branch the main folder is on."
+    },
+    "close": {
       "type": "object",
       "additionalProperties": false,
-      "description": "How `spex ship` merges. commit: commit the working tree first. cmd: push, open the request and merge it (`gh pr create --fill && gh pr merge --squash`). Empty cmd: a person merges, then `spex ship --merged`.",
+      "description": "How the close merges the branch of a spec. cmd: push, open the request and merge it (`gh pr create --fill && gh pr merge --squash`). Empty cmd: the run waits, a person merges, then types /spex:review again.",
       "properties": {
-        "commit": { "type": "boolean" },
-        "cmd": { "type": "string" }
+        "cmd": {
+          "type": "string"
+        }
+      }
+    },
+    "worktree": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "setup: what runs one time in a new worktree (install the packages, copy .env).",
+      "properties": {
+        "setup": {
+          "type": "string"
+        }
+      }
+    },
+    "env": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The environment the tests need, as scripts of this project. spex knows no tool. up: at the start of implement. deploy, check: before every full test run. down: at the close. url: where the tests find the app (SPEX_ENV_URL).",
+      "properties": {
+        "up": {
+          "type": "string"
+        },
+        "deploy": {
+          "type": "string"
+        },
+        "check": {
+          "type": "string"
+        },
+        "down": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
       }
     }
   }

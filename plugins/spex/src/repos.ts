@@ -76,6 +76,12 @@ export function repoFindings(root: string, config: Config, names: string[], seve
       out.push({ severity: 'error', code: 'REPO-UNKNOWN', message: `repo ${name} is not in .spex/config.yaml repos`, fix: `Add repos.${name}: {path: ../<folder>} to .spex/config.yaml, or fix the name.` });
       continue;
     }
+    // Each spec works in its own worktree, and a relative path names another folder from there.
+    const given = (r.path ?? name).trim();
+    if (!isAbsolute(given) && given !== '~' && !given.startsWith('~/')) {
+      out.push({ severity: 'error', code: 'REPO-PATH', message: `repo ${name}: the path ${given} is relative`, fix: `Each spec works in its own worktree (.claude/worktrees/<spec>), and from there ${given} is another folder. Write repos.${name}.path absolute, or with ~/.` });
+      continue;
+    }
     const abs = repoRoot(root, config, name);
     if (!isDir(abs)) out.push({ severity, code: 'REPO-MISSING', message: `repo ${name}: ${r.path} does not exist`, fix: `Clone it at ${r.path} (from the home repo's root), or fix repos.${name}.path.` });
     else if (!isGitRepo(abs)) out.push({ severity, code: 'REPO-MISSING', message: `repo ${name}: ${r.path} is not a git repository`, fix: `Point repos.${name}.path at the clone's root.` });

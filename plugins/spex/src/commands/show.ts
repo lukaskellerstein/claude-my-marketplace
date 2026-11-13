@@ -14,7 +14,7 @@ import { claimsOf, isFileTest, isSession, locateTest, nameToken, splitCover, tes
 import type { Config, Feature, Finding, Requirement, Task, TasksFile, TestRecord } from '../types.js';
 import { composeVerify, readVerify } from '../verify.js';
 import { pickTestBatch } from './coverage.js';
-import { planGaps } from './lifecycle.js';
+import { blockedTasks, planGaps } from './lifecycle.js';
 
 export interface ShowResult {
   ok: boolean;
@@ -128,9 +128,9 @@ function glossaryLines(feature: Feature): string[] {
 export function showTask(root: string, dir: string, taskId: string): ShowResult {
   const { feature, config, findings } = load(root, dir);
   if (findings.some((f) => f.severity === 'error')) return fail(findings);
-  if (!feature.tasks || !feature.requirements) return fail([{ severity: 'error', code: 'SPEC-MISSING', message: `${feature.dir} needs requirements.yaml and tasks.yaml`, fix: 'Run /spex:tasks first.' }]);
+  if (!feature.tasks || !feature.requirements) return fail([{ severity: 'error', code: 'SPEC-MISSING', message: `${feature.dir} needs requirements.yaml and tasks.yaml`, fix: 'Run /spex:plan first.' }]);
   const task = findTask(feature.tasks, taskId);
-  if (!task) return fail([{ severity: 'error', code: 'TASK-UNKNOWN', message: `${taskId} is not in ${feature.tasksPath}`, fix: 'Run `spex next` to see the next task.' }], 2);
+  if (!task) return fail([{ severity: 'error', code: 'TASK-UNKNOWN', message: `${taskId} is not in ${feature.tasksPath}`, fix: '`spex status` names the command to go on.' }], 2);
   const reqs = feature.requirements.requirements.filter((r) => task.requirements.includes(r.id));
   const tests = testsOf(feature, task);
   const verify = composeVerify(config, feature, task);
@@ -177,11 +177,47 @@ export function showTask(root: string, dir: string, taskId: string): ShowResult 
 }
 
 /** The input of the test analyst: every claim without a proof, the interfaces, and the rules of the plan. */
+/**
+ * `spex show <dir> --ready`: the tasks that can start now, as waves. A task is ready when it is todo and every task in
+ * its depends_on is done. Ready tasks of one parallel_group write different files, so they are one wave and run
+ * together (joined with `+`). The others run one by one, in the order of the file: the most important record first.
+ */
+export function showReady(root: string, dir: string): ShowResult {
+  const { feature, findings } = load(root, dir);
+  if (findings.some((f) => f.severity === 'error')) return fail(findings);
+  const tasks = feature.tasks?.tasks ?? [];
+  if (!feature.tasks) return fail([{ severity: 'error', code: 'SPEC-MISSING', message: `${feature.dir} has no tasks.yaml`, fix: `Type /spex:plan ${feature.dir}.` }]);
+  const done = new Set(tasks.filter((t) => t.status === 'done').map((t) => t.id));
+  const ready = tasks.filter((t) => t.status === 'todo' && (t.depends_on ?? []).every((d) => done.has(d)));
+  const waves: string[][] = [];
+  const groups = new Map<string, string[]>();
+  for (const t of ready) {
+    const g = t.parallel_group?.trim();
+    const wave = g ? groups.get(g) : undefined;
+    if (wave) wave.push(t.id);
+    else {
+      const w = [t.id];
+      if (g) groups.set(g, w);
+      waves.push(w);
+    }
+  }
+  const waiting = tasks.filter((t) => t.status === 'todo' && !ready.includes(t)).map((t) => `${t.id} (needs ${(t.depends_on ?? []).filter((d) => !done.has(d)).join(', ')})`);
+  const blocked = blockedTasks(root, feature);
+  const count = (s: string): number => tasks.filter((t) => t.status === s).length;
+  const lines = [
+    `ready: ${waves.length ? waves.map((w) => w.join(' + ')).join(', ') : 'none'}`,
+    `tasks: ${count('done')} done · ${count('todo')} todo · ${count('blocked')} blocked · ${tasks.length} in all`,
+  ];
+  if (waiting.length) lines.push(`not ready yet: ${waiting.join(', ')}`);
+  for (const b of blocked) lines.push(b.ask ? `waits for your yes: ${b.id} · ${b.ask}` : `blocked: ${b.id} · ${b.reason || 'no reason given'}`);
+  return { ok: true, text: lines.join('\n'), findings: findings.filter((f) => f.severity === 'warning'), exit: 0, data: { waves, waiting, blocked, done: count('done'), todo: count('todo') } };
+}
+
 export function showPlan(root: string, dir: string): ShowResult {
   const { feature, config, findings } = load(root, dir);
   if (findings.some((f) => f.severity === 'error')) return fail(findings);
   const r = feature.requirements;
-  if (!r) return fail([{ severity: 'error', code: 'SPEC-MISSING', message: `${feature.dir} has no requirements.yaml`, fix: 'Run /spex:requirements first.' }]);
+  if (!r) return fail([{ severity: 'error', code: 'SPEC-MISSING', message: `${feature.dir} has no requirements.yaml`, fix: 'Run /spex:plan first.' }]);
   const gaps = planGaps(feature);
   const existing = feature.tests?.tests ?? [];
   const nextId = `TS${String(existing.length + 1).padStart(2, '0')}`;
@@ -222,7 +258,7 @@ export function showPlan(root: string, dir: string): ShowResult {
 export function showTests(root: string, dir: string, ids: string[]): ShowResult {
   const { feature, config, findings } = load(root, dir);
   if (findings.some((f) => f.severity === 'error')) return fail(findings);
-  if (!feature.tasks || !feature.requirements || !feature.tests) return fail([{ severity: 'error', code: 'SPEC-MISSING', message: `${feature.dir} needs requirements.yaml, tasks.yaml and tests.yaml`, fix: 'Run /spex:tasks first; the test analyst writes tests.yaml.' }]);
+  if (!feature.tasks || !feature.requirements || !feature.tests) return fail([{ severity: 'error', code: 'SPEC-MISSING', message: `${feature.dir} needs requirements.yaml, tasks.yaml and tests.yaml`, fix: 'Run /spex:plan first; the test analyst writes tests.yaml.' }]);
   let tests: TestRecord[];
   let batchNote = '';
   if (ids.length) {
@@ -295,7 +331,7 @@ export function showSession(root: string, dir: string, id: string): ShowResult {
 export function showVerify(root: string, dir: string): ShowResult {
   const { feature, config, findings } = load(root, dir);
   if (findings.some((f) => f.severity === 'error')) return fail(findings);
-  if (!feature.requirements || !feature.tests || !feature.tasks) return fail([{ severity: 'error', code: 'SPEC-MISSING', message: `${feature.dir} needs requirements.yaml, tasks.yaml and tests.yaml`, fix: 'Run /spex:tasks first.' }]);
+  if (!feature.requirements || !feature.tests || !feature.tasks) return fail([{ severity: 'error', code: 'SPEC-MISSING', message: `${feature.dir} needs requirements.yaml, tasks.yaml and tests.yaml`, fix: 'Run /spex:plan first.' }]);
   const v = readVerify(root, feature.requirements.feature);
   if (!v) return fail([{ severity: 'error', code: 'VERIFY-MISSING', message: `no whole-feature run recorded for ${feature.dir}`, fix: `Run spex verify ${feature.dir} first.` }], 6);
   const byId = new Map(feature.tests.tests.map((t) => [t.id, t]));
@@ -303,7 +339,7 @@ export function showVerify(root: string, dir: string): ShowResult {
   if (!v.fast_checks.ok) lines.push('', '## fast_checks failed', v.fast_checks.tail);
   const failed = v.scripts.filter((s) => !s.ok);
   if (failed.length) {
-    lines.push('', '## failing scripts (one decider question each: test, code or spec?)');
+    lines.push('', '## failing scripts (one decider question each: the test, the code, the tasks or the spec?)');
     for (const s of failed) {
       const t = byId.get(s.id);
       lines.push('', `### ${s.id}`, s.cmd ? `command: ${s.cmd} (exit ${s.exit})` : 'no command');
@@ -344,7 +380,7 @@ function pathChanges(root: string, featureId: string): { task: string; added: st
 export function showReview(root: string, dir: string, opts: { task?: string; base?: string }): ShowResult {
   const { feature, config, findings } = load(root, dir);
   if (findings.some((f) => f.severity === 'error')) return fail(findings);
-  if (!feature.tasks || !feature.requirements) return fail([{ severity: 'error', code: 'SPEC-MISSING', message: `${feature.dir} needs requirements.yaml and tasks.yaml`, fix: 'Run /spex:tasks first.' }]);
+  if (!feature.tasks || !feature.requirements) return fail([{ severity: 'error', code: 'SPEC-MISSING', message: `${feature.dir} needs requirements.yaml and tasks.yaml`, fix: 'Run /spex:plan first.' }]);
   if (!isGitRepo(root)) return fail([{ severity: 'error', code: 'GIT-REQUIRED', message: 'review needs a git repository for the diff', fix: 'Run inside the repository.' }], 2);
   const task = opts.task ? findTask(feature.tasks, opts.task) : undefined;
   if (opts.task && !task) return fail([{ severity: 'error', code: 'TASK-UNKNOWN', message: `${opts.task} is not in ${feature.tasksPath}`, fix: 'Check the id.' }], 2);
@@ -487,7 +523,7 @@ interface RunReport {
 /**
  * `spex show <dir> --lessons`: everything a finished step recorded that an unbuilt step may need: the concerns
  * and questions of every run report, the answers given by default, the deferred findings, the decisions, the
- * blocked reasons and the records it supersedes. /spex:ship routes each item; the script only gathers.
+ * blocked reasons and the records it supersedes. the close of /spex:review routes each item; the script only gathers.
  */
 export function showLessons(root: string, dir: string): ShowResult {
   const { feature, findings } = load(root, dir);

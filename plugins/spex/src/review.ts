@@ -65,7 +65,7 @@ export function checkReviewRefs(root: string, feature: Feature): Finding[] {
   for (const t of feature.tasks?.tasks ?? []) {
     if (!t.review) continue;
     const m = /^(.+)-(\d+)\/(F\d+)$/.exec(t.review);
-    const fix = `Only \`spex review accept\` writes the review field. Remove it, and a person approves the task with /spex:approve ${feature.dir}.`;
+    const fix = `Only \`spex review accept\` writes the review field. Remove it: a task with no review field is a task of the plan, and \`spex stamp ${feature.dir}\` stamps it.`;
     if (!m || m[1] !== featureId) {
       out.push({ severity: 'error', code: 'TASK-REVIEW', message: `${t.id}: review ${t.review} is not a finding of feature ${featureId}`, path: feature.tasksPath, id: t.id, fix });
       continue;

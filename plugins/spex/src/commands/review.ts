@@ -1,8 +1,9 @@
 // `spex review accept <dir> [ok] [F2=defer]…`: a person's answer to one review round, as a command. Typing it is the
-// answer, the way `spex approve` is the approval. Each `fix` pick becomes a fix task with the finder's text
-// (finding → source, fix plan → instructions); each `defer` pick goes to deferred[]; each `skip` is only noted in the
-// findings file. The tasks carry `review`, so they need no second approval. The review report it writes is the one
-// ship reads: `done` when nothing is left to fix, so a person can always end the rounds by deferring.
+// answer. Each `fix` pick becomes a fix task with the finder's text (finding → source, fix plan → instructions); each
+// `defer` pick goes to deferred[]; each `skip` is only noted in the findings file. Every pick is an entry in
+// corrections.md. The pick was the ok: with a fix pick the script sets the spec back to `implement, started`, and the
+// run goes on there with no command typed: the planner checks the fix task, the test analyst plans its test. With no
+// fix pick the close goes on. A person can always end the rounds by deferring.
 
 import { join } from 'node:path';
 import { runCheck } from '../check.js';
@@ -10,7 +11,9 @@ import { openDocument, saveDocument } from '../io.js';
 import { pendingRound } from '../review.js';
 import { loadFeature, resolveFeatureDir } from '../specs.js';
 import type { Finding, Pick, ReviewFinding, Task } from '../types.js';
-import { renderNext, whatNext, type CmdResult } from './lifecycle.js';
+import { addCorrection } from '../corrections.js';
+import { writeState } from '../state.js';
+import type { CmdResult } from './lifecycle.js';
 import { report } from './report.js';
 
 const PICKS: Pick[] = ['fix', 'defer', 'skip'];
@@ -50,7 +53,7 @@ export function reviewAccept(root: string, dir: string, args: string[], by: stri
   const feature = loadFeature(root, rel);
   if (feature.errors.length) return refuse(feature.errors, 4);
   const featureId = feature.requirements?.feature;
-  if (!featureId || !feature.tasks) return refuse([{ severity: 'error', code: 'SPEC-MISSING', message: `${feature.dir} needs requirements.yaml and tasks.yaml`, fix: 'Run /spex:tasks first.' }], 4);
+  if (!featureId || !feature.tasks) return refuse([{ severity: 'error', code: 'SPEC-MISSING', message: `${feature.dir} needs requirements.yaml and tasks.yaml`, fix: `Type /spex:plan ${feature.dir} first.` }], 4);
   const waiting = pendingRound(root, featureId);
   if (waiting && !waiting.file) return refuse(waiting.errors, 4);
   const pending = waiting?.file ? { round: waiting.round, path: waiting.path, file: waiting.file } : null;
@@ -70,6 +73,7 @@ export function reviewAccept(root: string, dir: string, args: string[], by: stri
   const doc = openDocument(join(root, feature.tasksPath));
   const all = [...feature.tasks.tasks];
   const made: string[] = [];
+  const entries: string[] = [];
   const deferred: string[] = [];
   const skipped: string[] = [];
   if (!doc.has('deferred') && file.findings.some((f) => picks.get(f.id) === 'defer')) doc.set('deferred', doc.createNode([]));
@@ -95,10 +99,16 @@ export function reviewAccept(root: string, dir: string, args: string[], by: stri
       all.push(task);
       doc.addIn(['tasks'], doc.createNode(task));
       made.push(`${id} ← ${f.id} ${f.severity} ${f.title}`);
+      const entry = addCorrection(root, rel, { title: `review, round ${round} · finding ${f.id}, ${f.severity}`, fields: { Found: `${where}: ${f.title}`, Pick: `fix (${by === 'person' ? 'you' : by})`, Changed: `${id} new` }, open: true });
+      entries.push(entry.id);
     } else if (pick === 'defer') {
       doc.addIn(['deferred'], doc.createNode({ finding: `${f.title} (${where}): ${f.effect}`, why: f.why?.trim() || `deferred at review round ${round}`, by, severity: f.severity }));
       deferred.push(`${f.id} ${f.severity} ${f.title}`);
-    } else skipped.push(`${f.id} ${f.severity} ${f.title}`);
+      addCorrection(root, rel, { title: `review, round ${round} · finding ${f.id}, ${f.severity}`, fields: { Found: `${where}: ${f.title}`, Pick: `defer (${by === 'person' ? 'you' : by})`, Why: f.why?.trim() || 'no reason given' }, open: false, closedBy: 'the close reads it for the later specs' });
+    } else {
+      skipped.push(`${f.id} ${f.severity} ${f.title}`);
+      addCorrection(root, rel, { title: `review, round ${round} · finding ${f.id}, ${f.severity}`, fields: { Found: `${where}: ${f.title}`, Pick: `skip (${by === 'person' ? 'you' : by})`, Why: f.why?.trim() || 'no reason given' }, open: false, closedBy: 'skipped' });
+    }
   }
   saveDocument(join(root, feature.tasksPath), doc);
 
@@ -119,6 +129,11 @@ export function reviewAccept(root: string, dir: string, args: string[], by: stri
   if (made.length) lines.push('fix:', ...made.map((m) => `- ${m}`));
   if (deferred.length) lines.push('deferred:', ...deferred.map((d) => `- ${d}`));
   if (skipped.length) lines.push('skipped:', ...skipped.map((s) => `- ${s}`));
-  lines.push(renderNext(whatNext(root, check.config, loadFeature(root, rel))));
-  return { ok: !problems.length, findings: problems, exit: problems.length ? 4 : 0, text: lines.join('\n'), data: { round, path, tasks: made, deferred, skipped } };
+  if (made.length) {
+    // The pick was the ok. The code must follow, so the spec is in implement again.
+    writeState(root, rel, { command: 'implement', state: 'started' });
+    lines.push(`open in corrections.md: ${entries.join(' ')} (\`spex stamp ${rel} --close ${entries.join(' ')}\` closes them when the plan follows)`);
+    lines.push('state: implement, started. No command is typed: the run goes on with the part wrong.md of implement (the planner checks each fix task, the test analyst plans its test, `spex stamp`, then the tests and the code).');
+  } else lines.push(`nothing to fix: the close goes on with \`spex close ${rel} sync\``);
+  return { ok: !problems.length, findings: problems, exit: problems.length ? 4 : 0, text: lines.join('\n'), data: { round, path, tasks: made, deferred, skipped, entries } };
 }

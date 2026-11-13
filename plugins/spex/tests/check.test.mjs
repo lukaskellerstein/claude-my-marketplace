@@ -95,8 +95,15 @@ const BROKEN = [
   }],
   ['SPEC-POINTER', 4, (d) => { const f = load(d, REQ); f.spec = 'docs/nowhere.md'; save(d, REQ, f); }],
   ['SPEC-SECTIONS', 0, (d) => writeFileSync(join(d, 'specs/007-csv-export/spec.md'), '# CSV export\n\n## Why\nwords\n\n## What\n<!-- only the hint, which does not count -->\n')],
-  ['CONFIG-FORMAT', 4, (d) => writeFileSync(join(d, '.spex/config.yaml'), readFileSync(join(d, '.spex/config.yaml'), 'utf8').replace('format: 2', 'format: 99'))], // a newer repo than this script
-  ['SPEC-SHAPING', 0, (d) => writeFileSync(join(d, 'specs/007-csv-export/spec.md'), `---\nstatus: shaping\n---\n${readFileSync(join(d, 'specs/007-csv-export/spec.md'), 'utf8')}`)], // the person has not said done
+  ['CONFIG-FORMAT', 4, (d) => writeFileSync(join(d, '.spex/config.yaml'), readFileSync(join(d, '.spex/config.yaml'), 'utf8').replace('format: 3', 'format: 99'))], // a newer repo than this script
+  ['CONFIG-FORMAT', 4, (d) => writeFileSync(join(d, '.spex/config.yaml'), readFileSync(join(d, '.spex/config.yaml'), 'utf8').replace('format: 3', 'format: 2'))], // a spex 2 repo: nothing runs until spex update
+  ['CONFIG-SCHEMA', 4, (d) => writeFileSync(join(d, '.spex/config.yaml'), `${readFileSync(join(d, '.spex/config.yaml'), 'utf8')}approvals: [tasks]\n`)], // format 2's key: the next command is the approval now
+  ['CONFIG-SCHEMA', 4, (d) => writeFileSync(join(d, '.spex/config.yaml'), `${readFileSync(join(d, '.spex/config.yaml'), 'utf8')}ship: {commit: true, cmd: ""}\n`)], // format 2's key: close and commit now
+  ['SPEC-SECTIONS', 0, (d) => {
+    // a note says its boundary: Why, What and Not this. This one has no Not this.
+    mkdirSync(join(d, 'specs/008-note'));
+    writeFileSync(join(d, 'specs/008-note/spec.md'), '# 008 note\n\n## Why\nw\n\n## What\nw\n\n## Not this\n<!-- only the hint -->\n');
+  }],
   ['TASK-PARALLEL', 4, (d) => mutTasks(d, (f) => {
     delete f.tasks[1].depends_on;
     f.tasks[0].parallel_group = 'g';
@@ -166,21 +173,22 @@ const BROKEN = [
     save(d, 'specs/008-new-export/requirements.yaml', next);
   }],
   ['REQ-AGENT-EVIDENCE', 0, (d) => mutReq(d, (f) => (f.questions[0].by = 'agent'))], // an agent's answer without the evidence it rests on
-  ['SPEC-DEPENDS', 4, (d) => writeFileSync(join(d, 'specs/007-csv-export/spec.md'), `---\nstatus: ready\ndepends_on: [099-nowhere]\n---\n${readFileSync(join(d, 'specs/007-csv-export/spec.md'), 'utf8')}`)],
+  ['SPEC-DEPENDS', 4, (d) => writeFileSync(join(d, 'specs/007-csv-export/spec.md'), `---\ndepends_on: [099-nowhere]\n---\n${readFileSync(join(d, 'specs/007-csv-export/spec.md'), 'utf8')}`)],
   ['SPEC-CYCLE', 4, (d) => {
-    writeFileSync(join(d, 'specs/007-csv-export/spec.md'), `---\nstatus: ready\ndepends_on: [008-again]\n---\n${readFileSync(join(d, 'specs/007-csv-export/spec.md'), 'utf8')}`);
+    writeFileSync(join(d, 'specs/007-csv-export/spec.md'), `---\ndepends_on: [008-again]\n---\n${readFileSync(join(d, 'specs/007-csv-export/spec.md'), 'utf8')}`);
     mkdirSync(join(d, 'specs/008-again'));
-    writeFileSync(join(d, 'specs/008-again/spec.md'), '---\nstatus: planned\nroadmap: r\nstep: 2\ndepends_on: [007-csv-export]\n---\n# Again\n\n## Why\nw\n\n## What\nw\n\n## Not this\nw\n');
+    writeFileSync(join(d, 'specs/008-again/spec.md'), '---\nroadmap: r\nstep: 2\ndepends_on: [007-csv-export]\n---\n# Again\n\n## Why\nw\n\n## What\nw\n\n## Not this\nw\n');
   }],
-  ['SPEC-SOURCE', 0, (d) => writeFileSync(join(d, 'specs/007-csv-export/spec.md'), `---\nstatus: ready\nsource: ["docs/gone.md#1"]\n---\n${readFileSync(join(d, 'specs/007-csv-export/spec.md'), 'utf8')}`)],
-  ['SPEC-PLANNED', 0, (d) => {
+  ['SPEC-SOURCE', 0, (d) => writeFileSync(join(d, 'specs/007-csv-export/spec.md'), `---\nsource: ["docs/gone.md#1"]\n---\n${readFileSync(join(d, 'specs/007-csv-export/spec.md'), 'utf8')}`)],
+  ['SPEC-NOTE', 0, (d) => {
+    // a folder with spec.md and no status.yaml is a note: no phase has started for it
     mkdirSync(join(d, 'specs/008-step'));
-    writeFileSync(join(d, 'specs/008-step/spec.md'), '---\nstatus: planned\nroadmap: r\nstep: 2\ndepends_on: [007-csv-export]\n---\n# Step\n\n## Why\nw\n\n## What\nw\n\n## Not this\nw\n');
+    writeFileSync(join(d, 'specs/008-step/spec.md'), '---\nroadmap: r\nstep: 2\ndepends_on: [007-csv-export]\n---\n# Step\n\n## Why\nw\n\n## What\nw\n\n## Not this\nw\n');
   }],
   ['SPEC-OPEN-PICK', 0, (d) => {
-    // a lab run left half its stubs' Open questions with no pick, so "ok" took nothing for them
+    // a lab run left half its notes' Open questions with no pick, so "ok" took nothing for them
     mkdirSync(join(d, 'specs/008-step'));
-    writeFileSync(join(d, 'specs/008-step/spec.md'), '---\nstatus: planned\nroadmap: r\nstep: 2\ndepends_on: [007-csv-export]\n---\n# Step\n\n## Why\nw\n\n## What\nw\n\n## Not this\nw\n\n## Open questions\n\n- 🟨 The page size. Pick: 50 (the design\'s).\n- 🟨 The time cap. Settles: one run on the full set.\n- 🟧 Where the cost comes from: the gateway or the job.\n');
+    writeFileSync(join(d, 'specs/008-step/spec.md'), '---\nroadmap: r\nstep: 2\ndepends_on: [007-csv-export]\n---\n# Step\n\n## Why\nw\n\n## What\nw\n\n## Not this\nw\n\n## Open questions\n\n- 🟨 The page size. Pick: 50 (the design\'s).\n- 🟨 The time cap. Settles: one run on the full set.\n- 🟧 Where the cost comes from: the gateway or the job.\n');
   }],
   ['FILE-SIZE', 0,(d) => writeFileSync(join(d, '.spex/config.yaml'), readFileSync(join(d, '.spex/config.yaml'), 'utf8').replace('file_kb: 40', 'file_kb: 1'))],
   ['CONFIG-SCHEMA', 4, (d) => writeFileSync(join(d, '.spex/config.yaml'), 'acceptance_dir: tests/acceptance\nmystery: 1\n')],
@@ -247,4 +255,23 @@ test('`spex check specs/` checks every folder, as `spex check` does: specs/ itse
     assert.ok(!codes(r).includes('SPEC-MISSING'), `${arg}: ${r.stdout}`);
     assert.deepEqual(r.json.features, all.json.features, arg);
   }
+});
+
+test('a note is a folder with no status.yaml: once a phase has started, the note rules are over', () => {
+  const dir = makeRepo('csv-export');
+  mkdirSync(join(dir, 'specs/008-step'));
+  writeFileSync(join(dir, 'specs/008-step/spec.md'), '# 008 step\n\n## Why\nw\n\n## What\nw\n\n## Not this\nw\n\n## Open questions\n\n- 🟧 Where the cost comes from: the gateway or the job.\n');
+  let r = spex(dir, 'check', 'specs/008-step');
+  assert.equal(r.code, 0, r.stdout);
+  assert.deepEqual(codes(r).sort(), ['REQ-MISSING', 'SPEC-NOTE', 'SPEC-OPEN-PICK']);
+  assert.ok(r.json.findings.find((f) => f.code === 'SPEC-NOTE').fix.includes('/spex:plan specs/008-step'), r.stdout);
+  assert.ok(r.json.findings.find((f) => f.code === 'REQ-MISSING').fix.startsWith('A note: /spex:plan specs/008-step'), r.stdout);
+  // plan started: the full spec is being written, so Success is asked for, and an open question with no pick is the analyst's business
+  writeFileSync(join(dir, 'specs/008-step/status.yaml'), 'command: plan\nstate: started\n');
+  r = spex(dir, 'check', 'specs/008-step');
+  assert.deepEqual(codes(r).sort(), ['REQ-MISSING', 'SPEC-SECTIONS']);
+  assert.ok(r.json.findings.find((f) => f.code === 'SPEC-SECTIONS').message.endsWith('Success'), r.stdout);
+  // a status.yaml that says nothing the script knows is no state: the folder is a note again
+  writeFileSync(join(dir, 'specs/008-step/status.yaml'), 'command: ship\nstate: done\n');
+  assert.ok(codes(spex(dir, 'check', 'specs/008-step')).includes('SPEC-NOTE'));
 });

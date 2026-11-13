@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { SHELL, driverOf } from './config.js';
-import { isGitRepo, treeId } from './git.js';
+import { codeId, isGitRepo, treeId } from './git.js';
 import { fileExists, isDir, readText, writeText } from './io.js';
 import { cdPrefix, featureRepos, repoRoot } from './repos.js';
 import { isFileTest, isScript, isSession, isShellTest, readSession, testsOf } from './tests.js';
@@ -170,6 +170,8 @@ export function verifyOne(root: string, config: Config, feature: Feature, test: 
 
 function judge(root: string, config: Config, feature: Feature, name: string, c: Composed, tests: TestRecord[], expect: 'pass' | 'fail'): VerifyResult {
   if (c.findings.length) return { ok: false, findings: c.findings, commands: [], tail: '' };
+  // Every test command gets the address of the app, not only the full run: a test is the same test at done and at verify.
+  if (config.env?.url) process.env.SPEX_ENV_URL = config.env.url;
   const featureId = feature.requirements?.feature ?? feature.name;
   const tree = currentTree(root, config, feature);
   const ids = tests.filter(isScript).map((t) => t.id);
@@ -182,7 +184,7 @@ function judge(root: string, config: Config, feature: Feature, name: string, c: 
       const what = c.shellTests.length ? `${c.shellTests.length} shell test(s) at done` : tests.some(isSession) ? 'a session at verify' : 'nothing in tests.yaml';
       return { ok: true, findings: [{ severity: 'info', code: 'RUN-NO-RED', message: `${name} has no test under a driver, so nothing can be red; its proof is ${what}`, fix: 'Fine for a setup task. A task that changes behavior gets a file test from the test analyst.' }], evidence, path: abs.slice(root.length + 1), commands: [], tail: '' };
     }
-    return { ok: false, findings: [{ severity: 'error', code: 'RUN-NO-TESTS', message: `${name} has no test in tests.yaml`, fix: 'The test analyst adds one; /spex:tasks runs it for the tasks that lack a test.' }], commands: [], tail: '' };
+    return { ok: false, findings: [{ severity: 'error', code: 'RUN-NO-TESTS', message: `${name} has no test in tests.yaml`, fix: 'The test analyst adds one; /spex:plan runs it for the tasks that lack a test.' }], commands: [], tail: '' };
   }
   const outcome = runCommands(root, c.cmds, config.limits.verify_minutes);
   const idsSeen = c.names.length ? c.names.some((n) => outcome.raw.includes(n)) : true;
@@ -248,14 +250,46 @@ export interface FeatureVerify {
  * The whole feature now: fast_checks, every script (grouped per driver, then one by one when a group fails, so
  * each test has its own verdict), every shell test, and the session evidence at this tree. Round n+1 of the loop.
  */
+const verifyRuns = (dir: string): number => (isDir(dir) ? readdirSync(dir).filter((n) => /^verify-\d+\.json$/.test(n)).length : 0);
+
+/**
+ * `spex start implement` begins a run, and its rounds start at 1 again: the person who types implement again after
+ * the limit gives the same number of rounds once more. The evidence files keep their running number.
+ */
+export function startVerifyRun(root: string, featureId: string): void {
+  const dir = join(root, '.spex', 'evidence', featureId);
+  writeText(join(dir, 'run.json'), JSON.stringify({ from: verifyRuns(dir), at: new Date().toISOString() }) + '\n');
+}
+
 export function verifyFeature(root: string, config: Config, feature: Feature): FeatureVerify {
   const featureId = feature.requirements?.feature ?? feature.name;
   const tree = currentTree(root, config, feature);
   const tests = feature.tests?.tests ?? [];
   const dir = join(root, '.spex', 'evidence', featureId);
-  const round = (isDir(dir) ? readdirSync(dir).filter((n) => /^verify-\d+\.json$/.test(n)).length : 0) + 1;
+  const seq = verifyRuns(dir) + 1;
+  let from = 0;
+  try {
+    from = Number((JSON.parse(readText(join(dir, 'run.json'))) as { from?: number }).from) || 0;
+  } catch {
+    // no run file: every call so far is one run
+  }
+  // A round is one try at a green tree. A call on the tree of the last call, where no script was red (the sessions
+  // were not performed yet, or all was green), is the same round: the testers worked, nothing was fixed.
+  const last = seq - 1 > from ? readVerify(root, featureId) : null;
+  const same = !!last && last.tree === tree && last.fast_checks.ok && last.scripts.every((s) => s.ok) && (last.ok || last.sessions.some((s) => s.status === 'pending' || s.status === 'stale'));
+  const round = !last ? 1 : same ? last.round || 1 : (last.round || 0) + 1;
   const findings: Finding[] = [];
   let output = '';
+  if (config.env?.url) process.env.SPEX_ENV_URL = config.env.url;
+  // The environment first: put the code of this folder into it, and wait until the app answers. spex knows no tool:
+  // both are scripts of the project. A deploy that fails counts as a red test, so the decider names the cause.
+  const envCmds = [config.env?.deploy, config.env?.check].map((c) => c?.trim()).filter((c): c is string => !!c);
+  const env = envCmds.length ? runCommands(root, envCmds, config.limits.verify_minutes) : null;
+  if (env) output += env.output;
+  if (env && !env.ok) {
+    const failed = env.results.find((x) => x.exit !== 0);
+    findings.push({ severity: 'error', code: 'ENV-DEPLOY', message: `the environment is not ready: \`${failed?.cmd ?? envCmds[0]}\` exited ${failed?.exit}`, fix: `It counts as a red test: the decider names the cause (the code, a test, the spec). Tail: ${(failed?.tail ?? '').trim().slice(-600)}` });
+  }
   const fast = runCommands(root, fastChecks(config, featureRepos(config, feature)), config.limits.verify_minutes);
   output += fast.output;
   const scripts: VerifyEvidence['scripts'] = [];
@@ -296,12 +330,12 @@ export function verifyFeature(root: string, config: Config, feature: Feature): F
     return { id: t.id, status, tree: s?.tree ?? null, observed: s?.observed ?? null };
   });
   const ok = fast.ok && !findings.length && scripts.every((s) => s.ok) && sessions.every((s) => s.status === 'pass');
-  const evidence: VerifyEvidence = { feature: featureId, tree, ok, round, at: new Date().toISOString(), fast_checks: { ok: fast.ok, tail: fast.ok ? '' : (fast.results.find((x) => x.exit !== 0)?.tail ?? '').slice(-1500) }, scripts, sessions };
+  const evidence: VerifyEvidence = { feature: featureId, tree, code: codeId(root), ok, round, at: new Date().toISOString(), fast_checks: { ok: fast.ok, tail: fast.ok ? '' : (fast.results.find((x) => x.exit !== 0)?.tail ?? '').slice(-1500) }, scripts, sessions };
   const abs = verifyEvidencePath(root, featureId);
   writeText(abs, JSON.stringify(evidence, null, 2) + '\n');
-  writeText(join(dir, `verify-${round}.json`), JSON.stringify(evidence, null, 2) + '\n');
-  writeText(join(dir, `verify-${round}.log`), output);
-  if (round > config.verify_rounds) findings.push({ severity: 'warning', code: 'VERIFY-ROUNDS', message: `round ${round} is past verify_rounds ${config.verify_rounds}`, fix: 'Stop and hand the feature to a person: the loop did not converge.' });
+  writeText(join(dir, `verify-${seq}.json`), JSON.stringify(evidence, null, 2) + '\n');
+  writeText(join(dir, `verify-${seq}.log`), output);
+  if (round > config.verify_rounds) findings.push({ severity: 'warning', code: 'VERIFY-ROUNDS', message: `round ${round} is past verify_rounds ${config.verify_rounds}`, fix: 'Stop. The person reads the report: each failure, every verdict. They correct the spec with /spex:comment, or type /spex:implement again for the same number of rounds.' });
   return { ok, findings, evidence, path: abs.slice(root.length + 1), output };
 }
 

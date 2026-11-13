@@ -11,7 +11,7 @@
     "approvals": {
       "type": "object",
       "additionalProperties": false,
-      "description": "Written by `spex approve`, never by a skill: the hash of this file as a person read it.",
+      "description": "Written by the script, never by a skill: the hash of this file as it was when plan ended (`spex end plan`), or when the process changed it and `spex stamp` checked it.",
       "properties": { "tests": { "type": "string" } }
     },
     "tests": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/test" } }

@@ -2,7 +2,7 @@
 // any repo, and only `run` needs a real acceptance command.
 //
 // .spex/ is spex's one folder in a repo: config.yaml is a person's file and is committed; evidence/,
-// runs/ and review/ are the script's work and .spex/.gitignore keeps them out of git. specs/ holds
+// runs/, review/ and archive/ are the script's work and .spex/.gitignore keeps them out of git. specs/ holds
 // only what a person approves. Scripts and templates stay in the plugin, so there is one copy.
 
 import { join } from 'node:path';
@@ -27,8 +27,10 @@ export const DEFAULT_LIMITS = {
  * are one contract, so one integer covers them. It goes up when a key changes meaning, moves or goes away — never
  * for a new optional key. A repo on a newer format than this script is refused; an older one is told to run spex
  * update. Format 2 (spex 2.0): `verification` left the record and `verify` left the task; both became tests.yaml.
+ * Format 3 (spex 3.0): the state of a spec left spec.md (`status:`) and went to status.yaml; `ship:` became `close:`
+ * and `commit:`; `approvals:` is gone, because the next command is the approval.
  */
-export const FORMAT = 2;
+export const FORMAT = 3;
 
 export const DEFAULT_CONFIG: Config = {
   format: FORMAT,
@@ -46,14 +48,18 @@ export const DEFAULT_CONFIG: Config = {
   limits: { ...DEFAULT_LIMITS },
   review_rounds: 3,
   verify_rounds: 3,
-  approvals: ['tasks'],
   auto: false,
-  ship: { commit: false, cmd: '' },
+  commit: false,
+  base: '',
+  close: { cmd: '' },
+  worktree: { setup: '' },
 };
 
 export const CONFIG_PATH = '.spex/config.yaml';
 /** The script's work folders under .spex/: never committed, never part of the tree id. */
-export const WORK_DIRS = ['.spex/evidence', '.spex/runs', '.spex/review'];
+export const WORK_DIRS = ['.spex/evidence', '.spex/runs', '.spex/review', '.spex/archive'];
+/** What the script writes about a spec while it works: the phase, and what changed. A commit of them never makes a proof stale. */
+export const STATE_FILES = ['status.yaml', 'corrections.md'];
 
 /** The built-in driver that runs a test's steps as shell commands: no file, no name. */
 export const SHELL = 'shell';
@@ -91,7 +97,8 @@ export function loadConfig(root: string): { config: Config; findings: Finding[] 
     limits: { ...DEFAULT_LIMITS, ...(raw.limits ?? {}) },
     drivers: raw.drivers ?? {},
     repos: raw.repos ?? {},
-    ship: { ...DEFAULT_CONFIG.ship, ...(raw.ship ?? {}) },
+    close: { ...DEFAULT_CONFIG.close, ...(raw.close ?? {}) },
+    worktree: { ...DEFAULT_CONFIG.worktree, ...(raw.worktree ?? {}) },
   };
   for (const [name, d] of Object.entries(config.drivers)) if (d.repo && !config.repos[d.repo]) findings.push({ severity: 'error', code: 'CONFIG-REPO', message: `driver ${name} runs in repo ${d.repo}, which is not in repos`, path: CONFIG_PATH, fix: `Add repos.${d.repo}: {path: ../<folder>}, or fix the driver's repo.` });
   if (config.format > FORMAT) findings.push({ severity: 'error', code: 'CONFIG-FORMAT', message: `the specs are format ${config.format}; this spex reads format ${FORMAT}`, path: CONFIG_PATH, fix: 'Update the spex plugin. An older script would read changed keys wrong, so nothing runs until then.' });

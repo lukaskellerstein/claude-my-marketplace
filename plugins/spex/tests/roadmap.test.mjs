@@ -1,5 +1,6 @@
 // A roadmap as a whole: the design's outline, the roadmap file and its coverage table, the names each step uses
-// and brings, and the drop of a step a re-cut removes. Each test is one real failure seen in a roadmap round.
+// and brings, the state of each step, and the delete of a step a re-cut removes. Each test is one real failure seen
+// in a roadmap round.
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -41,15 +42,15 @@ const DESIGN_HTML = `<h1>NEX</h1>
 <h3 id="c3-promote">5.5 Promote &#x2192; main&#8230;</h3>
 `;
 
-/** A repo with the design files and a three-step roadmap `r`: 008 shaping, 009 and 010 planned. */
+/** A repo with the design files and a three-step roadmap `r`: 008, 009 and 010, each a note. */
 function roadmapRepo() {
   const repo = makeRepo('csv-export');
   mkdirSync(join(repo, 'docs'));
   writeFileSync(join(repo, 'docs/design.md'), DESIGN_MD);
   writeFileSync(join(repo, 'docs/design.html'), DESIGN_HTML);
-  assert.equal(spex(repo, 'new', 'record', '--shaping', '--roadmap', 'r', '--step', '1', '--source', 'docs/design.md#2.1').code, 0);
-  assert.equal(spex(repo, 'new', 'stop', '--planned', '--roadmap', 'r', '--step', '2', '--depends-on', '008', '--source', 'docs/design.md#2.2').code, 0);
-  assert.equal(spex(repo, 'new', 'brains', '--planned', '--roadmap', 'r', '--step', '3', '--depends-on', '008', '--source', 'docs/design.md#2.3').code, 0);
+  assert.equal(spex(repo, 'new', 'record', '--roadmap', 'r', '--step', '1', '--source', 'docs/design.md#2.1').code, 0);
+  assert.equal(spex(repo, 'new', 'stop', '--roadmap', 'r', '--step', '2', '--depends-on', '008', '--source', 'docs/design.md#2.2').code, 0);
+  assert.equal(spex(repo, 'new', 'brains', '--roadmap', 'r', '--step', '3', '--depends-on', '008', '--source', 'docs/design.md#2.3').code, 0);
   return repo;
 }
 
@@ -283,33 +284,77 @@ test('a stub tags each design bullet and names steps by folder, never by a numbe
   assert.ok(refs[1].endsWith('do not exist: 099-pages'), refs[1]);
 });
 
-test('drop: a step a re-cut removes goes to .spex/archive with its work and the reason; a live contract is refused', () => {
+test('the roadmap is computed from the folders and their status.yaml: a note, the phase that is started, closed', () => {
   const repo = roadmapRepo();
-  mkdirSync(join(repo, '.spex/runs/010'), { recursive: true });
-  writeFileSync(join(repo, '.spex/runs/010/block-T01.json'), '{"task":"T01"}');
-  mkdirSync(join(repo, '.spex/review'), { recursive: true });
-  writeFileSync(join(repo, '.spex/review/010-1.findings.yaml'), 'findings: []\n');
-  writeFileSync(join(repo, '.spex/review/007-1.findings.yaml'), 'findings: []\n');
-  assert.equal(spex(repo, 'new', 'pages', '--planned', '--roadmap', 'r', '--step', '4', '--depends-on', '010').code, 0);
+  let r = spex(repo, 'roadmap');
+  assert.deepEqual(r.json.roadmaps, [{ name: 'r', steps: 3, built: 0, planned: 3 }]);
+  assert.equal(r.json.text, 'r  3 step(s): 0 built · 0 open · 3 note(s)');
+  r = spex(repo, 'roadmap', 'r');
+  assert.equal(r.code, 0, r.stdout);
+  assert.deepEqual(r.json.steps.map((s) => [s.step, s.dir, s.note, s.stage, s.waits]), [[1, 'specs/008-record', true, 'a note', []], [2, 'specs/009-stop', true, 'a note', ['specs/008-record']], [3, 'specs/010-brains', true, 'a note', ['specs/008-record']]]);
+  assert.equal(r.json.next, 'specs/008-record');
+  assert.ok(r.json.text.startsWith('# roadmap r — 3 spec(s): 0 closed · 0 open · 3 note(s)\n 1. specs/008-record  a note\n 2. specs/009-stop  a note  waits: 008-record\n'), r.json.text);
+  assert.ok(r.json.text.endsWith('next note: specs/008-record → /spex:plan specs/008-record, when every spec with a lower number is closed'), r.json.text);
+  assert.equal(spex(repo, 'roadmap', 'nope').code, 2);
+  // a note of a roadmap says what it waits for
+  r = spex(repo, 'check', 'specs/009-stop');
+  assert.ok(r.json.findings.find((f) => f.code === 'SPEC-NOTE').message.endsWith('is step 2 of r: waits for 008-record (a note)'), r.stdout);
+  assert.ok(readFileSync(specPath(repo, '009-stop'), 'utf8').includes('> A note: step 2 of the roadmap r. /spex:plan writes the full spec'));
+  assert.deepEqual([...readFileSync(specPath(repo, '009-stop'), 'utf8').matchAll(/^## (.+)$/gm)].map((m) => m[1]), ['Why', 'What', 'Not this', 'From the design', 'Uses', 'Introduces', 'Open questions']);
+
+  // the state of a step is its status.yaml, and nothing in spec.md: a phase that started, then the close
+  writeFileSync(join(repo, 'specs/008-record/status.yaml'), 'command: implement\nstate: started\n');
+  r = spex(repo, 'roadmap', 'r');
+  assert.deepEqual(r.json.steps.map((s) => [s.note, s.stage]), [[false, 'implement, started'], [true, 'a note'], [true, 'a note']]);
+  assert.equal(r.json.next, null, 'every note waits for the open step');
+  assert.ok(r.json.text.startsWith('# roadmap r — 3 spec(s): 0 closed · 1 open · 2 note(s)\n') && r.json.text.endsWith('every note waits for a spec that is not closed'), r.json.text);
+  assert.ok(spex(repo, 'check', 'specs/009-stop').json.findings.find((f) => f.code === 'SPEC-NOTE').message.endsWith('waits for 008-record (implement, started)'));
+  // closed, as the close leaves a spec: review, done in status.yaml, and every record built
+  writeFileSync(join(repo, 'specs/008-record/status.yaml'), 'command: review\nstate: done\n');
+  writeFileSync(join(repo, 'specs/008-record/requirements.yaml'), readFileSync(join(repo, 'specs/007-csv-export/requirements.yaml'), 'utf8').replace('feature: "007"', 'feature: "008"').replace('slug: csv-export', 'slug: record').replace(/REQ-007-/g, 'REQ-008-').replace(/status: draft/g, 'status: built'));
+  r = spex(repo, 'roadmap', 'r');
+  assert.deepEqual(r.json.steps.map((s) => [s.stage, s.built, s.waits]), [['closed', true, []], ['a note', false, []], ['a note', false, []]]);
+  assert.equal(r.json.next, 'specs/009-stop');
+  assert.ok(r.json.text.includes(' 1. specs/008-record  closed\n 2. specs/009-stop  a note  after: 008-record\n'), r.json.text);
+  assert.ok(spex(repo, 'check', 'specs/009-stop').json.findings.find((f) => f.code === 'SPEC-NOTE').message.endsWith('nothing it depends on is open'));
+});
+
+test('delete: a step a re-cut removes goes to .spex/archive with the reason; a step another one depends on is refused; the roadmap file follows the numbers', () => {
+  const repo = roadmapRepo();
+  assert.equal(spex(repo, 'new', 'pages', '--roadmap', 'r', '--step', '4', '--depends-on', '010').code, 0);
   assert.equal(spex(repo, 'roadmap', 'r', '--init', '--source', 'docs/design.md').code, 0);
   const file = join(repo, 'specs/r.roadmap.md');
-  writeFileSync(file, readFileSync(file, 'utf8').replace('| docs/design.md#2.3 ↳ 2.3 Brains | | |', '| docs/design.md#2.3 ↳ 2.3 Brains | 010-brains | |'));
-  assert.equal(spex(repo, 'drop', 'specs/010-brains').code, 2, 'a reason is needed');
-  const r = spex(repo, 'drop', 'specs/010-brains', '--reason', 'the re-cut of 8 Nov folds Brains into 009-stop');
+  writeFileSync(file, readFileSync(file, 'utf8').replace('| docs/design.md#2.2 ↳ 2.2 Stop | | |', '| docs/design.md#2.2 ↳ 2.2 Stop | 009-stop | |').replace('| docs/design.md#2.3 ↳ 2.3 Brains | | |', '| docs/design.md#2.3 ↳ 2.3 Brains | 010-brains, 011-pages | |'));
+  assert.equal(spex(repo, 'delete', 'specs/010-brains').code, 2, 'a reason is needed');
+  // 011-pages builds on 010-brains: the delete is refused, and nothing moves
+  let r = spex(repo, 'delete', 'specs/010-brains', '--reason', 'the re-cut of 8 Nov folds Brains into 009-stop');
+  assert.equal(r.code, 6, r.stdout);
+  assert.deepEqual(codes(r), ['DELETE-DEPENDED']);
+  assert.ok(r.json.findings[0].message === '011-pages depends on 010-brains', r.stdout);
+  assert.ok(existsSync(join(repo, 'specs/010-brains')) && !existsSync(join(repo, '.spex/archive')));
+
+  // 009-stop: nothing builds on it. It goes, with the reason, and the two steps behind it move one number down
+  r = spex(repo, 'delete', 'specs/009-stop', '--reason', 'the re-cut of 8 Nov folds Stop into 008-record');
   assert.equal(r.code, 0, r.stdout);
-  assert.ok(!existsSync(join(repo, 'specs/010-brains')));
-  const dest = join(repo, r.json.archive);
-  assert.ok(r.json.archive.startsWith('.spex/archive/010-brains-'), r.json.archive);
-  assert.ok(existsSync(join(dest, 'spec/spec.md')) && existsSync(join(dest, 'runs/block-T01.json')) && existsSync(join(dest, 'review/010-1.findings.yaml')));
-  assert.ok(existsSync(join(repo, '.spex/review/007-1.findings.yaml')), "another step's review stays");
-  assert.ok(readFileSync(join(dest, 'DROPPED.md'), 'utf8').includes('- reason: the re-cut of 8 Nov folds Brains into 009-stop'));
-  assert.ok(r.json.findings.some((f) => f.code === 'DROP-DEPENDED' && f.message.startsWith('011-pages')), r.stdout);
-  assert.ok(r.json.findings.some((f) => f.code === 'DROP-ROWS'), r.stdout);
-  // the fixture's 007 has records; approved, they are the live contract
-  const req = join(repo, 'specs/007-csv-export/requirements.yaml');
-  writeFileSync(req, readFileSync(req, 'utf8').replace(/status: draft/g, 'status: approved'));
-  const live = spex(repo, 'drop', 'specs/007-csv-export', '--reason', 'no');
-  assert.equal(live.code, 6);
-  assert.ok(codes(live).includes('DROP-LIVE'));
-  assert.ok(existsSync(join(repo, 'specs/007-csv-export')));
+  assert.ok(!existsSync(join(repo, 'specs/009-stop')));
+  assert.equal(r.json.archives.length, 1);
+  const dest = join(repo, r.json.archives[0]);
+  assert.ok(r.json.archives[0].startsWith('.spex/archive/009-stop-'), r.json.archives[0]);
+  assert.ok(existsSync(join(dest, 'spec/spec.md')));
+  const dropped = readFileSync(join(dest, 'DROPPED.md'), 'utf8');
+  assert.ok(dropped.includes('- reason: the re-cut of 8 Nov folds Stop into 008-record') && dropped.includes('- it was: a note') && dropped.includes('- roadmap: r, step 2'), dropped);
+  assert.deepEqual(r.json.moves, [{ from: '010-brains', to: '009-brains' }, { from: '011-pages', to: '010-pages' }]);
+  // the folder names are the steps of the roadmap: the front matter and the coverage table name the new ones
+  assert.ok(readFileSync(specPath(repo, '010-pages'), 'utf8').startsWith('---\nroadmap: r\nstep: 4\ndepends_on: [009-brains]\n---\n# 010 Pages\n'), readFileSync(specPath(repo, '010-pages'), 'utf8').slice(0, 90));
+  assert.ok(readFileSync(file, 'utf8').includes('| docs/design.md#2.3 ↳ 2.3 Brains | 009-brains, 010-pages | |'), readFileSync(file, 'utf8'));
+  // the roadmap file still gives the deleted step a row: the scope must go somewhere, and the warning says so
+  const rows = r.json.findings.find((f) => f.code === 'DELETE-ROWS');
+  assert.ok(rows && rows.severity === 'warning' && rows.message.startsWith('specs/r.roadmap.md still gives 009-stop 1 coverage row(s)'), r.stdout);
+  assert.ok(readFileSync(file, 'utf8').includes('| docs/design.md#2.2 ↳ 2.2 Stop | 009-stop | |'), 'the row of the deleted step is the person\'s to change');
+  assert.deepEqual(spex(repo, 'roadmap', 'r').json.steps.map((s) => s.dir), ['specs/008-record', 'specs/009-brains', 'specs/010-pages']);
+  // both in one command: the step and the one that builds on it
+  r = spex(repo, 'delete', 'specs/009-brains', 'specs/010-pages', '--reason', 'no brains this year');
+  assert.equal(r.code, 0, r.stdout);
+  assert.deepEqual(r.json.deleted, ['specs/009-brains', 'specs/010-pages']);
+  assert.deepEqual(spex(repo, 'roadmap', 'r').json.steps.map((s) => s.dir), ['specs/008-record']);
 });

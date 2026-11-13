@@ -228,7 +228,7 @@ details > div { padding: 0 12px 10px; }
 <h1>spex 3.0 — the process</h1>
 <p class="lead">Four commands take an idea to merged code: <code>new</code>, <code>plan</code>, <code>implement</code>, <code>review</code>. Four more are for any time. <code>comment</code> takes your words about the spec that is open: a question, or what must change. <code>new-bug</code> puts the fix of a bug next in line. <code>delete</code> takes a spec that is not merged off the list. <code>status</code> prints where the work stopped. This page is one map of the process. Pick a case and watch its path.</p>
 
-<div class="status"><b>Status: the design is approved (2026-11-13), and the build has started.</b> Until the build is done, the code in this plugin is still spex 2.2 (14 commands). The skills, the script and <code>README.md</code> change to match this page. Section 10 lists every decision, and the four points that wait for later.</div>
+<div class="status"><b>Status: the design is approved (2026-11-13), and spex 3.0 is built.</b> The script, the ten skills, the ten agents and <code>README.md</code> match this page, and the tests of the script pass. No real spec has run through it yet: the first real run is the test of the skills. Section 10 lists every decision, what the build decided, and the points that wait for later.</div>
 
 <nav class="toc" aria-label="Sections">
   <a href="#picture">1 · One line</a>
@@ -361,7 +361,8 @@ What:     The columns are id, date, customer, email, total. Marked (you).
           T05 is new. TS01 is planned again. T01 and T02 stay done.
           No code is written.
 
-NEXT   /clear, then /spex:implement specs/007-csv-export
+NEXT   /clear
+       /spex:implement specs/007-csv-export
        Typing it approves the change.</code></pre>
 
 <h3>What changed, and why: <code>corrections.md</code></h3>
@@ -406,6 +407,21 @@ NEXT   /clear, then /spex:implement specs/007-csv-export
   <tr><td><code>delete</code>, for a spec with a worktree</td><td>Copies the folder of the spec out of the worktree to <code>.spex/archive/</code> in the main folder, with the code of the branch as one patch file. Then removes the worktree and the branch. Then takes the note off the base branch, and renumbers the later specs (case C10).</td><td>The main folder</td></tr>
 </table></div>
 <p><b>While a spec is open, the base branch can still change.</b> A teammate merges. Or you type <code>new</code>, <code>new-bug</code> or <code>delete</code>: they write notes and numbers on the base branch, in the main folder. The open spec does not see them until its close. So the close takes in the base branch first, and corrects the later notes after that.</p>
+<h3>The config lines for git</h3>
+<p>Four lines of <code>.spex/config.yaml</code> say how spex works with git. <code>/spex:init</code> writes them, from what it finds in the repo.</p>
+<pre><code>commit: false     # true: the script commits the notes of new, new-bug and delete on the base branch
+base: ""          # the branch a spec starts from and merges into. Empty: the branch of the main folder
+close:
+  cmd: gh pr create --fill &amp;&amp; gh pr merge --squash --delete-branch
+worktree:
+  setup: npm ci   # runs one time in a new worktree</code></pre>
+<div class="wrap"><table>
+  <tr><th><code>close.cmd</code></th><th>What the close does at “Merge”</th></tr>
+  <tr><td>A command</td><td>The script runs it in the worktree. It pushes, opens the request and merges it. It gets <code>SPEX_BRANCH</code>, <code>SPEX_BASE</code> and <code>SPEX_SPEC</code>.</td></tr>
+  <tr><td><code>local</code></td><td>For a repo with no forge: the script merges the branch into the base branch, in the main folder.</td></tr>
+  <tr><td>Empty</td><td>The run waits. You merge, then you type <code>review</code> again (case C20).</td></tr>
+</table></div>
+
 <h3>What the worktree test showed</h3>
 <p>Tested on 2026-11-13, in this repo, in a Claude Code session with the sandbox on: a branch and a worktree made with <code>git worktree add</code>, as the script will make them.</p>
 <div class="wrap"><table>
@@ -455,7 +471,8 @@ What:  One spec is enough: specs/007-csv-export.
        It holds every detail of your text.
        2 things are open. plan settles them.
 
-NEXT   /clear, then /spex:plan specs/007-csv-export</code></pre>
+NEXT   /clear
+       /spex:plan specs/007-csv-export</code></pre>
 <pre><code>specs/007-csv-export/        on the base branch
   source.md    your text, word for word
   spec.md      a note
@@ -470,7 +487,8 @@ Filled in (you did not say):
   · UTF-8 with a BOM, so Excel opens it right
 You answered: 1 · An agent decided: 2
 
-NEXT   /clear, then /spex:implement specs/007-csv-export
+NEXT   /clear
+       /spex:implement specs/007-csv-export
        Typing it approves the plan.</code></pre>
 <pre><code>spec.md            the full spec
 requirements.yaml  6 records
@@ -488,7 +506,8 @@ What:  The Orders page has an Export button.
 Round 1: 8 scripts green · 1 browser test pass
 Fixed on the way: nothing
 
-NEXT   /clear, then /spex:review specs/007-csv-export</code></pre>
+NEXT   /clear
+       /spex:review specs/007-csv-export</code></pre>
 <pre><code>status.yaml       implement, done
 tests/…           9 tests, green
 src/…             the code
@@ -532,7 +551,8 @@ Kept:   .spex/archive/005-restore-2026-11-13/
         code.patch: the code of the branch
 Moved:  006 → 005 · 007 → 006 · 008 → 007
 
-NEXT   /clear, then /spex:plan specs/005-delete-old-backups</code></pre>
+NEXT   /clear
+       /spex:plan specs/005-delete-old-backups</code></pre>
 <pre><code>.spex/archive/005-restore-…/  git ignores it
   DROPPED.md                  your reason
   code.patch                  only this brings the code back
@@ -582,7 +602,10 @@ source: source.md
 # 007 CSV export of orders
 
 ## Why / What / Not this            as in the note
-## From your idea                   the same 7 lines, each marked (you)
+## From your idea                   the same 7 lines, each marked (you), each with its record
+- Export button on the Orders page  ← source.md#L1 (you) → REQ-007-001
+- separator: semicolon              ← source.md#L5 (you) → REQ-007-002
+- … 5 more lines, the same way
 
 ## Success
 A user clicks Export and gets orders-2026-11-11.csv. Excel in Czech opens it
@@ -596,7 +619,7 @@ with 4 columns and the right letters (ž, č, ř).
 - D3 The total is written as 12,50 with a comma.             (you, question 1)
 ## Constraints (from the code)
 - The Orders page reads its rows from GET /api/orders, 100 rows a page.</code></pre>
-  <p class="small">Every decision says who made it. A line marked <b>(you)</b> is fixed for every agent after this.</p></div>
+  <p class="small">Every decision says who made it. A line marked <b>(you)</b> is fixed for every agent after this. Each line of yours ends with the record that makes it true, or with <code>→ no record: why</code>. The check “All linked?” reads these arrows, so no line of yours is lost between the note and the plan.</p></div>
 </details>
 <details>
   <summary>requirements.yaml · what must be true <span class="chip agent">analyst</span></summary>
@@ -604,7 +627,7 @@ with 4 columns and the right letters (ž, č, ř).
   - id: REQ-007-001
     text: When the user clicks Export, the Orders page shall download a file
           named orders-&lt;today&gt;.csv.
-    priority: 1
+    priority: must
     source: spec#from-your-idea
     acceptance:
       - id: AC-1
@@ -811,7 +834,7 @@ State:    closed: the script stamped the changed plan</code></pre>
 <h3>Decided on 2026-11-12</h3>
 <div class="wrap"><table>
   <tr><th>#</th><th>Question</th><th>Decision</th></tr>
-  <tr><td>2</td><td><code>new</code> commits the notes on the base branch. What if that branch is protected?</td><td><code>new</code> sends the notes through your merge command, as a small pull request.</td></tr>
+  <tr><td>2</td><td><code>new</code> commits the notes on the base branch. What if that branch is protected?</td><td><code>new</code> sends the notes through your merge command, as a small pull request. <b>Changed in the build:</b> the script pushes the notes. On a protected branch the push fails, and you send them as a small pull request. See “Decided in the build”.</td></tr>
   <tr><td>4</td><td>A fresh worktree has no installed packages and no <code>.env</code>.</td><td>One config line, <code>worktree.setup</code>, runs one time after the worktree is made.</td></tr>
   <tr><td>6</td><td>The environment contract: its keys, and the moments they run.</td><td><code>up</code>, <code>deploy</code>, <code>check</code>, <code>down</code> and <code>url</code>, at the moments of section 3. See case C8.</td></tr>
   <tr><td>9</td><td>In auto mode, does a big spec change still stop for you?</td><td>No. Auto means nobody is asked, in every command. The decider answers each question, and it picks for each finding of the review. Each digest lists its answers. The last reply of <code>review</code> lists them all, and the ones that changed a line of yours are on top. See case C7. Three things still stop for you, because they are not questions: a need that only you have (case C2), the limit of the fix loop (case C3), and a write to a real system with no undo, as in spex 2.2 (case C22).</td></tr>
@@ -857,6 +880,21 @@ State:    closed: the script stamped the changed plan</code></pre>
   <tr><td>47</td><td>A deferred finding had no reader.</td><td>The close reads it. A later note that fits gets it. With no later spec, the last reply lists it. Case A9.</td></tr>
   <tr><td>48</td><td>“The list” had no definition on disk.</td><td>Every spec in <code>specs/</code> that is not closed, by its number. A repo has one list. See section 5.</td></tr>
   <tr><td>49</td><td>“One spec at a time” is checked in one clone only. Two people can open two specs.</td><td>Not in the first version. Later, the check reads the branches <code>spex/*</code> of the remote. Not drawn.</td></tr>
+</table></div>
+
+<h3>Decided in the build, on 2026-11-13</h3>
+<p class="sub">The build met details that this page did not show. Each one got the smallest answer that keeps the rules above. Say no to any of them with one line.</p>
+<div class="wrap"><table>
+  <tr><th>What the build met</th><th>What it does</th><th>Why</th></tr>
+  <tr><td>A repo that merges with a command through a remote (a pull request, a squash)</td><td>With <code>commit: true</code> the script also pushes the notes of <code>new</code>, <code>new-bug</code> and <code>delete</code>. A start and the close refuse a base branch that is ahead of its remote. This changes point 2: on a protected branch the push fails, the reply says so, and you send the notes as a small pull request. The script does not open that request.</td><td>Tested: when the request of a spec carries the notes, a squash merge leaves the base branch here and on the remote with the same change in two commits, and no pull works.</td></tr>
+  <tr><td>A repo with no remote</td><td><code>close.cmd: local</code>: the script merges the branch in the main folder.</td><td>A test repo, or a project on one machine, has no forge.</td></tr>
+  <tr><td>You type <code>new</code> with “split it”</td><td>After your ok to the new list, the script deletes the one note (the archive keeps it), and <code>new</code> writes the notes of the split.</td><td>The page did not say what happens to the one note.</td></tr>
+  <tr><td>An idea given as plain text, split into many specs</td><td>No roadmap file. Each note says what it depends on, and the script checks that every line of your text is in a note. A roadmap file is written only for a design file with sections.</td><td>The roadmap file maps the sections of a design to specs. Plain text has none.</td></tr>
+  <tr><td>The close must drop or add a later note (case B3)</td><td>It does that as its last step, in the main folder, after the worktree is removed.</td><td><code>delete</code> and <code>new</code> change the base branch, and from a worktree no chat can write there.</td></tr>
+  <tr><td>A write with no undo (case C22), and the chat ends before you see the question</td><td>Only the word yes runs the write. <code>status</code> and the next start print the question again.</td><td>A command typed again is not a yes to a question you did not see.</td></tr>
+  <tr><td>The limit of fix rounds (case C3)</td><td>The script counts the rounds of one run. <code>implement</code> typed again starts at 1.</td><td>The case says: type it again for three more rounds.</td></tr>
+  <tr><td><code>plan</code> can ask on two screens</td><td>A conflict between a line of yours and the code is asked before the draft. The gap questions come after it. Each screen has every question that is known by then.</td><td>The draft needs your answer to the conflict.</td></tr>
+  <tr><td>A second repo of a spec (<code>repos</code> in the config)</td><td>Its path must be absolute, or start with <code>~/</code>. The check refuses a relative path.</td><td>From a worktree, <code>../other</code> is another folder.</td></tr>
 </table></div>
 
 </main>
@@ -973,7 +1011,7 @@ const NODES = [
   ['n_split', 'cmd', 3, 'act', 'Split it into specs', 'one spec, or many', 'It says the idea back in three sentences and sizes it. It shows the list: number, name, goal, what it depends on. On a second run it shows only the new lines, with the next numbers.'],
   ['n_many', 'script', 3, 'ask', 'One spec, or many?', 'counts the new lines', 'With one spec there is nothing to merge, split or reorder, so new does not stop. The reply names the spec. Type new again with “split it” if you do not agree.'],
   ['n_ok', 'you', 4, 'ask', 'The list is right?', 'say ok, or change it', 'You can merge, split, reorder or drop a line. It asks only about the split, never about the content. On a second run it shows only the new lines.'],
-  ['n_notes', 'cmd', 5, 'act', 'Write one note per spec', 'adds nothing, drops nothing', 'A note holds every detail you gave for that spec, one line each, with a link back to your text.'],
+  ['n_notes', 'cmd', 5, 'act', 'Write one note per spec', 'adds nothing, drops nothing', 'A note holds every detail you gave for that spec, one line each, with a link back to your text. An idea that is a design file with sections also gets a roadmap file: the order of the specs, and which spec covers which section. An idea that is plain text needs none: the notes say what each one depends on.'],
   ['n_cov', 'script', 6, 'ask', 'Every detail in a note?', '', 'The script fails when a part of your text is in no note and has no reason. At most 3 tries: then the run stops and names the part.'],
   ['n_rev', 'agent', 7, 'ask', 'Second read: all there?', 'the notes against your text', 'A second agent compares the notes with your text, word for word, so that one reader does not miss a detail. A detail that is lost goes back to the notes.'],
   ['n_commit', 'script', 8, 'act', 'Commit the notes', 'on the base branch', 'The notes are committed on the base branch. Every worktree starts with them. The script commits here only with commit: true in the config. Without it, the reply names the files, and you commit them.'],
@@ -1006,7 +1044,7 @@ const NODES = [
   ['i_tests', 'agent', 29, 'act', 'Write the tests', 'never reads the code', 'They write the test files from the test plan only.'],
   ['i_red', 'script', 30, 'ask', 'Is every new test red?', '', 'The code does not exist yet, so a new test must fail. A green one proves nothing.'],
   ['i_dev', 'agent', 31, 'act', 'Build a task', 'a fresh agent each time', 'One agent for one task. Tasks that write different files run together. A write to a real system with no undo is not done here: it waits for your yes.'],
-  ['i_undo', 'you', 31, 'act', 'Say yes or no', 'a write with no undo', 'A task must write to a real system, and no test covers the write: money, a mail to customers, data with no backup. No agent decides this, also not in auto mode. Yes: the developer does it. No: the task waits, and you say what you want with comment.'],
+  ['i_undo', 'you', 31, 'act', 'Say yes or no', 'a write with no undo', 'A task must write to a real system, and no test covers the write: money, a mail to customers, data with no backup. No agent decides this, also not in auto mode. Yes: the developer does it. Only the word yes runs the write: a command typed again without it shows the question again. No: the task waits, and you say what you want with comment.'],
   ['i_done', 'script', 32, 'ask', 'All tasks done?', 'done = its tests are green', 'The script runs the tests of the task. It says done, not the agent. A task that stays red after its developer is done goes to the decider.'],
   ['i_env', 'script', 33, 'act', 'Deploy to the environment', 'env.deploy, then env.check', 'Only when the config has an env key. spex knows no tool: the commands are scripts of your project. A failed deploy counts as a red test.'],
   ['i_all', 'script', 34, 'act', 'Run every test', 'on the final tree', 'All test scripts at once, on the tree that will be merged.'],
@@ -1187,11 +1225,11 @@ const DISK = [
   ['b_read', 'file', 'source.md'], ['b_shift', 'file', '006/ → 007/'], ['b_shift', 'file', 'roadmap.md: numbers', 30], ['b_note', 'file', '006/spec.md (a note)'], ['b_note', 'file', 'roadmap.md: + 1 line', 30], ['b_commit', 'st', 'the spec is a note'], ['b_commit', 'git', 'commit on the base', -30],
   ['d_copy', 'file', 'the folder → archive'], ['d_copy', 'file', '+ code.patch', 30], ['d_wt', 'git', '− worktree, − branch'],
   ['d_rm', 'file', 'the note → the archive'], ['d_rm', 'file', 'roadmap.md: − 1 line', 30], ['d_num', 'file', '008/ → 007/'], ['d_commit', 'git', 'commit on the base'],
-  ['n_read', 'file', 'source.md'], ['n_notes', 'file', 'spec.md (a note) × N', 0, 'all'], ['n_notes', 'file', 'roadmap.md, if many', 30, 'all'],
+  ['n_read', 'file', 'source.md'], ['n_notes', 'file', 'spec.md (a note) × N', 0, 'all'], ['n_notes', 'file', 'roadmap.md (a design)', 30, 'all'],
   ['n_notes', 'file', 'spec.md (a note)', 0, 'one'],
   ['n_notes', 'file', '001/spec.md (a note)', 0, 'many'], ['n_notes', 'file', '002/spec.md (a note)', 30, 'many'], ['n_notes', 'file', '003/spec.md (a note)', 60, 'many'],
-  ['n_notes', 'dots', '⋮', 84, 'many'], ['n_notes', 'file', 'roadmap.md', 110, 'many'],
-  ['n_notes', 'file', '009/spec.md (a note)', 0, 'again'], ['n_notes', 'file', 'roadmap.md: + 1 line', 30, 'again'], ['n_commit', 'st', 'the spec is a note'], ['n_commit', 'git', 'commit on the base', -30],
+  ['n_notes', 'dots', '⋮', 84, 'many'], ['n_notes', 'file', 'roadmap.md (a design)', 110, 'many'],
+  ['n_notes', 'file', '009/spec.md (a note)', 0, 'again'], ['n_notes', 'file', 'roadmap.md (a design)', 30, 'again'], ['n_commit', 'st', 'the spec is a note'], ['n_commit', 'git', 'commit on the base', -30],
   ['p_wt', 'git', 'branch + worktree'], ['p_size', 'file', 'corrections.md: size'], ['p_note', 'file', 'spec.md (the note)'], ['p_conflict', 'file', 'corrections.md: answer', 30],
   ['p_spec', 'file', 'spec.md (full)'], ['p_req', 'file', 'requirements.yaml'],
   ['p_tasks', 'file', 'tasks.yaml'], ['p_tests', 'file', 'tests.yaml'], ['p_digest', 'st', 'the spec is planned'], ['p_digest', 'git', 'commit on the branch', 27],

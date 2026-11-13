@@ -1,30 +1,37 @@
 // The spec in words (spec.md). Markdown is for people, so the rule reads only its shape: the sections
-// the next step needs are there and have words in them, the front matter a program flips (`status`)
-// and a roadmap step carries (`roadmap`, `step`, `depends_on`, `source`), and the sized open
-// questions. Everything else about the text is the person's business, a Mermaid diagram included.
+// the next step needs are there and have words in them, the front matter a spec of a roadmap carries
+// (`roadmap`, `step`, `depends_on`, `source`), and the sized open questions. Everything else about the
+// text is the person's business, a Mermaid diagram included.
+//
+// spec.md has no line for the state of the spec. status.yaml in the same folder holds it: a folder with
+// no status.yaml is a note, written by /spex:new; /spex:plan turns it into the full spec.
 
 import { join } from 'node:path';
 import { parse } from 'yaml';
 import { YAML_OPTS, fileExists, readText } from '../io.js';
 import { featureDirs, loadFeature, resolveFeatureDir } from '../specs.js';
+import { liveState, readState, stateWord } from '../state.js';
 import type { Feature, Finding } from '../types.js';
 
 export const SPEC_FILE = 'spec.md';
 
-/** The nine sections, in order. Each feeds a field that /spex:requirements fills. */
+/** The nine sections of a full spec, in order. Each feeds a field of the records that /spex:plan writes. */
 export const ALL_SECTIONS = ['Why', 'What', 'Not this', 'Who', 'Constraints', 'Success', 'Alternatives', 'Open questions', 'Decisions'];
 
 /** The four without which requirements.yaml cannot be written: goal, records, out_of_scope, measure. */
 export const REQUIRED_SECTIONS = ['Why', 'What', 'Not this', 'Success'];
 
-/** What a planned step must say before its turn comes: the goal and the boundary to its siblings. */
+/** What a note must say before its turn comes: the goal and the boundary to the other specs. */
 export const STUB_SECTIONS = ['Why', 'What', 'Not this'];
 
 /** What a step of a roadmap takes from the others and gives them: names, each with where it comes from. A stub must say both ("None." is an answer). */
 export const LINK_SECTIONS = ['Uses', 'Introduces'];
 
-/** The stub's fourth section: what its `source` sections say, so a person need not open the design to read the step. */
+/** A note's fourth section, for a design that is a file: what its `source` sections say, so a person need not open the design to read the spec. */
 export const DESIGN_SECTION = 'From the design';
+
+/** A note's fourth section, for an idea given as text: every detail of the person's text, one line each, with a link back to it. */
+export const IDEA_SECTION = 'From your idea';
 
 /** How big a hole is: a colored square, which a person finds in a scan. Big, medium, small read red, orange, yellow. */
 export const SIZE_MARKS = { big: '🟥', medium: '🟧', small: '🟨' } as const;
@@ -33,17 +40,8 @@ export type Size = keyof typeof SIZE_MARKS;
 /** The marks of v2.0 and before, a signal meter in dots. Specs written then still count. */
 const OLD_SIZE_MARKS: Record<Size, string> = { big: '●●●', medium: '●●○', small: '●○○' };
 
-/**
- * `planned`: a stub of a roadmap, written by /spex:new when it sized a big idea; `spex gate new` flips it to
- * `shaping` when every folder in its `depends_on` is built. `shaping`: /spex:new runs; `spex approve` flips it
- * to `ready`. A document without a status line is a person's own: `spex approve` reads it and sets `ready`.
- */
-export type SpecStatus = 'planned' | 'shaping' | 'ready';
-const STATUSES: readonly string[] = ['planned', 'shaping', 'ready'];
-
-/** The front matter of spec.md. Only `status` is flipped by a program; the rest is written once by `spex new`. */
+/** The front matter of spec.md, written once by `spex new`. No program flips a line of it. */
 export interface SpecMeta {
-  status: SpecStatus | null;
   /** The idea this step belongs to, a slug. Null for a spec that stands alone. */
   roadmap: string | null;
   step: number | null;
@@ -78,7 +76,7 @@ export function sectionBodies(text: string): Map<string, string> {
   return out;
 }
 
-const EMPTY_META: SpecMeta = { status: null, roadmap: null, step: null, depends_on: [], source: [] };
+const EMPTY_META: SpecMeta = { roadmap: null, step: null, depends_on: [], source: [] };
 
 /** A folder name a person may have typed as a number: `14` → `014`. */
 const asName = (v: unknown): string | null => (typeof v === 'string' ? v : typeof v === 'number' ? String(v).padStart(3, '0') : null);
@@ -97,17 +95,11 @@ export function specMeta(text: string): SpecMeta {
   const d = data as Record<string, unknown>;
   const list = (v: unknown): string[] => (Array.isArray(v) ? v.map(asName).filter((x): x is string => !!x) : asName(v) ? [asName(v)!] : []);
   return {
-    status: typeof d.status === 'string' && STATUSES.includes(d.status) ? (d.status as SpecStatus) : null,
     roadmap: typeof d.roadmap === 'string' ? d.roadmap : null,
     step: typeof d.step === 'number' && Number.isInteger(d.step) ? d.step : null,
     depends_on: list(d.depends_on),
     source: list(d.source),
   };
-}
-
-/** The `status:` line of the front matter, or null when the document has none. */
-export function specStatus(text: string): SpecStatus | null {
-  return specMeta(text).status;
 }
 
 /** The same text with one front matter key set, in the front matter it has or a new one. The value is written as given. */
@@ -118,11 +110,6 @@ export function withFrontMatter(text: string, key: string, value: string): strin
   const re = new RegExp(`^${key}:.*$`, 'm');
   const body = re.test(fm[1]) ? fm[1].replace(re, line) : `${fm[1]}\n${line}`;
   return text.replace(FRONT_MATTER, `---\n${body}\n---\n`);
-}
-
-/** The same text with `status:` set. */
-export function withSpecStatus(text: string, status: SpecStatus): string {
-  return withFrontMatter(text, 'status', status);
 }
 
 export interface OpenCounts {
@@ -170,7 +157,7 @@ export function resolveDependency(root: string, given: string): string | null {
   return featureDirs(root).includes(rel) ? rel : null;
 }
 
-/** Built: archived after the merge, so every record is `built` or `retired`. A folder with no records is not built. */
+/** Built: the close ran, so every record is `built` or `retired`. A folder with no records is not built. */
 export function isBuilt(root: string, dir: string): boolean {
   const f = loadFeature(root, dir);
   const reqs = f.requirements?.requirements ?? [];
@@ -194,9 +181,8 @@ export function waitsFor(root: string, meta: SpecMeta): { dir: string; state: st
       continue;
     }
     if (isBuilt(root, dir)) continue;
-    const m = specMetaOf(root, dir);
     const f = loadFeature(root, dir);
-    const state = f.tasks ? `${f.tasks.tasks.filter((t) => t.status === 'done').length}/${f.tasks.tasks.length} tasks done` : f.requirements ? 'records written' : (m?.status ?? 'a document');
+    const state = f.tasks ? `${f.tasks.tasks.filter((t) => t.status === 'done').length}/${f.tasks.tasks.length} tasks done` : stateWord(liveState(root, dir));
     out.push({ dir, state });
   }
   return out;
@@ -235,17 +221,15 @@ export function checkSpec(ctx: { root: string; feature: Feature }): Finding[] {
   const text = readText(join(ctx.root, doc.path));
   const sections = sectionBodies(text);
   const meta = specMeta(text);
-  const required = meta.status === 'planned' ? [...STUB_SECTIONS, ...LINK_SECTIONS] : REQUIRED_SECTIONS;
+  // A note: no phase has started. It holds the boundary and what the person gave; the full spec comes with plan.
+  const note = readState(ctx.root, ctx.feature.dir) === null && !ctx.feature.requirements;
+  const required = note ? [...STUB_SECTIONS, ...(meta.roadmap ? LINK_SECTIONS : [])] : REQUIRED_SECTIONS;
   const empty = required.filter((s) => !sections.get(s.toLowerCase()));
-  if (empty.length) findings.push({ severity: 'warning', code: 'SPEC-SECTIONS', message: `${doc.path} has nothing under: ${empty.join(', ')}`, path: doc.path, fix: meta.status === 'planned' ? 'A planned step says Why, What and Not this, so the steps around it know its boundary, and Uses and Introduces, so spex check can test its depends_on ("None." when there is nothing).' : 'Run /spex:new to fill them, or write them by hand. "Not this" is the boundary; "Success" is what the acceptance tests will measure.' });
-  if (meta.status === 'shaping') {
-    const open = openQuestions(sections);
-    findings.push({ severity: 'info', code: 'SPEC-SHAPING', message: `${doc.path} is still shaping: ${open.total ? `${openSummary(open)} open` : 'no open question'}`, path: doc.path, fix: `Continue with /spex:new ${ctx.feature.dir}. When the person says done, \`spex approve ${ctx.feature.dir}\` marks it ready.` });
-  }
-  // SPEC-OPEN-PICK: a step's Open question carries the best pick, or what settles it
-  if (meta.status === 'planned' || meta.status === 'shaping') {
+  if (empty.length) findings.push({ severity: 'warning', code: 'SPEC-SECTIONS', message: `${doc.path} has nothing under: ${empty.join(', ')}`, path: doc.path, fix: note ? 'A note says Why, What and Not this, so the specs around it know its boundary. A spec of a roadmap also says Uses and Introduces ("None." is an answer), so spex check can test its links.' : `The full spec needs Why, What, Not this and Success: the analyst writes them in /spex:plan ${ctx.feature.dir}.` });
+  // SPEC-OPEN-PICK: an Open question of a note carries the best pick, or what settles it
+  if (note) {
     const bare = openWithoutPick(sections);
-    if (bare.length) findings.push({ severity: 'warning', code: 'SPEC-OPEN-PICK', message: `${doc.path}: ${bare.length} Open question(s) with no pick: ${bare.slice(0, 3).map((q) => `"${q.slice(0, 80)}"`).join(', ')}`, path: doc.path, fix: 'End each with "Pick: <the best option> (why)", the design\'s pick when it has one, or with "Settles: <the measurement or the named person>". A wait for a board, a review or a PR is an Outside line of the roadmap. A statement is a Decision, not a question.' });
+    if (bare.length) findings.push({ severity: 'warning', code: 'SPEC-OPEN-PICK', message: `${doc.path}: ${bare.length} Open question(s) with no pick: ${bare.slice(0, 3).map((q) => `"${q.slice(0, 80)}"`).join(', ')}`, path: doc.path, fix: 'End each with "Pick: <the best option> (why)", the design\'s pick when it has one, or with "Settles: <what settles it>" (research, a later spec, a person outside). plan asks the person at most 3 of them.' });
   }
 
   // SPEC-DEPENDS: every dependency is a folder under specs/, not this one
@@ -264,11 +248,11 @@ export function checkSpec(ctx: { root: string; feature: Feature }): Finding[] {
     const file = src.split('#')[0];
     if (file && !fileExists(join(ctx.root, file)) && !fileExists(join(ctx.root, ctx.feature.dir, file))) findings.push({ severity: 'warning', code: 'SPEC-SOURCE', message: `${doc.path}: source ${file} does not exist`, path: doc.path, fix: 'Point source at the design document as it is now, or remove the entry.' });
   }
-  // SPEC-PLANNED (info): a stub, and what it waits for
-  if (meta.status === 'planned') {
+  // SPEC-NOTE (info): a note, and what it waits for
+  if (note) {
     const waits = waitsFor(ctx.root, meta);
-    const where = meta.roadmap ? `step ${meta.step ?? '?'} of ${meta.roadmap}` : 'a planned step';
-    findings.push({ severity: 'info', code: 'SPEC-PLANNED', message: `${doc.path} is ${where}: ${waits.length ? `waits for ${waits.map((w) => `${w.dir.split('/').pop()} (${w.state})`).join(', ')}` : 'its dependencies are built'}`, path: doc.path, fix: `When every folder in depends_on is built, /spex:new ${ctx.feature.dir} shapes it (spex gate new flips planned → shaping).` });
+    const where = meta.roadmap ? `step ${meta.step ?? '?'} of ${meta.roadmap}` : 'a note';
+    findings.push({ severity: 'info', code: 'SPEC-NOTE', message: `${doc.path} is ${where}: ${waits.length ? `waits for ${waits.map((w) => `${w.dir.split('/').pop()} (${w.state})`).join(', ')}` : 'nothing it depends on is open'}`, path: doc.path, fix: `/spex:plan ${ctx.feature.dir} writes the full spec when every spec before it is closed.` });
   }
   return findings;
 }

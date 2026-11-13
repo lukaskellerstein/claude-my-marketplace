@@ -14,6 +14,7 @@ import { readText } from '../io.js';
 import { roadmapSteps } from '../roadmap.js';
 import { STEP_NAME } from '../roadmapfile.js';
 import { featureDirs, loadFeature } from '../specs.js';
+import { readState } from '../state.js';
 import type { Config, Feature, Finding } from '../types.js';
 import { DESIGN_SECTION, resolveDependency, sectionBodies, specDocPath, specMeta, specMetaOf } from './spec.js';
 
@@ -120,14 +121,14 @@ export function checkLinks(ctx: { root: string; config: Config; feature: Feature
   const cap = ctx.config.limits.step_introduces;
   if (mine.length > cap) findings.push({ severity: 'warning', code: 'SPEC-SIZE', message: `introduces ${mine.length} names, over limits.step_introduces (${cap})`, path: doc.path, fix: 'Split the step where its names fall into two groups, or say under Decisions why it stays one.' });
 
-  // TAG: a planned step says, per design bullet, whether it is new, built already, or a change to what is built
-  if (meta.status === 'planned') {
+  // TAG: a note says, per design bullet, whether it is new, built already, or a change to what is built
+  if (readState(ctx.root, ctx.feature.dir) === null && !ctx.feature.requirements) {
     const untagged = items(sections.get(DESIGN_SECTION.toLowerCase())).filter((b) => !TAG.test(b));
     if (untagged.length) findings.push({ severity: 'warning', code: 'SPEC-TAG', message: `${untagged.length} bullet(s) under ${DESIGN_SECTION} say neither [new], [built …] nor [changes …]`, path: doc.path, fix: 'End each bullet with [new], [built: spec 24] or [changes: spec 21], from the code and the status the repo records.' });
   }
 
   // STEP-REF: a step is named by its folder, which a re-cut cannot give to another step
-  const body = text.replace(/^---\n[\s\S]*?\n---\n?/, '').replace(/^> Planned: .*$/m, '').replace(/<!--[\s\S]*?-->/g, '');
+  const body = text.replace(/^---\n[\s\S]*?\n---\n?/, '').replace(/^> (?:Planned|A note): .*$/m, '').replace(/<!--[\s\S]*?-->/g, '');
   const bare = [...new Set([...body.matchAll(/\bsteps? (\d{3})\b/gi)].map((m) => m[1]))];
   if (bare.length) findings.push({ severity: 'warning', code: 'SPEC-STEPREF', message: `names step(s) by number only: ${bare.join(', ')}`, path: doc.path, fix: 'Write the folder name (041-the-weekly-cut-onto-staging): a re-cut of the roadmap renumbers steps, a folder name stays true or fails this check.' });
   const folders = new Set(featureDirs(ctx.root).map((d) => d.split('/').pop()!));

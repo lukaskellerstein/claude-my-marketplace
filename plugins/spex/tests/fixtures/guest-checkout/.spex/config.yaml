@@ -1,5 +1,5 @@
 # nex FEAT-142 converted to the spex format. The Makefile targets are nex's; this fixture is for check.
-format: 2
+format: 3
 acceptance_dir: tests/acceptance
 acceptance_cmd: make test-acceptance FEATURE=FEAT-142 REQ="{ids}"
 fast_checks: [make lint]

@@ -16,7 +16,7 @@ export function verify(root: string, dir: string): CmdResult {
   const feature = loadFeature(root, resolveFeatureDir(root, dir));
   findings.push(...feature.errors);
   if (findings.some((f) => f.severity === 'error')) return { ok: false, findings, exit: 4, text: '' };
-  if (!feature.tasks || !feature.requirements || !feature.tests) return { ok: false, findings: [{ severity: 'error', code: 'SPEC-MISSING', message: `${feature.dir} needs requirements.yaml, tasks.yaml and tests.yaml`, fix: 'Run /spex:tasks first; the test analyst writes tests.yaml.' }], exit: 4, text: '' };
+  if (!feature.tasks || !feature.requirements || !feature.tests) return { ok: false, findings: [{ severity: 'error', code: 'SPEC-MISSING', message: `${feature.dir} needs requirements.yaml, tasks.yaml and tests.yaml`, fix: 'Run /spex:plan first; the test analyst writes tests.yaml.' }], exit: 4, text: '' };
   if (!isGitRepo(root)) return { ok: false, findings: [{ severity: 'error', code: 'GIT-REQUIRED', message: 'verify needs a git repository to identify the tree', fix: 'Run inside the repository.' }], exit: 2, text: '' };
   const v = verifyFeature(root, config, feature);
   const e = v.evidence;

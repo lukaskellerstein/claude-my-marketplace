@@ -1,5 +1,5 @@
 # The example repo from the README, with a real (tiny) acceptance runner so run/done can be tested.
-format: 2
+format: 3
 acceptance_dir: tests/acceptance
 acceptance_cmd: node --test --test-name-pattern="{ids}" "tests/acceptance/**/*.test.mjs"
 fast_checks: []
