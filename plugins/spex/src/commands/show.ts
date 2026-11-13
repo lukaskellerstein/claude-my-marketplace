@@ -328,6 +328,19 @@ export function showVerify(root: string, dir: string): ShowResult {
   return { ok: true, text: lines.join('\n'), findings, exit: 0, data: { evidence: v, verify_rounds: config.verify_rounds } };
 }
 
+/** Every `spex paths` change of a feature, from .spex/runs/<feature>/paths-<task>.json, oldest first per task. */
+function pathChanges(root: string, featureId: string): { task: string; added: string[]; reason: string }[] {
+  const dir = join(root, '.spex', 'runs', featureId);
+  if (!isDir(dir)) return [];
+  return readdirSync(dir)
+    .filter((f) => /^paths-.+\.json$/.test(f))
+    .sort()
+    .flatMap((f) => {
+      const rec = JSON.parse(readText(join(dir, f))) as { task: string; changes?: { added: string[]; reason: string }[] };
+      return (rec.changes ?? []).map((c) => ({ task: rec.task, added: c.added, reason: c.reason }));
+    });
+}
+
 export function showReview(root: string, dir: string, opts: { task?: string; base?: string }): ShowResult {
   const { feature, config, findings } = load(root, dir);
   if (findings.some((f) => f.severity === 'error')) return fail(findings);
@@ -377,6 +390,9 @@ export function showReview(root: string, dir: string, opts: { task?: string; bas
   const b = feature.tasks.boundaries;
   if (b?.always?.length || b?.never?.length) lines.push('', '## boundaries', ...(b.always ?? []).map((a) => `- always: ${a}`), ...(b.never ?? []).map((n) => `- never: ${n}`));
   if (feature.tasks.deferred?.length) lines.push('', '## deferred', ...feature.tasks.deferred.map((d) => `- ${d.finding} — ${d.why} (${d.by})`));
+  // spex paths keeps a person's approval of the plan, so the person reads each widening here, with the decider's why.
+  const widened = pathChanges(root, feature.requirements.feature).filter((c) => !task || c.task === task.id);
+  if (widened.length) lines.push('', '## paths widened in develop (a decider\'s verdict; name each in the reply)', ...widened.map((c) => `- ${c.task} + ${c.added.join(', ')} — ${c.reason}`));
   // Round 2 and later is a check, not a new review: is each accepted fix in? Only a P1 is a new finding.
   const fixTasks = feature.tasks.tasks.filter((t) => t.review);
   const check = !task && round > 1 && fixTasks.length > 0;

@@ -66,8 +66,8 @@ person knows (a date, an account) is a `You:` line, never a pick.
    roadmap file and the design files. Apply each finding to its stub (a `tag` becomes an Open
    question) or its row, or answer it under Decisions; one only the person settles is a question
    of reply 2. Then step 3 again.
-5. Reply 2: `✅ ROADMAP WRITTEN`, the counts, what changed since the table. No question is open, so
-   the answer line says what ok does: `ok starts round 1 of <first step's folder>`.
+5. Reply 2: `✅ ROADMAP WRITTEN`, the counts, what changed since the table. No question is open: NEXT
+   is `SPEX next <first step's folder> --asked 0`: the command of its round 1.
 
 ## A stub
 

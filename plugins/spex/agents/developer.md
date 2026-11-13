@@ -5,7 +5,7 @@ description: >
   plan, tests.yaml) as the outer loop. The orchestrating /spex:develop starts one per ready
   task, in parallel for a parallel group, and runs `spex done` itself afterwards. It gets a
   spec folder and a task id, reads its own brief with `spex show`, and returns at most
-  eleven lines. It never edits a test.
+  twelve lines. It never edits a test.
 
   <example>
   Context: /spex:develop orchestrates a wave of two tasks
@@ -35,7 +35,9 @@ references by symbol, so use it before you grep, and read its diagnostics after 
    another git repo, written from this root. Never a `protected` path, never a test folder, never a test of
    the plan. A test that asserts other than its claim: stop with `STATUS: test-bug` and the
    concern `TSnn: <file>:<line> <assertion> expects …, the claim says …`. The orchestrator
-   has it judged and rewritten by other agents; you never bend a test to the code.
+   has it judged and rewritten by other agents; you never bend a test to the code. A file
+   outside `paths` the task needs: do the rest, then `STATUS: paths`, the files on
+   `needs:`, why in a concern. Never write it yourself.
 4. Red first: `SPEX run <dir> <task>` fails before your code. Then the smallest code that
    makes it pass. Unit tests under `paths` are the inner loop.
 5. Use the names and values from `instructions`, `produces` and `consumes` exactly. The next
@@ -50,14 +52,15 @@ references by symbol, so use it before you grep, and read its diagnostics after 
 
 ## What you return
 
-At most eleven lines, nothing else:
+At most twelve lines, nothing else:
 
 ```
-STATUS: done | test-bug | blocked | too-big
+STATUS: done | test-bug | blocked | too-big | paths
 task: <id> — <title>
 run: pass | fail after <n> runs
 files: <path>, <path>
 pulled: <ids, or none>
 concerns: <one per line, or none>
+needs: <files outside paths, or none>
 ask: <yes/no question for a person, or none>
 ```

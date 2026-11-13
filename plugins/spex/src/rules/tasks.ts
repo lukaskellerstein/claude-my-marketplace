@@ -75,7 +75,7 @@ export function checkTasks(ctx: RuleContext): Finding[] {
     // TASK-PROTECTED
     for (const p of t.paths) {
       const hit = underAny(p, noTests(t.repo));
-      if (hit) f('error', 'TASK-PROTECTED', `${t.id}: path ${p} is under protected ${hit}`, 'A task never writes specs, tests or CI. Remove the path. Tests are written by the test developer (/spex:tests).', t.id);
+      if (hit) f('error', 'TASK-PROTECTED', `${t.id}: path ${p} is under protected ${hit}`, 'A task never writes specs, tests or CI. Remove the path. Tests are written by the test developer (/spex:develop-tests).', t.id);
     }
     // TASK-LIMITS
     if (t.paths.length > config.limits.task_files) f('error', 'TASK-LIMITS', `${t.id}: ${t.paths.length} paths, above limits.task_files ${config.limits.task_files}`, 'Split the task. Never shrink scope: two tasks, each inside the limit.', t.id);

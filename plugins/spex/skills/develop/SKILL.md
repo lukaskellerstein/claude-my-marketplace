@@ -2,12 +2,12 @@
 name: develop
 description: Build spex tasks — one task here, or, given only the spec folder, every ready task through fresh developer subagents, wave by wave, with spex done (the task's own tests green) as the only completion. A wrong test is judged by a decider and rewritten by a test-developer subagent, never by the developer or the user. Use when the user says "develop T01", "spex develop", "implement", "build everything", or when a NEXT block names /spex:develop.
 disable-model-invocation: true
-allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Read(${CLAUDE_PLUGIN_ROOT}/reply.md), Read(${CLAUDE_PLUGIN_ROOT}/skills/*/SKILL.md), Agent
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Read(${CLAUDE_PLUGIN_ROOT}/reply.md), Read(${CLAUDE_PLUGIN_ROOT}/skills/*/*.md), Agent
 ---
 
 # spex develop
 
-`SPEX` = `${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs` (it runs as it is), from the repo root.
+`SPEX` = `${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs`, from the repo root.
 
 Arguments: `<dir> <task>` builds one task here. `<dir>` alone orchestrates every ready task
 through subagents until none is ready.
@@ -18,13 +18,13 @@ through subagents until none is ready.
    first. A block with `--ask`: this run is the yes. Then `SPEX gate develop <dir> <task>`
    (tests exist, `needs` met, tests red). Refused: reply `⛔ NOT STARTED` and stop. Never
    work around a gate.
-2. `SPEX show <dir> <task>` is your spec: the task, its tests, records, boundaries,
-   decisions and design slice. Read the files under `context`, and only
+2. `SPEX show <dir> <task>` is your spec. Read the files under `context`, and only
    those. Pull more by id (`SPEX show <dir> REQ-…`, `--design`, `--decisions`), named in
    the report.
 3. Write only inside `paths`, as the slice prints them. Never a `protected` path, never a test folder, never
    `tests.yaml`. A test that asserts other than its claim: do not fix it or code around it;
-   do **A wrong test** below, then step 7.
+   do **A wrong test** below, then step 7. A file outside `paths`: read
+   `${CLAUDE_PLUGIN_ROOT}/skills/develop/paths.md` and do it.
 4. Red first: the tests fail before the code. Write the smallest code that makes them pass,
    with the names and values the plan gives (`instructions`, `produces`, `consumes`).
 5. Too big for `paths` and `limits`: say how to split it, reply `✂️ TOO BIG`, stop. Never
@@ -43,17 +43,18 @@ Your context holds the task list and results, never the code.
 
 1. `SPEX next <dir> --all`. The `ready:` line lists the waves: tasks joined with `+` write
    different files and run together; the others one by one.
-   If the stage is not `develop`, print the block and stop.
+   If the stage is not `develop`, print the block and stop. A blocked task that asks
+   for a file or a test: `paths.md`, its last part.
 2. For one wave, start one `spex:developer` subagent per task, all in one message, and say
    so in one line first: `Develop: T03 + T04 → 2 agents`. The brief is one line:
    `<dir> <task>. Build it; the orchestrator runs spex done.` Nothing else: it reads its
    spec with `spex show`.
 3. When they return: for each `STATUS: done`, `SPEX done <dir> <task>`. A fail means not
    done, whatever the report said: `SPEX block <dir> <task> --reason "<failing command>"`.
-   For `test-bug`, do **A wrong test**. For `blocked` or `too-big`, `SPEX block` with the
-   subagent's reason, and its `ask:` line as `--ask`. One exception, `blocked` by
-   `RUN-GREEN` at the gate: one `spex:decider` says whether the code already does what the
-   task's claims say. Yes: `SPEX done <dir> <task>`. No: **A wrong test** from its step 2.
+   For `test-bug`, do **A wrong test**; for `paths`, `paths.md`. For `blocked` or
+   `too-big`, `SPEX block` with the subagent's reason, its `ask:` as `--ask` (no-undo only). One
+   exception, `blocked` by `RUN-GREEN` at the gate: one `spex:decider` says whether the
+   code already does what the task's claims say. Yes: `SPEX done <dir> <task>`. No: **A wrong test** from its step 2.
    Never ask the user.
 4. Back to step 1 until `next` says no task is ready. A blocked task stops only itself.
 5. `SPEX report <dir> develop --status <done|concerns> --summary "…"`, one `--concern`

@@ -105,7 +105,7 @@ function scan(root: string): Scan {
     notes.push('cargo filters by one substring; {ids_k} may need a hand edit.');
   }
   if (!acceptance_cmd) notes.push('No test runner found. Set acceptance_cmd by hand: the command that runs the acceptance tests whose names match {ids}.');
-  if (!isDir(join(root, acceptance_dir))) notes.push(`${acceptance_dir} does not exist yet; /spex:tests creates it.`);
+  if (!isDir(join(root, acceptance_dir))) notes.push(`${acceptance_dir} does not exist yet; /spex:develop-tests creates it.`);
   return { runner, acceptance_dir, acceptance_cmd, playwright, fast_checks, source_dirs: source_dirs.length ? source_dirs : ['src'], notes };
 }
 

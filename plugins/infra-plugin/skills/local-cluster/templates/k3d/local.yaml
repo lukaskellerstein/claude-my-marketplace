@@ -1,0 +1,28 @@
+# What exists only on the laptop: the namespace and the way in.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: myapp
+---
+# Traefik (built into K3s) sends http://myapp.localhost:<port> to the Service.
+# One host name per app: api.myapp.localhost, admin.myapp.localhost, and so on. Each name
+# also goes into HOSTS in env.sh, so check.sh calls it.
+# The port is not here: an Ingress lives inside the cluster and knows port 80 only. The
+# port of this machine is in cluster.yaml.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: myapp
+  namespace: myapp
+spec:
+  rules:
+    - host: myapp.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: myapp        # the Service of the app, in this namespace
+                port:
+                  number: 80

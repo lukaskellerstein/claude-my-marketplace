@@ -29,18 +29,28 @@ export function loadFindings(root: string, featureId: string, round: number): { 
   if (!fileExists(join(root, path))) return { findings: [], path };
   const { data, finding } = loadYaml(join(root, path), 'REVIEW-YAML');
   if (finding) return { findings: [finding], path };
-  const errors = validate('findings', data).map((e): Finding => ({ severity: 'error', code: 'REVIEW-SCHEMA', message: e, path, fix: 'Match the findings file to schemas/findings.schema.json: id, severity, title, file, when, effect, fix, pick.' }));
+  const errors = validate('findings', data).map((e): Finding => ({ severity: 'error', code: 'REVIEW-SCHEMA', message: e, path, fix: 'The reviewer repairs the findings file to schemas/findings.schema.json: every finding has id, severity, title, file and pick; a P1, P2 or P3 has when and effect; a fix pick has fix, done_when and paths.' }));
   return { file: errors.length ? undefined : (data as FindingsFile), findings: errors, path };
 }
 
 /** The newest findings file of the feature, when no person has answered it yet. */
 export function pendingFindings(root: string, featureId: string): { round: number; path: string; file: FindingsFile } | null {
+  const p = pendingRound(root, featureId);
+  return p && p.file ? { round: p.round, path: p.path, file: p.file } : null;
+}
+
+/**
+ * The newest round when it waits for an answer, or is broken. A findings file that fails its schema is a round the
+ * reviewer wrote and must repair: read as "no round", it sent the person back to a fresh review of every task.
+ */
+export function pendingRound(root: string, featureId: string): { round: number; path: string; file?: FindingsFile; errors: Finding[] } | null {
   const rounds = findingsRounds(root, featureId);
   if (!rounds.length) return null;
   const round = rounds[rounds.length - 1];
-  const { file, path } = loadFindings(root, featureId, round);
-  if (!file || file.accepted) return null;
-  return { round, path, file };
+  const { file, findings, path } = loadFindings(root, featureId, round);
+  if (!file) return findings.length ? { round, path, errors: findings } : null;
+  if (file.accepted) return null;
+  return { round, path, file, errors: [] };
 }
 
 /**

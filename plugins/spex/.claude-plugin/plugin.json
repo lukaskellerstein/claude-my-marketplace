@@ -29,9 +29,9 @@
     "./skills/clarify",
     "./skills/research",
     "./skills/tasks",
-    "./skills/tests",
+    "./skills/develop-tests",
     "./skills/develop",
-    "./skills/verify",
+    "./skills/run-tests",
     "./skills/review",
     "./skills/fix",
     "./skills/ship"

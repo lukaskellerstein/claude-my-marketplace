@@ -5,7 +5,7 @@ description: >
   names, the stub, what the steps before it decided, the code a question points at, and the
   facts researchers brought back. Returns one verdict per question with its evidence and a
   confidence, or what it still needs. /spex:new and /spex:clarify start one per step in auto
-  mode; /spex:develop and /spex:verify start one per failing test: test, code or spec?
+  mode; /spex:develop and /spex:run-tests start one per failing test: test, code or spec?
 
   <example>
   Context: /spex:new on a planned step, auto mode on

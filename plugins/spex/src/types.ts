@@ -131,12 +131,12 @@ export interface ReviewFinding {
   title: string;
   file: string;
   line?: number;
-  /** The failure scenario: the state and the input. It becomes the red test. */
-  when: string;
-  /** What goes wrong, as a person sees it. */
-  effect: string;
-  /** The proposed fix: what and where, no code. It becomes the task's instructions. */
-  fix: string;
+  /** The failure scenario: the state and the input. It becomes the red test. Needed for P1–P3 and a fix pick. */
+  when?: string;
+  /** What goes wrong, as a person sees it. Needed for P1–P3 and a fix pick. */
+  effect?: string;
+  /** The proposed fix: what and where, no code. It becomes the task's instructions. Needed for a fix pick. */
+  fix?: string;
   /** The claim the test proves once the fix is in. Needed for a fix pick. */
   done_when?: string;
   requirements?: string[];

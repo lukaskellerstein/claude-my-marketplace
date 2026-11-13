@@ -1,0 +1,9 @@
+# What deploy.sh applies: kubectl apply -k k8s/local
+# kustomize reads only the files listed under resources, so cluster.yaml and the scripts in
+# this folder are not part of it.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: myapp
+resources:
+  - local.yaml          # what exists only on the laptop: the namespace and the Ingress
+  # - ../base           # the manifests every environment shares, when the repo has them

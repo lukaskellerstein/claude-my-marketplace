@@ -12,6 +12,11 @@ import { SPEX, codes, gitIn, makeRepo, spex, spexText } from './helpers.mjs';
 const DIR = 'specs/007-csv-export';
 const status = (repo, id) => parse(readFileSync(join(repo, DIR, 'tasks.yaml'), 'utf8'), { schema: 'core' }).tasks.find((t) => t.id === id).status;
 const reqStatus = (repo, id) => parse(readFileSync(join(repo, DIR, 'requirements.yaml'), 'utf8'), { schema: 'core' }).requirements.find((r) => r.id === id).status;
+// Drop the tasks.yaml approval, so the plan waits for a person on its own (a plan changed after gate 1).
+const unapprovePlan = (repo) => {
+  const p = join(repo, DIR, 'tasks.yaml');
+  writeFileSync(p, readFileSync(p, 'utf8').replace(/approvals:\n  tasks: \S+\n/, ''));
+};
 const reviewDone = (repo) => {
   mkdirSync(join(repo, '.spex/runs/007'), { recursive: true });
   writeFileSync(join(repo, '.spex/runs/007/review.json'), JSON.stringify({ status: 'done', stage: 'review', task: null, concerns: [], questions: [] }));
@@ -25,14 +30,19 @@ test('the whole lifecycle on the README example', () => {
   assert.equal(r.code, 6);
   assert.ok(codes(r).includes('GATE-APPROVED'));
 
-  // approve flips every draft record, stamps the proof plan, and keeps the file's comments and layout
+  // approve flips every draft record, stamps the proof plan, and keeps the file's comments and layout.
+  // The fixture's tasks.yaml waits too (as after a clarify that changed both): the NEXT block names all three
+  // files, and the one approve takes the plan as well. Dex 017: two approves in a row read as the same click twice.
   r = spex(repo, 'next', DIR);
   assert.equal(r.json.stage, 'approve-requirements');
-  assert.ok(r.json.text.includes('read specs/007-csv-export/requirements.yaml and specs/007-csv-export/tests.yaml'), r.json.text);
+  assert.ok(r.json.text.includes('gate 1 and the plan: read specs/007-csv-export/requirements.yaml, specs/007-csv-export/tasks.yaml and specs/007-csv-export/tests.yaml, then one approve takes all three'), r.json.text);
   r = spex(repo, 'approve', DIR);
   assert.equal(r.code, 0, r.stdout);
   assert.equal(r.json.approved, 2);
   assert.equal(r.json.tests, 2);
+  assert.deepEqual(r.json.also, ['tasks']);
+  assert.ok(r.json.text.includes('specs/007-csv-export/tasks.yaml (2 task(s)) approved as read'), r.json.text);
+  assert.notEqual(spex(repo, 'next', DIR).json.stage, 'approve-tasks', 'nothing asks for a second approve');
   assert.equal(reqStatus(repo, 'REQ-007-001'), 'approved');
   assert.ok(readFileSync(join(repo, DIR, 'requirements.yaml'), 'utf8').includes('decision: csv-stringify 6.x, because'), 'layout kept');
   assert.ok(readFileSync(join(repo, DIR, 'tests.yaml'), 'utf8').includes('approvals:\n  tests: '), 'the proof plan carries the hash');
@@ -51,10 +61,11 @@ test('the whole lifecycle on the README example', () => {
   assert.deepEqual(r.json.uncovered, []);
   assert.deepEqual(r.json.untested, []);
 
-  // tasks.yaml waits for a person (approvals: [tasks] by default): next says so, the tests and develop gates refuse
+  // a plan that waits on its own (approvals: [tasks] by default): next names the stage, the tests and develop gates refuse
+  unapprovePlan(repo);
   r = spex(repo, 'next', DIR);
   assert.equal(r.json.stage, 'approve-tasks');
-  assert.ok(r.json.text.startsWith(`${'─'.repeat(40)}\nNEXT   /clear\n       /spex:approve specs/007-csv-export\n`), r.json.text);
+  assert.ok(r.json.text.startsWith(`${'─'.repeat(40)}\nNEXT   /clear\n       /spex:approve specs/007-csv-export tasks\n`), r.json.text);
   // approve asks no question, so auto changes nothing here and the block does not mention it
   assert.ok(!r.json.text.includes('auto:'), r.json.text);
   assert.ok(codes(spex(repo, 'gate', 'tests', DIR, 'TS01')).includes('GATE-TASKS-APPROVED'));
@@ -141,7 +152,7 @@ test('the whole lifecycle on the README example', () => {
   // every task done: verify is next, and review waits for it
   r = spex(repo, 'next', DIR);
   assert.equal(r.json.stage, 'verify', r.stdout);
-  assert.equal(r.json.command, `/spex:verify ${DIR}`);
+  assert.equal(r.json.command, `/spex:run-tests ${DIR}`);
   r = spex(repo, 'gate', 'review', DIR);
   assert.equal(r.code, 6);
   assert.ok(codes(r).includes('GATE-VERIFY'), codes(r).join(','));
@@ -283,6 +294,69 @@ test('block writes the status and a reason file; next hands the feature to a per
   assert.equal(spex(repo, 'unblock', DIR, 'T09').code, 2);
 });
 
+test('paths widens a task under the check rules, keeps why and a person\'s approval, and review shows it; a protected path is undone', () => {
+  const repo = makeRepo('csv-export');
+  spex(repo, 'approve', DIR); // the records
+  unapprovePlan(repo);
+  // a plan nobody approved yet still waits for the person after a widening: no edit rides through paths
+  let r = spex(repo, 'paths', DIR, 'T01', '--add', 'src/store/format.ts', '--reason', 'decider: list.ts formats through format.ts');
+  assert.equal(r.code, 0, r.stdout);
+  assert.equal(r.json.approval_due, true);
+  assert.equal(r.json.approval_kept, false);
+  assert.ok(r.json.text.includes(`/spex:approve ${DIR}`), r.json.text);
+  assert.equal(spex(repo, 'next', DIR).json.stage, 'approve-tasks');
+  assert.equal(JSON.parse(readFileSync(join(repo, '.spex/runs/007/paths-T01.json'), 'utf8')).changes[0].approval, 'due');
+});
+
+test('paths: an approved plan stays approved, the record says why, and review shows it; a protected path is undone', () => {
+  const repo = makeRepo('csv-export');
+  spex(repo, 'approve', DIR); // the records
+  spex(repo, 'approve', DIR); // tasks.yaml
+  const pathsOf = (id) => parse(readFileSync(join(repo, DIR, 'tasks.yaml'), 'utf8'), { schema: 'core' }).tasks.find((t) => t.id === id).paths;
+  const before = readFileSync(join(repo, DIR, 'tasks.yaml'), 'utf8');
+  // a protected path: refused, and the file is as it was
+  let r = spex(repo, 'paths', DIR, 'T01', '--add', 'src/cli/flags.ts', 'tests/acceptance/export.test.ts', '--reason', 'the test is wrong');
+  assert.equal(r.code, 6, r.stdout);
+  assert.ok(codes(r).includes('TASK-PROTECTED'), r.stdout);
+  assert.equal(readFileSync(join(repo, DIR, 'tasks.yaml'), 'utf8'), before, 'a refused change is undone');
+  // no reason, or nothing new: refused
+  assert.ok(codes(spex(repo, 'paths', DIR, 'T01', '--add', 'src/store/format.ts')).includes('PATHS-REASON'));
+  assert.ok(codes(spex(repo, 'paths', DIR, 'T01', '--add', 'src/cli/index.ts', '--reason', 'x')).includes('PATHS-NONE'));
+  assert.equal(spex(repo, 'paths', DIR, 'T09', '--add', 'a.ts', '--reason', 'x').code, 2);
+  // dex 017: a path after the task id is refused, never dropped
+  r = spex(repo, 'paths', DIR, 'T01', 'src/store/format.ts', '--add', 'src/cli/help.ts', '--reason', 'x');
+  assert.equal(r.code, 2, r.stdout);
+  assert.equal(readFileSync(join(repo, DIR, 'tasks.yaml'), 'utf8'), before, 'nothing joined');
+  // a yes from the decider: every path after one --add joins, the record says why, and the person's approval stays
+  assert.equal(spex(repo, 'gate', 'develop', DIR, 'T01').code, 0);
+  r = spex(repo, 'paths', DIR, 'T01', '--add', 'src/store/format.ts', 'src/cli/help.ts', '--reason', 'decider: list.ts formats through format.ts, so the CSV header lives there');
+  assert.equal(r.code, 0, r.stdout);
+  assert.deepEqual(r.json.added, ['src/store/format.ts', 'src/cli/help.ts']);
+  assert.equal(r.json.approval_due, false);
+  assert.equal(r.json.approval_kept, true);
+  assert.ok(r.json.text.includes('/spex:review shows the change'), r.json.text);
+  assert.deepEqual(pathsOf('T01').slice(-2), ['src/store/format.ts', 'src/cli/help.ts']);
+  const record = JSON.parse(readFileSync(join(repo, '.spex/runs/007/paths-T01.json'), 'utf8'));
+  assert.deepEqual(record.changes[0].added, ['src/store/format.ts', 'src/cli/help.ts']);
+  assert.ok(record.changes[0].reason.startsWith('decider:'));
+  assert.equal(record.changes[0].approval, 'kept');
+  assert.notEqual(spex(repo, 'next', DIR).json.stage, 'approve-tasks');
+  assert.equal(spex(repo, 'gate', 'develop', DIR, 'T01').code, 0, 'the widened plan needs no second approval');
+  // a second change adds to the record, it does not replace it; the repeated flag works too
+  spex(repo, 'paths', DIR, 'T01', '--add', 'src/cli/usage.ts', '--add', 'src/cli/flags.ts', '--reason', 'decider: the usage text names the flag');
+  assert.deepEqual(JSON.parse(readFileSync(join(repo, '.spex/runs/007/paths-T01.json'), 'utf8')).changes.map((c) => c.added.length), [2, 2]);
+  // an edit by hand after the approval is not laundered by a widening: the plan waits for the person again
+  const tasksPath = join(repo, DIR, 'tasks.yaml');
+  writeFileSync(tasksPath, readFileSync(tasksPath, 'utf8').replace('title: ', 'title: Hand-edited '));
+  r = spex(repo, 'paths', DIR, 'T01', '--add', 'src/cli/more.ts', '--reason', 'decider: x');
+  assert.equal(r.json.approval_due, true, r.stdout);
+  // review shows every widening, with the decider's why
+  gitIn(repo, ['checkout', '-qb', '007-csv-export']);
+  r = spex(repo, 'show', DIR, '--review');
+  assert.equal(r.code, 0, r.stdout);
+  assert.ok(r.json.text.includes('## paths widened in develop') && r.json.text.includes('- T01 + src/store/format.ts, src/cli/help.ts — decider: list.ts formats'), r.json.text);
+});
+
 test('block --ask: next prints the yes/no question and the command that is the yes; the review gate names it too', () => {
   const repo = makeRepo('csv-export');
   spex(repo, 'approve', DIR); // the records
@@ -419,15 +493,16 @@ test('coverage names the script with no file, and the claim with no test', () =>
   assert.ok(r.json.text.includes('ok  REQ-007-001/AC-1  TS01 script') && r.json.text.includes('MISSING TS02'), r.json.text);
   // the file the plan names exists without the test, and TS02 never ran: a later batch writes it there.
   // agent-flywheel-os 001: batch 2 pointed at the files batch 1 made, the gate refused it as broken records,
-  // and NEXT named /spex:tests again, which printed the same refusal.
+  // and NEXT named /spex:tests (now develop-tests) again, which printed the same refusal.
   let g = spex(repo, 'gate', 'develop', DIR, 'T02');
   assert.ok(codes(g).includes('GATE-COVERAGE') && !g.json.findings.some((f) => f.code === 'TEST-FILE' && f.severity === 'error'), codes(g).join(','));
   g = spex(repo, 'gate', 'tests', DIR);
   assert.equal(g.code, 0, g.stdout);
   assert.deepEqual(g.json.tests, ['TS02']);
   let n = spex(repo, 'next', DIR);
-  assert.equal(n.json.command, `/spex:tests ${DIR}`, n.json.text);
-  // once TS02 ran, a name gone from its file is a broken record: the gate refuses, and NEXT says spex check, not the skill again
+  assert.equal(n.json.command, `/spex:develop-tests ${DIR}`, n.json.text);
+  // once TS02 ran, a name gone from its file is a broken record: the gate refuses, and NEXT names /spex:fix, not the skill
+  // again, and not the bare `spex check`: the person has no spex CLI on the PATH, only the skills
   mkdirSync(join(repo, '.spex/evidence/007'), { recursive: true });
   writeFileSync(join(repo, '.spex/evidence/007/TS02.red.json'), '{}');
   g = spex(repo, 'gate', 'tests', DIR);
@@ -436,8 +511,9 @@ test('coverage names the script with no file, and the claim with no test', () =>
   n = spex(repo, 'next', DIR);
   assert.equal(n.code, 4, n.stdout);
   assert.equal(n.json.stage, 'invalid');
-  assert.equal(n.json.command, `spex check ${DIR}`);
-  assert.ok(n.json.text.includes('(TEST-FILE)') && !n.json.text.includes('/clear') && !n.json.text.includes('auto:'), n.json.text);
+  assert.equal(n.json.command, `/spex:fix ${DIR}`);
+  assert.ok(n.json.text.includes('(TEST-FILE)') && n.json.text.includes('NEXT   /clear') && n.json.text.includes(`       /spex:fix ${DIR}\n`) && !n.json.text.includes('auto:'), n.json.text);
+  assert.ok(n.json.text.includes('then /spex:develop-tests') && !/^\s*(NEXT\s+)?spex /m.test(n.json.text), n.json.text);
   rmSync(join(repo, '.spex/evidence/007/TS02.red.json'));
   const testsPath = join(repo, DIR, 'tests.yaml');
   writeFileSync(testsPath, readFileSync(testsPath, 'utf8').replace('    name: REQ_007_002_AC_1_refuses_overwrite\n    file: tests/acceptance/export.test.mjs\n', '    name: REQ_007_002_AC_1_refuses_overwrite\n'));
@@ -556,16 +632,49 @@ test('new --shaping writes the status line, check counts the sized holes, approv
   assert.ok(readFileSync(join(repo, r.json.spec), 'utf8').startsWith('---\nstatus: shaping\n---\n# Notes\n'));
   // next knows both: a shaping spec stays in the chat, a ready one can clear it
   r = spex(repo, 'new', 'still-shaping', '--shaping');
-  r = spex(repo, 'next', 'specs/011-still-shaping');
+  r = spex(repo, 'next', 'specs/011-still-shaping', '--asked', '3');
   assert.equal(r.json.stage, 'shaping');
   // the answer is the next step, not the skill the chat is already in: the command only resumes from another chat
   assert.ok(r.json.text.includes('NEXT   your answer, in the shaping chat'), r.json.text);
-  assert.ok(r.json.text.includes('ok takes every pick · answer by number · done approves the spec and ends shaping'), r.json.text);
-  assert.ok(r.json.text.includes('No shaping chat open? /spex:new specs/011-still-shaping resumes it.'), r.json.text);
-  assert.ok(!r.json.text.includes('NEXT   /spex:new'), r.json.text);
+  // A person read the rows "ok takes every pick", "2=B changes one pick", "🏁 done not yet: …" as words blended into
+  // their text, did not know what to type, and was offered ok in a reply with no question. Now what to type stands
+  // left of a bar, the example uses question numbers and letters with the separator spelled out, and done has no emoji.
+  assert.ok(r.json.text.includes('       ok        │ take all 3 picks, then the next round starts\n       1=B, 3=A  │ option B for question 1, option A for question 3\n                 │ a comma or a new line between the answers, both work\n                 │ a question you leave out keeps my pick\n       done      │ 🏁 approve the spec and end shaping\n'), r.json.text);
+  assert.ok(r.json.text.includes('No shaping chat open? This command resumes it\n       /spex:new specs/011-still-shaping\n'), r.json.text);
+  // auto is off: the command with auto is printed too, alone on its line, so the person copies either one
+  assert.ok(r.json.text.includes('Or let an agent answer the rest, and you read at the gates\n       /spex:new specs/011-still-shaping auto\n'), r.json.text);
+  assert.ok(!r.json.text.includes('auto: off') && !r.json.text.includes('NEXT   /spex:new'), r.json.text);
+  r = spex(repo, 'next', 'specs/011-still-shaping', '--asked', '1');
+  assert.ok(r.json.text.includes('       ok        │ take my pick, then the next round starts\n       B         │ take option B instead'), r.json.text);
+  // nothing asked (reply 2 of round 0, or a spec with no open question; the default counts them): no ok, no letters,
+  // and never /spex:approve: the block is the command of the next round, which reads its files
+  for (const args of [['--asked', '0'], []]) {
+    r = spex(repo, 'next', 'specs/011-still-shaping', ...args);
+    assert.equal(r.json.stage, 'shaping');
+    assert.match(r.json.text, /^─{40}\nNEXT {3}\/clear\n {7}\/spex:new specs\/011-still-shaping\n {7}The next round reads spec\.md and the design, nothing from this chat\.\n {7}It asks you its questions\. Or let an agent answer them, and you read at the gates\n {7}\/spex:new specs\/011-still-shaping auto\n─{40}$/);
+  }
+  assert.notEqual(spex(repo, 'next', 'specs/011-still-shaping', '--asked', 'two').code, 0, '--asked is a count');
+  // "done" before round 1 (C1 001): the reply asked with an A/B block and its own answer line, no NEXT. --ending
+  // prints the two words that end shaping, and what each does to the open questions; nothing else.
+  writeFileSync(join(repo, 'specs/011-still-shaping/spec.md'), readFileSync(join(repo, 'specs/011-still-shaping/spec.md'), 'utf8') + '\n## Open questions\n\n- 🟥 which hosts speak the new protocol\n- 🟧 the store\n');
+  r = spex(repo, 'next', 'specs/011-still-shaping', '--ending');
+  assert.match(r.json.text, /^─{40}\nNEXT {3}your answer, in the shaping chat\n {7}ok {8}│ take my picks for the 2 open questions, then approve the spec\n {7}done {6}│ 🏁 approve the spec now, the 2 open questions stay open and go on to requirements\n─{40}$/);
+  // round 0 has no folder in reply 1: the script prints its block anyway, in the same frame; done is not offered,
+  // because no spec exists yet to approve
+  r = spex(repo, 'next', '--sizing', 'roadmap', '--asked', '2');
+  assert.equal(r.json.stage, 'sizing');
+  assert.match(r.json.text, /^─{40}\nNEXT {3}your answer, in this chat\n {7}ok {8}│ take all 2 picks, then I write the roadmap and the step folders\n {7}1=B, 2=A {2}│ option B for question 1, option A for question 2\n {17}│ a comma or a new line between the answers, both work\n {17}│ a question you leave out keeps my pick\n─{40}$/);
+  r = spex(repo, 'next', '--sizing', 'roadmap', '--asked', '0');
+  assert.match(r.json.text, /^─{40}\nNEXT {3}your answer, in this chat\n {7}ok {8}│ the table is right, so I write the roadmap and the step folders\n─{40}$/);
+  r = spex(repo, 'next', '--sizing', 'step', '--asked', '1');
+  assert.ok(r.json.text.includes('ok        │ take my pick, then I write the spec folder, and round 1 starts') && !r.json.text.includes('done'), r.json.text);
+  assert.notEqual(spex(repo, 'next', '--sizing', 'roadmap').code, 0, 'reply 1 says how many questions it asked');
+  assert.notEqual(spex(repo, 'next', '--sizing', 'written', 'specs/011-still-shaping').code, 0, 'reply 2 is spex next <dir> --asked 0');
   r = spex(repo, 'next', 'specs/009-from-notes');
   assert.equal(r.json.stage, 'spec-ready');
   assert.equal(r.json.command, '/spex:requirements specs/009-from-notes');
+  // a skill that asks: the plain command runs first after /clear, and the auto one is the other way, after it
+  assert.match(r.json.text, /NEXT {3}\/clear\n {7}\/spex:requirements specs\/009-from-notes\n.*nothing from this chat\.\n {7}It asks you its questions\. Or let an agent answer them, and you read at the gates\n {7}\/spex:requirements specs\/009-from-notes auto\n/);
 });
 
 test('gate requirements takes only a folder under specs/ whose spec.md a person approved, and names the scenarios without a test', () => {
@@ -795,8 +904,8 @@ test('update migrates a format 1 repo: verification leaves the records, verify l
 
 test('approvals are a hash of what a person read: a changed tasks.yaml or tests.yaml sends the stage back; tests is a switch', () => {
   const repo = makeRepo('csv-export');
-  assert.equal(spex(repo, 'approve', DIR).json.stage, 'requirements');
-  assert.equal(spex(repo, 'approve', DIR).json.stage, 'tasks');
+  const first = spex(repo, 'approve', DIR).json;
+  assert.deepEqual([first.stage, first.also], ['requirements', ['tasks']], 'the plan that waits too rides along');
   assert.equal(spex(repo, 'approve', DIR).json.stage, null, 'nothing waits');
   // a fix task appended later makes the approval stale; the statuses the script flips are not part of the hash
   const tasksPath = join(repo, DIR, 'tasks.yaml');
@@ -921,6 +1030,8 @@ test('a shaping spec with every section filled and nothing open waits for a pers
   assert.equal(n.json.stage, 'approve-spec', n.stdout);
   assert.equal(n.json.command, `/spex:approve ${dir}`);
   assert.match(n.stdout, /shaped and nothing is open/);
+  // round 0 of a copied design ends here with a shaping chat still open: nothing is asked, so no ok, only done
+  assert.ok(n.json.text.includes('Still in the shaping chat? done there does the same.') && !n.json.text.includes('ok '), n.json.text);
   writeFileSync(path, readFileSync(path, 'utf8') + '\n- ●●○ Soft delete or hard delete?\n');
   n = spex(repo, 'next', dir);
   assert.equal(n.json.stage, 'shaping', 'one open question: back to shaping');
@@ -930,6 +1041,7 @@ test('a shaping spec with every section filled and nothing open waits for a pers
   n = spex(repo, 'next', dir);
   assert.equal(n.json.auto, true);
   assert.ok(n.json.text.includes('auto: on (nobody is asked'), n.json.text);
+  assert.ok(!n.json.text.includes(' auto\n'), 'auto is on: one command, no second one with auto');
 });
 
 test('review accept: every finding at once, the person answers in one word, fix picks become tasks that need no second approval', () => {
@@ -947,9 +1059,20 @@ test('review accept: every finding at once, the person answers in one word, fix 
   assert.equal(r.json.round, 1);
   assert.equal(r.json.findings_file, '.spex/review/007-1.findings.yaml');
   assert.ok(r.json.text.includes(`/spex:review ${DIR} ok`), r.json.text);
-  const finding = (id, severity, pick, extra = '') => `  - id: ${id}\n    severity: ${severity}\n    title: Finding ${id} of the round\n    file: src/cli/commands/export.ts\n    line: 12\n    when: a list has a task whose title holds a newline\n    effect: the row splits in two\n    fix: quote a title that holds a newline, in export.ts\n    pick: ${pick}\n${extra}`;
-  const fixPart = '    done_when: a title with a newline is one quoted CSV field\n    requirements: [REQ-007-001]\n    paths: [src/cli/commands/export.ts]\n    context: [src/state.txt]\n';
-  writeFileSync(join(repo, '.spex/review/007-1.findings.yaml'), `feature: "007"\nround: 1\nfindings:\n${finding('F1', 'P1', 'fix', fixPart)}${finding('F2', 'P3', 'defer', '    why: no user has a newline in a title\n')}${finding('F3', 'nit', 'skip')}`);
+  const head = (id, severity, pick) => `  - id: ${id}\n    severity: ${severity}\n    title: Finding ${id} of the round\n    file: src/cli/commands/export.ts\n    line: 12\n    pick: ${pick}\n`;
+  const scenario = '    when: a list has a task whose title holds a newline\n    effect: the row splits in two\n';
+  const fixPart = '    fix: quote a title that holds a newline, in export.ts\n    done_when: a title with a newline is one quoted CSV field\n    requirements: [REQ-007-001]\n    paths: [src/cli/commands/export.ts]\n    context: [src/state.txt]\n';
+  const findingsPath = join(repo, '.spex/review/007-1.findings.yaml');
+  // c1: the reviewer left out a part the schema needs. The round is written, so next says repair, not a fresh
+  // review of every task, and accept shows the schema error instead of "no findings wait".
+  writeFileSync(findingsPath, `feature: "007"\nround: 1\nfindings:\n${head('F1', 'P1', 'fix')}${scenario}`);
+  r = spex(repo, 'next', DIR);
+  assert.equal(r.json.stage, 'review-repair', r.stdout);
+  assert.equal(r.json.command, `/spex:review ${DIR}`);
+  assert.ok(r.json.text.includes('Stay in this chat: round 1 is written, but .spex/review/007-1.findings.yaml breaks its schema') && r.json.text.includes('it does not review the code again'), r.json.text);
+  assert.ok(codes(spex(repo, 'review', 'accept', DIR, 'ok')).includes('REVIEW-SCHEMA'));
+  // a defer needs only why, and a nit needs no scenario: both are a valid round
+  writeFileSync(findingsPath, `feature: "007"\nround: 1\nfindings:\n${head('F1', 'P1', 'fix')}${scenario}${fixPart}${head('F2', 'P3', 'defer')}${scenario}    why: no user has a newline in a title\n${head('F3', 'nit', 'skip')}`);
 
   // the round waits for the answer: next names it, and nothing else moves
   r = spex(repo, 'next', DIR);
@@ -957,8 +1080,10 @@ test('review accept: every finding at once, the person answers in one word, fix 
   assert.equal(r.json.command, `/spex:review ${DIR} ok`);
   assert.ok(r.json.text.includes('Stay in this chat: 3 finding(s) of review round 1 wait for your answer'), r.json.text);
 
-  // a fix pick needs the claim and the paths; a pick the round does not have is refused
-  assert.ok(codes(spex(repo, 'review', 'accept', DIR, '2=fix')).includes('REVIEW-FIX'));
+  // a fix pick needs the fix, the claim and the paths; a pick the round does not have is refused
+  r = spex(repo, 'review', 'accept', DIR, '2=fix');
+  assert.ok(codes(r).includes('REVIEW-FIX'));
+  assert.ok(r.json.findings[0].message.includes('F2 has no fix and done_when and paths'), r.stdout);
   assert.ok(codes(spex(repo, 'review', 'accept', DIR, '9=fix')).includes('REVIEW-UNKNOWN'));
   assert.equal(spex(repo, 'review', 'accept', DIR, 'maybe').code, 2);
 

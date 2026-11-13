@@ -1,18 +1,18 @@
 ---
-name: tests
-description: Write the test code the proof plan (tests.yaml) asks for — every script test without a file, batch after batch, through test-developer subagents that never read the source and prove each test red with spex run --test --expect fail — before any code exists. Use when the user says "tests", "spex tests", "write the tests", "tests TS03", or when a NEXT block names /spex:tests.
+name: develop-tests
+description: Write the test code the proof plan (tests.yaml) asks for — every script test without a file, batch after batch, through test-developer subagents that never read the source and prove each test red with spex run --test --expect fail — before any code exists. Use when the user says "develop tests", "spex develop-tests", "write the tests", "develop-tests TS03", or when a NEXT block names /spex:develop-tests.
 disable-model-invocation: true
 allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Read(${CLAUDE_PLUGIN_ROOT}/reply.md), Agent
 ---
 
-# spex tests
+# spex develop-tests
 
 `SPEX` = `${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs` (it runs as it is), from the repo root.
 
 The plan is in `tests.yaml` (the test analyst's); this skill turns its script tests into
 files. One run covers every script test without a file, one batch at a time: a batch is the
 tests in plan order, up to `limits.tests_scenarios` (12 by default). Session tests have no
-file: a tester performs them at `/spex:verify`. Shell tests have no file: their steps run.
+file: a tester performs them at `/spex:run-tests`. Shell tests have no file: their steps run.
 Your context holds the batch and the results, never a test body: the test developers write.
 
 ## Steps

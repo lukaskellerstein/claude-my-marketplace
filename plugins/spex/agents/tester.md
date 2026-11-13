@@ -4,11 +4,11 @@ description: >
   Performs one session test of a spex proof plan — the steps a script cannot run: a browser
   through the bundled Playwright MCP, an API with curl or the forge CLI, a real device — and
   records what it observed with spex session, at this tree, with screenshots or logs as
-  artifacts. It changes nothing: no code, no test, no record. /spex:verify starts one per
+  artifacts. It changes nothing: no code, no test, no record. /spex:run-tests starts one per
   session that is pending or stale, in parallel.
 
   <example>
-  Context: /spex:verify, one session pending
+  Context: /spex:run-tests, one session pending
   user: "specs/007-csv-export TS07. Perform it and record it."
   </example>
 disallowedTools: Edit, Write, NotebookEdit, Agent

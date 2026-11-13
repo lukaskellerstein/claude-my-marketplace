@@ -13,7 +13,11 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "severity", "title", "file", "when", "effect", "fix", "pick"],
+        "required": ["id", "severity", "title", "file", "pick"],
+        "allOf": [
+          { "if": { "properties": { "severity": { "enum": ["P1", "P2", "P3"] } } }, "then": { "required": ["when", "effect"] } },
+          { "if": { "properties": { "pick": { "const": "fix" } } }, "then": { "required": ["when", "effect", "fix", "done_when", "paths"] } }
+        ],
         "additionalProperties": false,
         "properties": {
           "id": { "type": "string", "pattern": "^F[0-9]+$" },

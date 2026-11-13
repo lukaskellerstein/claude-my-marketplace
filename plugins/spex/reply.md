@@ -1,8 +1,8 @@
 # How a spex reply looks
 
 Every spex skill ends its turn with one reply in this frame. The skill says what goes in
-it; this file says how it looks. The person is busy: they read the banner, then what needs
-them, then NEXT. The emoji carry the color. Short, plain sentences, one idea each.
+it; this file says how it looks. The person reads the banner, what needs them, then NEXT.
+Short sentences, one idea each.
 
 ## The frame, in order
 
@@ -15,36 +15,37 @@ them, then NEXT. The emoji carry the color. Short, plain sentences, one idea eac
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    ```
 
-   Line 1, bold: the verdict, then what it is about. Line 2, plain: the phase icon and
-   name, the folder, where it stands, in numbers a `SPEX` command printed, and the
-   replies left when the skill knows them (`reply 1 of 2`).
+   Line 1, bold: the verdict and what it is about. Line 2: the phase icon and name, the
+   folder, where it stands in numbers a `SPEX` command printed, and
+   the replies left when the skill knows them (`reply 1 of 2`).
 2. **What:** one to three lines: what is true now, for the user, never the steps you
    took. Files, pulls and evidence go to `SPEX report`.
 3. **Questions**, if any: one block each, as below, big first.
 4. **You:** one line, only when the person acts before NEXT works: the click, the
-   variable, the yes. Never hidden in a paragraph.
+   variable, the yes. Never "on ok I run `/spex:<x>`": no skill starts another. What ok
+   takes, this skill does here; another skill's step: read its `SKILL.md`, do it here.
 5. **Notes:** one line, only with concerns: how many, and the first. A concern with another
    way out is a question with its pick.
 6. **NEXT:** `SPEX next <dir>` as printed, the two rules included, never rewritten or
-   shortened. It does not count toward the skill's line cap.
+   shortened, outside the skill's line cap.
 
-No `STATUS:` code and no agent word (`blocked`, `test-bug`, `concerns`, `refused`) in the
-banner: those are for the agents. No `---`: the terminal shows three dashes.
+No `STATUS:` code and no agent word (`blocked`, `test-bug`, `concerns`) in the banner.
+No `---`: the terminal shows three dashes.
 
 ## Verdicts
 
 - `✅ <WORD>`: it finished. The word is the skill's: approve APPROVED, clarify CLARIFIED,
   develop IMPLEMENTED, fix FIXED, init SET UP, new SHAPED (ROADMAP WRITTEN after round 0), requirements RECORDS WRITTEN,
-  research DECIDED, review REVIEWED, ship SHIPPED, tasks PLANNED, tests TESTS WRITTEN,
-  update UPDATED, verify VERIFIED.
-- `⏸ WAITING FOR YOU`: it did what it could; one step is the person's (`You:`).
+  research DECIDED, review REVIEWED, ship SHIPPED, tasks PLANNED, develop-tests TESTS WRITTEN,
+  update UPDATED, run-tests VERIFIED.
+- `⏸ WAITING FOR YOU`: one step is the person's (`You:`).
 - `⛔ NOT STARTED`: a gate refused, nothing changed. What says what is missing.
 - `⛔ STOPPED`: it started and could not finish. What says what is done, what is not.
 - `❓ QUESTIONS`: it goes on with the answers (the blocks). A skill that names its own
   line 1 for this uses that one (new: `🔍 SIZING`).
 
 Phase icons: 🧭 init, update · 🔍 sizing · 💎 shaping · ✍️ approve · 📜 requirements ·
-❓ clarify · 🔬 research · 🗂️ tasks · 🧪 tests · 🔨 develop · 🔎 verify · 👀 review ·
+❓ clarify · 🔬 research · 🗂️ tasks · 🧪 develop-tests · 🔨 develop · 🔎 run-tests · 👀 review ·
 🔧 fix · 🚀 ship.
 
 ## A question

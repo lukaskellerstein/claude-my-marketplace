@@ -29,7 +29,7 @@ export function coverageFor(root: string, config: Config, feature: Feature, only
 }
 
 /**
- * The next batch for one /spex:tests run: file tests without a file yet, in tests.yaml order, up to
+ * The next batch for one /spex:develop-tests run: file tests without a file yet, in tests.yaml order, up to
  * limits.tests_scenarios. One batch is one fresh test developer.
  */
 export function pickTestBatch(root: string, config: Config, feature: Feature): { tests: TestRecord[] } {
@@ -69,7 +69,7 @@ export function coverage(root: string, dir: string): CmdResult {
   const { rows, missing } = coverageFor(root, config, feature);
   lines.push('', '## files');
   for (const x of rows) lines.push(`${x.file ? 'ok ' : 'MISSING'} ${x.id} ${x.name}${x.file ? `  ${x.file}` : ''}`);
-  for (const m of missing) findings.push({ severity: 'gap', code: 'COVERAGE', message: `${m.id}: no test named ${m.name} under ${m.driver === 'default' ? config.acceptance_dir : `drivers.${m.driver}.dir`}`, fix: 'The test developer writes it: /spex:tests.', id: m.id });
+  for (const m of missing) findings.push({ severity: 'gap', code: 'COVERAGE', message: `${m.id}: no test named ${m.name} under ${m.driver === 'default' ? config.acceptance_dir : `drivers.${m.driver}.dir`}`, fix: 'The test developer writes it: /spex:develop-tests.', id: m.id });
   const sessions = tests.filter(isSession);
   if (sessions.length) lines.push('', '## sessions (performed at verify, evidence in .spex/evidence/)', ...sessions.map((t) => `- ${t.id} ${t.driver ?? ''} covers ${t.covers.join(', ')}`));
   lines.push('', `${rows.length - missing.length}/${rows.length} script tests have a file · ${gaps} claim(s) without a test`);

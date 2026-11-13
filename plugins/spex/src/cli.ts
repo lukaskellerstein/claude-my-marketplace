@@ -10,7 +10,7 @@ import { exitCodeFor, runCheck } from './check.js';
 import { coverage } from './commands/coverage.js';
 import { drop } from './commands/drop.js';
 import { init } from './commands/init.js';
-import { approve, block, done, gate, next, ship, unblock, type CmdResult } from './commands/lifecycle.js';
+import { approve, block, done, gate, next, nextSizing, paths, ship, unblock, type CmdResult } from './commands/lifecycle.js';
 import { update } from './commands/update.js';
 import { FORMAT } from './config.js';
 import { liveIndex } from './commands/live.js';
@@ -26,9 +26,11 @@ import type { Finding } from './types.js';
 
 export const VERSION = '2.2.0';
 
-const VALUE_FLAGS = new Set(['number', 'base', 'expect', 'task', 'scope', 'from', 'root', 'status', 'summary', 'reason', 'ask', 'roadmap', 'step', 'depends-on', 'test', 'session', 'result', 'observed', 'by']);
-const LIST_FLAGS = new Set(['concern', 'question', 'file', 'pulled', 'source', 'artifact']);
-const BOOL_FLAGS = new Set(['json', 'force', 'branches', 'no-branches', 'all', 'tests', 'plan', 'verify', 'review', 'design', 'decisions', 'inherited', 'lessons', 'shaping', 'planned', 'merged', 'help', 'version', 'coverage', 'init']);
+const VALUE_FLAGS = new Set(['sizing', 'asked', 'number','base', 'expect', 'task', 'scope', 'from', 'root', 'status', 'summary', 'reason', 'ask', 'roadmap', 'step', 'depends-on', 'test', 'session', 'result', 'observed', 'by']);
+const LIST_FLAGS = new Set(['concern', 'question', 'file', 'pulled', 'source', 'artifact', 'add']);
+/** List flags whose values are paths or ids, never prose: each takes every value up to the next flag. */
+const MANY_FLAGS = new Set(['file', 'pulled', 'add']);
+const BOOL_FLAGS = new Set(['json', 'force', 'branches', 'no-branches', 'all', 'tests', 'plan', 'verify', 'review', 'design', 'decisions', 'inherited', 'lessons', 'shaping', 'planned', 'merged', 'help', 'version', 'coverage', 'init', 'ending']);
 
 interface Args {
   positional: string[];
@@ -49,7 +51,14 @@ function parseArgs(argv: string[]): Args {
     const inline = eq >= 0 ? a.slice(eq + 1) : undefined;
     if (BOOL_FLAGS.has(name)) flags[name] = inline === undefined ? true : inline !== 'false';
     else if (VALUE_FLAGS.has(name)) flags[name] = inline ?? argv[++i] ?? '';
-    else if (LIST_FLAGS.has(name)) flags[name] = [...((flags[name] as string[]) ?? []), inline ?? argv[++i] ?? ''];
+    else if (LIST_FLAGS.has(name)) {
+      // `--add a b c` is three paths, as the help's `<path>…` says: a flag of paths or ids takes every value up to the next
+      // flag. Dex 017: `spex paths … --add a b c` kept a, and b and c fell silently into the positionals.
+      const values = inline !== undefined ? [inline] : [];
+      if (inline === undefined && MANY_FLAGS.has(name)) while (i + 1 < argv.length && !argv[i + 1].startsWith('--')) values.push(argv[++i]);
+      else if (inline === undefined) values.push(argv[++i] ?? '');
+      flags[name] = [...((flags[name] as string[]) ?? []), ...(values.length ? values : [''])];
+    }
     else throw new Usage(`unknown flag --${name}`);
   }
   return { positional, flags };
@@ -83,7 +92,8 @@ const HELP = `spex — spec-driven development in small, checkable files. The cl
   spex roadmap <name> --coverage               every design section has a row (steps, built, not planned, outside, context); every step covers one and cites it
   spex outline <file>…                         a design's sections, with the anchor a source or a coverage row names
   spex drop <dir> --reason "…"                 a step a re-cut removes: the folder and its .spex/ work move to .spex/archive/, with the reason
-  spex next <dir> [--all]                      what now: the stage, the one command that moves it, and if the chat can be cleared first; --all lists every ready task by wave
+  spex next <dir> [--all] [--asked <n>] [--ending]   what now: the stage, the one command that moves it, and if the chat can be cleared first; --all lists every ready task by wave; --asked: the question blocks a shaping reply asked (0: the next round's command); --ending: \"done\" came while questions are open
+  spex next --sizing roadmap|step --asked <n>   the NEXT block of reply 1 of round 0 of /spex:new (no folder yet), with rows for the n questions it asked
   spex run <dir> <task> [--expect fail]        run the task's tests, write the record (the developer's loop)
   spex run <dir> --test <TS> [--expect fail]   run one script test (the test developer's red run)
   spex verify <dir>                            the whole feature now: fast_checks, every script, every session's evidence at this tree; round n of verify_rounds
@@ -93,6 +103,8 @@ const HELP = `spex — spec-driven development in small, checkable files. The cl
   spex block <dir> <task> --reason "…" [--ask "…"]
                                                → blocked, with the reason in .spex/runs/<feature>/block-<task>.json; --ask: the one yes/no question a person answers, and next prints it
   spex unblock <dir> <task>                    blocked → todo once the cause is fixed; the reason file stays for the lessons
+  spex paths <dir> <task> --add <path>… --reason "…"
+                                               a decider said the task must write a file outside its paths: add it, under the check rules; why in .spex/runs/<feature>/paths-<task>.json
   spex coverage <dir>                          which test proves each claim, and which script has no file yet
   spex index [--scope s] [--branches] [--all]  the live requirements
   spex ship <dir> [--merged]                   the end: approved → built, superseded → retired, then (ship.commit) a commit and (ship.cmd) the merge; --merged: a person merged already
@@ -201,8 +213,15 @@ function main(argv: string[]): void {
       if (what.startsWith('REQ-')) return emit(command, showRecord(root, dir, what), json);
       return emit(command, showTask(root, dir, what), json);
     }
-    case 'next':
-      return emit(command, next(root, needDir(), { all: flags.all === true }), json);
+    case 'next': {
+      const asked = flags.asked === undefined ? undefined : Number(flags.asked);
+      if (asked !== undefined && !(Number.isInteger(asked) && asked >= 0)) throw new Usage('--asked takes the number of question blocks the reply asked: 0, 1, 2 …');
+      if (flags.sizing === undefined) return emit(command, next(root, needDir(), { all: flags.all === true, asked, ending: flags.ending === true }), json);
+      const kind = String(flags.sizing);
+      if (kind !== 'roadmap' && kind !== 'step') throw new Usage('--sizing takes roadmap or step (reply 1 of round 0); reply 2 is spex next <first folder> --asked 0');
+      if (asked === undefined) throw new Usage('--sizing needs --asked <n>: the number of question blocks in the reply, 0 when it asks none');
+      return emit(command, nextSizing(kind, asked), json);
+    }
     case 'run': {
       const expect = (flags.expect as string | undefined) ?? 'pass';
       if (expect !== 'pass' && expect !== 'fail') throw new Usage('--expect takes pass or fail');
@@ -222,6 +241,10 @@ function main(argv: string[]): void {
       return emit(command, block(root, needDir(), needTask(), (flags.reason as string) ?? 'no reason given', (flags.ask as string | undefined) || undefined), json);
     case 'unblock':
       return emit(command, unblock(root, needDir(), needTask()), json);
+    case 'paths':
+      // A word after the task id is a path the caller meant to add: refuse it, never drop it.
+      if (rest.length > 2) throw new Usage(`paths takes <dir> <task> and --add <path>…; ${rest.slice(2).join(', ')} is not under --add`);
+      return emit(command, paths(root, needDir(), needTask(), (flags.add as string[] | undefined) ?? [], (flags.reason as string | undefined) ?? ''), json);
     case 'coverage':
       return emit(command, coverage(root, needDir()), json);
     case 'index':

@@ -1,0 +1,17 @@
+{
+  "description": "infra-plugin hooks: in a project that pins its kube context in .kube-context, ask before a kubectl call that does not name --context <pinned name>. Silent in every other project. No `if` filter: it would skip kubectl behind a wrapper (watch, xargs, bash -c), and the script ends after one regex when the line has no kubectl.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/hooks/kubectl-context-guard.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -7,7 +7,7 @@
 import { join } from 'node:path';
 import { runCheck } from '../check.js';
 import { openDocument, saveDocument } from '../io.js';
-import { pendingFindings } from '../review.js';
+import { pendingRound } from '../review.js';
 import { loadFeature, resolveFeatureDir } from '../specs.js';
 import type { Finding, Pick, ReviewFinding, Task } from '../types.js';
 import { renderNext, whatNext, type CmdResult } from './lifecycle.js';
@@ -51,14 +51,17 @@ export function reviewAccept(root: string, dir: string, args: string[], by: stri
   if (feature.errors.length) return refuse(feature.errors, 4);
   const featureId = feature.requirements?.feature;
   if (!featureId || !feature.tasks) return refuse([{ severity: 'error', code: 'SPEC-MISSING', message: `${feature.dir} needs requirements.yaml and tasks.yaml`, fix: 'Run /spex:tasks first.' }], 4);
-  const pending = pendingFindings(root, featureId);
+  const waiting = pendingRound(root, featureId);
+  if (waiting && !waiting.file) return refuse(waiting.errors, 4);
+  const pending = waiting?.file ? { round: waiting.round, path: waiting.path, file: waiting.file } : null;
   if (!pending) return refuse([{ severity: 'error', code: 'REVIEW-NONE', message: `no review findings wait for an answer in ${feature.dir}`, fix: `Run /spex:review ${feature.dir}: it writes the findings of the round, then you answer.` }]);
   const { file, round, path } = pending;
   const { picks, errors } = parsePicks(args, file.findings);
   if (errors.length) return refuse(errors, 2);
   for (const f of file.findings) {
     if (picks.get(f.id) !== 'fix') continue;
-    const missing = [!f.done_when && 'done_when', !f.paths?.length && 'paths'].filter(Boolean);
+    // A person can turn a defer or a nit into a fix: it then needs the parts a fix task is made of.
+    const missing = [!f.when && 'when', !f.effect && 'effect', !f.fix && 'fix', !f.done_when && 'done_when', !f.paths?.length && 'paths'].filter(Boolean);
     if (missing.length) errors.push({ severity: 'error', code: 'REVIEW-FIX', message: `${f.id} has no ${missing.join(' and ')}, so it cannot become a task`, path, id: f.id, fix: 'The reviewer completes the finding in the findings file, or you defer it: F1=defer.' });
   }
   if (errors.length) return refuse(errors);
@@ -85,7 +88,7 @@ export function reviewAccept(root: string, dir: string, args: string[], by: stri
         requirements: f.requirements ?? [],
         paths: f.paths!,
         context: f.context?.length ? f.context : [f.file],
-        instructions: f.fix,
+        instructions: f.fix!,
         done_when: f.done_when!,
         status: 'todo',
       };

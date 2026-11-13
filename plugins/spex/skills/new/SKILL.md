@@ -9,8 +9,8 @@ allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUD
 
 `SPEX` = `${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs`, from the repo root.
 
-The thinking phase: the user ends it, never you. `spec.md` is the spec in words, and
-`/spex:requirements` makes the records from it once approved.
+The thinking phase. `spec.md` is the spec in words;
+`/spex:requirements` makes the records from it.
 
 ## Inputs you read
 
@@ -32,8 +32,8 @@ names the phase instead of `❓ QUESTIONS`:
 - `**💎 SHAPING · 012 Bulk Delete**`, then `spec 2 of 9 in roadmap reports ·
   question round 1` and the sizes, as `gate new` printed.
 
-The answer line: `ok takes every pick · answer by number · done approves the spec and ends
-shaping`. A round is its own reply; a side job gets its own.
+No answer line: NEXT is it. Reply 1 prints `SPEX next --sizing roadmap|step --asked
+<n>`, a round `SPEX next <dir> --asked <n>`: n question blocks. A round is its own reply, and so is a side job.
 
 ## Round 0: restate, then size
 
@@ -81,7 +81,7 @@ On with `auto` among the arguments or `auto: true` in `.spex/config.yaml`:
 nobody is asked. Round 0 goes into the reply and on; the user can stop you. Then:
 
 1. List every open question with its options and your recommendation. Never tell the
-   decider that a question is the user's: there is none.
+   decider a question is the user's: none is.
 2. Facts first: one `spex:researcher` per question that needs facts, in parallel.
 3. One `spex:decider` for the whole step: every question, the stub and the design sections
    it names, `SPEX show <dir> --inherited`, the code a question points at, the findings.
@@ -95,8 +95,8 @@ nobody is asked. Round 0 goes into the reply and on; the user can stop you. Then
 "done" or "good enough" ends this step's shaping and approves the spec. The user says it,
 never you. Then:
 
-1. A question of the last round with no answer: say what "done" does, ask once: `"done"
-   approves with 1 🟧 open; "ok" takes my picks and ends, "done" again leaves it open.`
+1. A question still open: say what "done" does, ask once, with no question block: NEXT
+   is `SPEX next <dir> --ending` (ok takes my picks and ends, done leaves them open).
    A carried question becomes a question or an unknown in the next step.
 2. Finish the file: every hint gone, Alternatives with the pick, Decisions with reasons.
    Plain words, real values, no code but the one Mermaid diagram.

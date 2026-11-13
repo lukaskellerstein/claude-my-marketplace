@@ -1,0 +1,32 @@
+# The local cluster of this project, as code. k8s/local/up.sh creates it:
+#   k3d cluster create --config k8s/local/cluster.yaml
+# Every node is a container on Podman or Docker.
+# k3d expands environment variables in this file before it reads it, so the file holds no dollar sign.
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+metadata:
+  name: myapp                     # the kube context is k3d-myapp: the name in .kube-context
+servers: 1                        # the control plane; it also runs the pods
+agents: 0                         # worker nodes only when the work needs them (K3D.md, Traps)
+image: docker.io/rancher/k3s:v1.36.4-k3s1   # pinned: the default moves with every k3d release
+subnet: "10.89.101.0/24"          # one free subnet per cluster. With it the server keeps its IP over a stop and a start
+kubeAPI:
+  hostIP: "127.0.0.1"             # the API server answers on this machine only, never on the LAN
+ports:
+  - port: 127.0.0.1:8090:80       # http://<app>.localhost:8090 -> Traefik, the Ingress of K3s. One free port per cluster
+    nodeFilters:
+      - loadbalancer
+options:
+  k3d:
+    wait: true                    # return only when the cluster answers
+    timeout: "300s"
+  kubeconfig:
+    updateDefaultKubeconfig: true # the context goes into ~/.kube/config (or the file KUBECONFIG names), where Headlamp finds it
+    switchCurrentContext: false   # the person's current context stays what it is
+  runtime:
+    labels:                       # Podman Desktop and Docker Desktop show the containers as one group
+      - label: com.docker.compose.project=myapp
+        nodeFilters:
+          - server:*
+          - agent:*
+          - loadbalancer

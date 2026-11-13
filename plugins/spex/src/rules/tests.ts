@@ -79,13 +79,13 @@ export function checkTests(ctx: RuleContext): Finding[] {
           // TEST-FILE: the file, once named, holds the test
           if (t.file) {
             const abs = join(ctx.root, t.file);
-            if (!fileExists(abs)) f('info', 'TEST-FILE', `${t.id}: ${t.file} does not exist yet`, 'The test developer writes it: /spex:tests.', t.id);
+            if (!fileExists(abs)) f('info', 'TEST-FILE', `${t.id}: ${t.file} does not exist yet`, 'The test developer writes it: /spex:develop-tests.', t.id);
             else if (!readText(abs).includes(t.name)) {
               // A later batch often writes into a file an earlier batch created: with no run on record, the test is
               // not written yet. Only a test that ran once, red or green, and is now gone from its file is a broken record.
               const ran = (['fail', 'pass'] as const).some((e) => fileExists(evidencePath(ctx.root, reqs.feature, t.id, e)));
               if (ran) f('error', 'TEST-FILE', `${t.id}: ${t.file} holds no test named ${t.name}, but ${t.id} ran before`, 'Fix `file` or `name`: the file is where the test developer put it, the name is what it is called there.', t.id);
-              else f('info', 'TEST-FILE', `${t.id}: ${t.file} has no test named ${t.name} yet`, 'The test developer writes it: /spex:tests.', t.id);
+              else f('info', 'TEST-FILE', `${t.id}: ${t.file} has no test named ${t.name} yet`, 'The test developer writes it: /spex:develop-tests.', t.id);
             }
           }
         }

@@ -1,0 +1,4 @@
+# The kube context of this project's local cluster. One name per line.
+# k8s/local/env.sh reads the first name. The kubectl guard of infra-plugin allows every name
+# in this file and asks before a kubectl call that names no --context or another one.
+k3d-myapp

@@ -1,13 +1,13 @@
 ---
 name: requirements
-description: Turn an approved spec folder (made by /spex:new) into requirements.yaml — EARS records with real-valued scenarios, questions, unknowns — make it pass spex check, settle the questions (the decider in auto mode, the user otherwise) and the unknowns, then have a test-analyst subagent write the proof plan (tests.yaml) for every scenario, so the next stop is /spex:approve. Use when the user says "requirements", "spex requirements", "write the records", or after /spex:new ends.
+description: Turn an approved spec folder (made by /spex:new) into requirements.yaml — EARS records with real-valued scenarios, questions, unknowns — make it pass spex check, settle the questions (the decider in auto mode, the user otherwise) and the unknowns, then have a test-analyst subagent write the proof plan (tests.yaml) for every scenario, so the next stop is /spex:approve. Use after /spex:new ends.
 disable-model-invocation: true
 allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Read(${CLAUDE_PLUGIN_ROOT}/reply.md), Read(${CLAUDE_PLUGIN_ROOT}/skills/*/SKILL.md), Agent, WebSearch, WebFetch
 ---
 
 # spex requirements
 
-`SPEX` = `${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs` (it runs as it is), from the repo root. Every finding
+`SPEX` = `${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs`, from the repo root. Every finding
 has a `fix` text: the only place the rule is explained; read it.
 
 You are the analyst: you write the claim (the records and their scenarios), never its proof:
@@ -53,8 +53,10 @@ You are the analyst: you write the claim (the records and their scenarios), neve
 4. Questions are for a person: `id`, `ask`, `why`, 2 to 5 `options` with one `recommended`.
    Ask only when the answer changes what gets built; technical questions go to `unknowns`
    (`id`, `ask`) for research.
-5. The spec's Decisions and Alternatives stay decided: an unknown with its `decision`
-   filled, or a `rationale` on the record it shaped. Nothing is asked twice. "Not this"
+5. The spec's Decisions, Alternatives and `[changes: …]` lines stay decided: an unknown
+   with its `decision` filled, or a `rationale` on the record it shaped. Nothing is asked
+   twice, and two rules in two places are no conflict. The work a decision brings (a
+   schema value, a fixture) is a line under `I do this unless you say no`. "Not this"
    becomes `out_of_scope` and unwanted-behavior records.
 6. YAML: block style for values with text; quote a value with a colon, a comma, or a
    leading backtick.
@@ -73,8 +75,7 @@ You are the analyst: you write the claim (the records and their scenarios), neve
 11. `SPEX report <dir> requirements --status <done|concerns> --summary "…"`, one
     `--question "Q1: …"` per open question, one `--concern` per analyst concern.
 
-`/spex:clarify` and `/spex:research` are steps 8 and 9 as commands: the way back in when a
-question or an unknown opens later.
+`/spex:clarify` and `/spex:research` are steps 8 and 9 as commands, for one that opens later.
 
 ## Reply
 

@@ -60,7 +60,7 @@
         "context_kb": { "type": "integer", "minimum": 1 },
         "diff_kb": { "type": "integer", "minimum": 1 },
         "file_kb": { "type": "integer", "minimum": 1 },
-        "tests_scenarios": { "type": "integer", "minimum": 1, "description": "How many script tests one /spex:tests batch writes at most; the skill takes batch after batch in one run." },
+        "tests_scenarios": { "type": "integer", "minimum": 1, "description": "How many script tests one /spex:develop-tests batch writes at most; the skill takes batch after batch in one run." },
         "verify_minutes": { "type": "integer", "minimum": 1 },
         "step_introduces": { "type": "integer", "minimum": 1, "description": "How many names one step of a roadmap lists under Introduces before spex check warns that it is two steps." }
       }

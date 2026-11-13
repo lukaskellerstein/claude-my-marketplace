@@ -1,11 +1,11 @@
 ---
-name: verify
-description: Prove a built spex feature as a whole — spex verify runs fast_checks and every script test at this tree, tester subagents perform every session test (a browser through the bundled Playwright MCP, an API, a CLI) and record what they saw, and each failure goes to a decider (test, code or spec?) and then to the agent that owns the fix, round after round up to verify_rounds, with no question to the user. Use when the user says "verify", "spex verify", "test the feature", "run everything", or when a NEXT block names /spex:verify.
+name: run-tests
+description: Prove a built spex feature as a whole — spex verify runs fast_checks and every script test at this tree, tester subagents perform every session test (a browser through the bundled Playwright MCP, an API, a CLI) and record what they saw, and each failure goes to a decider (test, code or spec?) and then to the agent that owns the fix, round after round up to verify_rounds, with no question to the user. Use when the user says "run tests", "spex run-tests", "verify", "test the feature", "run everything", or when a NEXT block names /spex:run-tests.
 disable-model-invocation: true
 allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Read(${CLAUDE_PLUGIN_ROOT}/reply.md), Read(${CLAUDE_PLUGIN_ROOT}/skills/*/SKILL.md), Agent
 ---
 
-# spex verify
+# spex run-tests
 
 `SPEX` = `${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs` (it runs as it is), from the repo root.
 

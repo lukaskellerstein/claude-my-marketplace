@@ -10,7 +10,7 @@ import { loadConfig } from '../config.js';
 import { currentBranch, isGitRepo } from '../git.js';
 import { fileExists, openDocument, readText, saveDocument, writeText } from '../io.js';
 import { nextPlanned, roadmapSteps } from '../roadmap.js';
-import { pendingFindings } from '../review.js';
+import { pendingRound } from '../review.js';
 import { REQUIRED_SECTIONS, openQuestions, openSummary, sectionBodies, specDocPath, specMeta, specStatus, waitsFor, withSpecStatus } from '../rules/spec.js';
 import { SPECS_DIR, featureDirs, loadFeature, resolveFeatureDir } from '../specs.js';
 import { claimsOf, isScript, needsFindings, testsOf } from '../tests.js';
@@ -109,8 +109,17 @@ export function approve(root: string, dir: string, stageArg?: string): CmdResult
       }
     });
     saveDocument(join(root, feature.requirementsPath), doc);
+    // A plan that waits too (a clarify changed the records and tasks.yaml in one run) rides along: the NEXT block
+    // named all three files, and a second /spex:approve right after the first looked like the same click twice.
+    const plan = feature.tasks && config.approvals.includes('tasks') && !tasksApproval(config, feature.tasks).approved ? feature.tasks : undefined;
+    if (plan) {
+      const tdoc = openDocument(join(root, feature.tasksPath));
+      setApproval(tdoc, 'tasks', tasksHash(plan));
+      saveDocument(join(root, feature.tasksPath), tdoc);
+    }
+    const planText = plan ? `, ${feature.tasksPath} (${plan.tasks.length} task(s)) approved as read` : '';
     const tests = stampTests(root, feature);
-    return { ok: true, findings: warnings, exit: 0, text: `${flipped} record(s) approved in ${feature.requirementsPath}${tests}${warnings.length ? ` (${warnings.length} warning(s) left)` : ''}\n${nextBlock()}`, data: { stage: 'requirements', approved: flipped, tests: feature.tests?.tests.length ?? 0 } };
+    return { ok: true, findings: warnings, exit: 0, text: `${flipped} record(s) approved in ${feature.requirementsPath}${planText}${tests}${warnings.length ? ` (${warnings.length} warning(s) left)` : ''}\n${nextBlock()}`, data: { stage: 'requirements', approved: flipped, tests: feature.tests?.tests.length ?? 0, ...(plan ? { also: ['tasks'], tasks: plan.tasks.length } : {}) } };
   }
   if (feature.tasks && (!stage || stage === 'tasks') && config.approvals.includes('tasks')) {
     const state = tasksApproval(config, feature.tasks);
@@ -181,7 +190,41 @@ export interface NextStep {
   asks: { task: string; ask: string; yes: string }[];
   /** Auto mode, from the config: with it on, no skill asks a person anything; the gates are the only reads. */
   auto: boolean;
+  /** A shaping spec with nothing open: what the words do in a shaping chat that is still open on it. */
+  chat?: string;
+  /** Shaping: the question blocks the last reply asked (`--asked`, else the spec's open questions, at most 5). */
+  asked?: number;
+  /** Shaping: every open question of spec.md. */
+  open?: number;
+  /** The person said "done" while questions are open (`--ending`): the block asks once what done does. */
+  ending?: boolean;
 }
+
+/**
+ * The words a person can answer in a chat that asks (sizing, shaping): one row each, what to type left of
+ * the bar and what it does right of it, so no word is buried in a sentence. Only the words that work now
+ * are printed: with no question asked there is no pick to take, so no `ok` and no letters.
+ */
+const answerRow = (word: string, text: string): string => `       ${word.padEnd(10)}│ ${text}`;
+
+/** The rows for `asked` question blocks: `ok` takes every pick, a letter changes one. `then` is what ok starts. */
+function pickRows(asked: number, then: string): string[] {
+  if (asked === 1) return [answerRow('ok', `take my pick, then ${then}`), answerRow('B', 'take option B instead (any other letter works the same way)')];
+  const last = Math.min(asked, 3);
+  return [
+    answerRow('ok', `take all ${asked} picks, then ${then}`),
+    answerRow(`1=B, ${last}=A`, `option B for question 1, option A for question ${last}`),
+    answerRow('', 'a comma or a new line between the answers, both work'),
+    answerRow('', 'a question you leave out keeps my pick'),
+  ];
+}
+
+const ROW_DONE = answerRow('done', '🏁 approve the spec and end shaping');
+
+/** Every open question of a shaping spec is on the screen, at most 5 of them (the rest wait). */
+const MAX_ASKED = 5;
+
+export type SizingReply = 'roadmap' | 'step';
 
 const step = (stage: string, command: string, fresh: boolean, why: string, extra: Partial<NextStep> = {}): NextStep => ({ stage, command, fresh, why, task: null, ready: [], waves: [], counts: null, asks: [], auto: false, ...extra });
 
@@ -213,14 +256,15 @@ function reportStatus(root: string, featureId: string, stage: string): string | 
 export function whatNext(root: string, config: Config, feature: Feature): NextStep {
   let s = decide(root, config, feature);
   // Every gate refuses on a check error, so the NEXT block must not name a skill whose gate will refuse:
-  // the same command again would only print the same refusal.
+  // the same command again would only print the same refusal. Nor the bare CLI: the person has no `spex` on
+  // the PATH, only the skills. /spex:fix has no gate; it fixes each error by its fix text and goes on.
   if (s.stage !== 'invalid') {
     const errors = runCheck(root, [feature.dir]).findings.filter((f) => f.severity === 'error');
     if (errors.length) {
       const byCode = new Map<string, number>();
       for (const e of errors) byCode.set(e.code, (byCode.get(e.code) ?? 0) + 1);
       const codes = [...byCode].map(([c, n]) => (n > 1 ? `${c} ×${n}` : c)).join(', ');
-      s = step('invalid', `spex check ${feature.dir}`, false, `${errors.length} error(s) (${codes}) and every gate refuses until each is fixed by its fix text; ${s.command || s.stage} comes after`);
+      s = step('invalid', `/spex:fix ${feature.dir}`, true, `${errors.length} error(s) (${codes}), and every gate refuses until they are fixed; it fixes each by its fix text, then ${s.command || s.stage} comes next`);
     }
   }
   s.auto = config.auto;
@@ -232,7 +276,7 @@ const ASKING = ['/spex:new', '/spex:clarify', '/spex:requirements', '/spex:revie
 
 function decide(root: string, config: Config, feature: Feature): NextStep {
   const dir = feature.dir;
-  if (feature.errors.length) return step('invalid', `spex check ${dir}`, false, 'fix every error by its fix text');
+  if (feature.errors.length) return step('invalid', `/spex:fix ${dir}`, true, `${feature.errors.length} error(s) (${[...new Set(feature.errors.map((e) => e.code))].join(', ')}) in the files; it fixes each by its fix text`);
   const reqs = feature.requirements;
   const doc = specDocPath(root, feature);
   const meta = doc && !doc.missing ? specMeta(readText(join(root, doc.path))) : null;
@@ -242,8 +286,10 @@ function decide(root: string, config: Config, feature: Feature): NextStep {
       // Shaped with nothing open (auto mode ends here): a person reads it, then approve sets ready.
       const sections = sectionBodies(readText(join(root, doc.path)));
       const filled = REQUIRED_SECTIONS.every((s) => (sections.get(s.toLowerCase()) ?? '').length > 0);
-      if (filled && openQuestions(sections).total === 0) return step('approve-spec', `/spex:approve ${dir}`, true, `${doc.path} is shaped and nothing is open: a person reads it, then approve sets status: ready`);
-      return step('shaping', `/spex:new ${dir}`, false, 'ok takes every pick · answer by number · done approves the spec and ends shaping');
+      // A shaping chat can still be open on it (round 0 of a copied design): the block says what ok and done do there too.
+      const open = openQuestions(sections).total;
+      if (filled && open === 0) return step('approve-spec', `/spex:approve ${dir}`, true, `${doc.path} is shaped and nothing is open: a person reads it, then approve sets status: ready`, { chat: 'Still in the shaping chat? done there does the same' });
+      return step('shaping', `/spex:new ${dir}`, false, 'ok takes every pick, and shaping goes on · 1=B changes one pick · done approves the spec and ends shaping', { asked: Math.min(open, MAX_ASKED), open });
     }
     if (meta?.status === 'planned') {
       const waits = waitsFor(root, meta);
@@ -263,7 +309,12 @@ function decide(root: string, config: Config, feature: Feature): NextStep {
   const gaps = planGaps(feature);
   // The proof plan for the records comes before gate 1: the person reads the claim and its proof together.
   if (gaps.scenarios.length && !reqs.requirements.every((r) => r.status === 'built' || r.status === 'retired')) return step('plan-tests', `/spex:requirements ${dir}`, true, `${gaps.scenarios.length} scenario(s) have no test in tests.yaml; it starts the test analyst`);
-  if (reqs.requirements.some((r) => r.status === 'draft')) return step('approve-requirements', `/spex:approve ${dir}`, true, `gate 1: read ${feature.requirementsPath} and ${feature.testsPath}, then approve`);
+  if (reqs.requirements.some((r) => r.status === 'draft')) {
+    // A plan that waits too goes through the same approve, so the person reads every file before the one click.
+    const planWaits = !!feature.tasks && tasksApproval(config, feature.tasks).required && !tasksApproval(config, feature.tasks).approved;
+    if (planWaits) return step('approve-requirements', `/spex:approve ${dir}`, true, `gate 1 and the plan: read ${feature.requirementsPath}, ${feature.tasksPath} and ${feature.testsPath}, then one approve takes all three`);
+    return step('approve-requirements', `/spex:approve ${dir}`, true, `gate 1: read ${feature.requirementsPath} and ${feature.testsPath}, then approve`);
+  }
   if (reqs.requirements.every((r) => r.status === 'built' || r.status === 'retired')) {
     if (!meta?.roadmap) return step('built', '', true, 'the feature is shipped; nothing is next');
     // A roadmap step: the next planned step whose dependencies are built, if there is one.
@@ -273,12 +324,16 @@ function decide(root: string, config: Config, feature: Feature): NextStep {
     const ready = nextPlanned(steps);
     if (ready) return step('built', `/spex:new ${ready.dir}`, true, `${here}; ${ready.dir} is the next planned step and its dependencies are built`);
     if (planned.length) return step('built', '', true, `${here}; ${planned[0].dir} waits for ${planned[0].waits.map((w) => w.dir.split('/').pop()).join(', ')}`);
-    return step('built', '', true, `${here}; every step of ${meta.roadmap} is shaped or built (spex roadmap ${meta.roadmap})`);
+    return step('built', '', true, `${here}; every step of ${meta.roadmap} is shaped or built`);
   }
   const tasks = feature.tasks;
   if (!tasks) return step('tasks', `/spex:tasks ${dir}`, true, 'it reads requirements.yaml, tests.yaml and the code the records name');
   // A review round waits for the person's answer: nothing moves until they take the picks or change them.
-  const pending = pendingFindings(root, reqs.feature);
+  const round = pendingRound(root, reqs.feature);
+  if (round && !round.file) {
+    return step('review-repair', `/spex:review ${dir}`, false, `round ${round.round} is written, but ${round.path} breaks its schema (${round.errors.length} error(s), first: ${clip(round.errors[0].message)}): the review repairs the file and asks you again, it does not review the code again`);
+  }
+  const pending = round?.file ? { round: round.round, path: round.path, file: round.file } : null;
   if (pending) {
     const n = pending.file.findings.length;
     return step('review-accept', `/spex:review ${dir} ok`, false, `${n} finding(s) of review round ${pending.round} wait for your answer (${pending.path}): ok takes every pick; or change one by number, as in ${pending.file.findings.length > 1 ? '2=defer 3=fix' : '1=defer'}`);
@@ -292,13 +347,13 @@ function decide(root: string, config: Config, feature: Feature): NextStep {
     return step('plan-tests', `/spex:tasks ${dir}`, true, `${gaps.tasks.join(', ')} have no test in tests.yaml; it starts the test analyst`);
   }
   const ta = tasksApproval(config, tasks);
-  if (ta.required && !ta.approved) return step('approve-tasks', `/spex:approve ${dir}`, true, `read ${feature.tasksPath} (approach, design, tasks) and ${feature.testsPath}, then approve`);
+  if (ta.required && !ta.approved) return step('approve-tasks', `/spex:approve ${dir} tasks`, true, `read ${feature.tasksPath} (approach, design, tasks) and ${feature.testsPath}, then approve`);
   const te = testsApproval(config, feature.tests, reviewFixIds(tasks));
   if (te.required && !te.approved) return step('approve-tests', `/spex:approve ${dir} tests`, true, `read ${feature.testsPath}: it changed since a person approved it`);
   const batch = pickTestBatch(root, config, feature);
   if (batch.tests.length) {
     if (fixing) return viaFix('tests', `${batch.tests.map((t) => t.id).join(', ')} are not written yet`);
-    return step('tests', `/spex:tests ${dir}`, true, `${batch.tests.map((t) => t.id).join(', ')} are not written yet; it starts the test developers`);
+    return step('tests', `/spex:develop-tests ${dir}`, true, `${batch.tests.map((t) => t.id).join(', ')} are not written yet; it starts the test developers`);
   }
   const counts = { todo: 0, done: 0, blocked: 0 };
   for (const t of tasks.tasks) counts[t.status]++;
@@ -326,7 +381,7 @@ function decide(root: string, config: Config, feature: Feature): NextStep {
   }
   if (!verifyIsCurrent(root, config, feature)) {
     if (fixing) return viaFix('verify', 'every fix is built, the feature is not verified at this tree', { counts });
-    return step('verify', `/spex:verify ${dir}`, true, 'every task is done; it runs every script, performs every session, and judges each failure', { counts });
+    return step('verify', `/spex:run-tests ${dir}`, true, 'every task is done; it runs every script, performs every session, and judges each failure', { counts });
   }
   if (reportStatus(root, reqs.feature, 'review') !== 'done') {
     if (fixes.size && reportStatus(root, reqs.feature, 'review') === 'concerns') return step('review', `/spex:review ${dir}`, true, 'the fixes are verified; it checks each accepted finding at its task\'s paths, and only a P1 is new', { counts });
@@ -342,29 +397,56 @@ export function renderNext(s: NextStep, all = false): string {
   // A skill that needs nothing from this chat is listed after /clear, so the commands are run top to bottom as printed.
   // No command: `(wait)` when another step must finish first, `(a person)` when only a person can move it.
   // Shaping waits for the person's answer in the chat that asked; its command only resumes it from another chat.
-  const shaping = s.stage === 'shaping';
-  const fresh = !!s.command && s.command.startsWith('/') && s.fresh;
+  // With no question asked (reply 2 of round 0, a spec with nothing open yet) there is nothing to answer:
+  // the block is the command that starts the next round, and that round reads its files, not this chat.
+  const shaping = s.stage === 'shaping' && (s.asked ?? 0) > 0 && !s.ending;
+  if (s.stage === 'shaping' && s.ending) {
+    // "done" with questions still open: the two words that end it, and what each does to them; nothing else.
+    const n = s.open ?? 0;
+    const qs = n === 1 ? 'the open question' : `the ${n} open questions`;
+    return [RULE, 'NEXT   your answer, in the shaping chat', answerRow('ok', `take my picks for ${qs}, then approve the spec`), answerRow('done', `🏁 approve the spec now, ${qs} stay${n === 1 ? 's' : ''} open and go on to requirements`), RULE].join('\n');
+  }
+  const fresh = !!s.command && s.command.startsWith('/') && (s.fresh || s.stage === 'shaping');
+  // auto changes only who answers a skill's questions. With it off, a skill that asks is printed twice:
+  // as it is (the person answers) and with `auto` (the decider answers), each command alone on its line to copy.
+  const asks = ASKING.some((c) => s.command === c || s.command.startsWith(`${c} `));
+  const both = asks && !s.auto && (shaping || fresh);
   const lines = [RULE, `NEXT   ${shaping ? 'your answer, in the shaping chat' : fresh ? '/clear' : s.command || (s.stage === 'planned' || s.stage === 'built' ? '(wait)' : '(a person)')}`];
-  if (shaping) lines.push(`       ${s.why}`, `       No shaping chat open? ${s.command} resumes it.`);
-  else if (fresh) lines.push(`       ${s.command}`, `       ${s.why}, nothing from this chat.`);
+  if (shaping) lines.push(...pickRows(s.asked!, 'the next round starts'), ROW_DONE, '       No shaping chat open? This command resumes it', `       ${s.command}`);
+  else if (fresh) lines.push(`       ${s.command}`, `       ${s.stage === 'shaping' ? 'The next round reads spec.md and the design' : s.why}, nothing from this chat.`);
   else if (!s.command) {
     if (!s.asks.length || s.asks.length < s.counts!.blocked) lines.push(`       ${s.why}`);
     for (const a of s.asks) lines.push(`       ${a.task} waits for your yes: ${a.ask}`, `         yes → ${a.yes}   (typing it is the yes; it unblocks and runs ${a.task})`, `         no  → leave ${a.task} blocked, or change it in tasks.yaml and /spex:approve`);
   } else if (!s.fresh) lines.push(`       Stay in this chat: ${s.why}.`);
   else lines.push(`       ${s.why}.`);
   if (all && s.waves.length) lines.push(`       ready: ${s.waves.map((w) => (w.length > 1 ? `${w.join(' + ')} (in parallel)` : w[0])).join(' · ')}`);
+  if (s.chat) lines.push(`       ${s.chat}.`);
   if (s.counts) lines.push(`       tasks: ${s.counts.done} done, ${s.counts.todo} todo, ${s.counts.blocked} blocked`);
-  // auto changes only who answers a skill's questions: the line shows where the next skill asks some.
-  if (ASKING.some((c) => s.command === c || s.command.startsWith(`${c} `))) lines.push(`       auto: ${s.auto ? 'on (nobody is asked; you read at the gates)' : 'off (set auto: true in .spex/config.yaml, or say "auto", and nobody is asked)'}`);
+  if (both) lines.push(`       ${shaping ? 'Or let an agent answer the rest' : 'It asks you its questions. Or let an agent answer them'}, and you read at the gates`, `       ${s.command} auto`);
+  else if (asks) lines.push(`       auto: ${s.auto ? 'on (nobody is asked; you read at the gates)' : 'off (set auto: true in .spex/config.yaml, or say "auto", and nobody is asked)'}`);
   lines.push(RULE);
   return lines.join('\n');
 }
 
-/** `spex next <dir> [--all]`: what now. With --all, every ready task by wave, for an orchestrator. */
-export function next(root: string, dir: string, opts: { all?: boolean } = {}): CmdResult {
+/**
+ * `spex next --sizing roadmap|step --asked <n>`: the NEXT block of reply 1 of round 0 of /spex:new. It has no
+ * folder yet, so the block comes from the reply's kind and its question count. "done" ends a spec's shaping,
+ * and no spec exists yet, so it is not offered. Reply 2 is `spex next <first folder> --asked 0`.
+ */
+export function nextSizing(kind: SizingReply, asked: number): CmdResult {
+  const then = kind === 'roadmap' ? 'I write the roadmap and the step folders' : 'I write the spec folder, and round 1 starts';
+  const rows = asked > 0 ? pickRows(asked, then) : [answerRow('ok', kind === 'roadmap' ? `the table is right, so ${then}` : then)];
+  const lines = [RULE, 'NEXT   your answer, in this chat', ...rows, RULE];
+  return { ok: true, findings: [], exit: 0, text: lines.join('\n'), data: { stage: 'sizing', reply: kind, asked } };
+}
+
+/** `spex next <dir> [--all] [--asked <n>]`: what now. With --all, every ready task by wave, for an orchestrator. */
+export function next(root: string, dir: string, opts: { all?: boolean; asked?: number; ending?: boolean } = {}): CmdResult {
   const { config } = loadConfig(root);
   const feature = loadFeature(root, resolveFeatureDir(root, dir));
   const s = whatNext(root, config, feature);
+  if (s.stage === 'shaping' && opts.asked !== undefined) s.asked = opts.asked;
+  if (s.stage === 'shaping' && opts.ending) s.ending = true;
   return { ok: s.stage !== 'invalid', findings: feature.errors, exit: s.stage === 'invalid' ? 4 : 0, text: renderNext(s, opts.all), data: { ...s } };
 }
 
@@ -473,7 +555,7 @@ export function gate(root: string, stage: string, dir: string, ids: string[]): C
       const own = testsOf(feature, t);
       if (!own.length) findings.push({ severity: 'error', code: 'GATE-COVERAGE', message: `${t.id} has no test in tests.yaml`, fix: `The test analyst adds one: /spex:tasks ${feature.dir}.` });
       const cov = coverageFor(root, check.config, feature, own);
-      for (const m of cov.missing) findings.push({ severity: 'error', code: 'GATE-COVERAGE', message: `${m.id}: no test named ${m.name} in its file`, fix: `Run /spex:tests ${feature.dir} ${m.id} first.` });
+      for (const m of cov.missing) findings.push({ severity: 'error', code: 'GATE-COVERAGE', message: `${m.id}: no test named ${m.name} in its file`, fix: `Run /spex:develop-tests ${feature.dir} ${m.id} first.` });
       // What a person approved must be what is on disk: tasks.yaml, and tests.yaml when configured.
       findings.push(...approvalFindings(check.config, feature, 'tasks'), ...approvalFindings(check.config, feature, 'tests'));
       for (const x of own.filter(isScript)) findings.push(...needsFindings(root, x.needs, x.id));
@@ -486,7 +568,7 @@ export function gate(root: string, stage: string, dir: string, ids: string[]): C
           const v = verifyTask(root, check.config, feature, t, 'fail');
           if (!v.ok) {
             const why = v.findings[0];
-            findings.push({ severity: 'error', code: 'GATE-RED', message: why ? why.message : `the tests of ${t.id} did not fail as expected`, fix: why?.fix ?? `Run /spex:tests ${feature.dir}.` });
+            findings.push({ severity: 'error', code: 'GATE-RED', message: why ? why.message : `the tests of ${t.id} did not fail as expected`, fix: why?.fix ?? `Run /spex:develop-tests ${feature.dir}.` });
           } else infos.push(...v.findings);
           data.red = v.path ?? null;
         }
@@ -511,7 +593,7 @@ export function gate(root: string, stage: string, dir: string, ids: string[]): C
       if (!tasks) return refuse([{ severity: 'error', code: 'SPEC-MISSING', message: 'review gate needs tasks.yaml', fix: 'Run /spex:tasks first.' }]);
       tasksDone(root, feature, findings);
       findings.push(...repoFindings(root, check.config, featureRepos(check.config, feature)));
-      if (!findings.length && !verifyIsCurrent(root, check.config, feature)) findings.push({ severity: 'error', code: 'GATE-VERIFY', message: 'the whole-feature run is missing, red, or from another tree', fix: `Run /spex:verify ${feature.dir}: every script green and every session passed at this tree, then review.` });
+      if (!findings.length && !verifyIsCurrent(root, check.config, feature)) findings.push({ severity: 'error', code: 'GATE-VERIFY', message: 'the whole-feature run is missing, red, or from another tree', fix: `Run /spex:run-tests ${feature.dir}: every script green and every session passed at this tree, then review.` });
       break;
     }
     case 'ship': {
@@ -519,7 +601,7 @@ export function gate(root: string, stage: string, dir: string, ids: string[]): C
       if (!reqs) return refuse(need(feature));
       tasksDone(root, feature, findings);
       for (const q of reqs.questions ?? []) if (!q.answer) findings.push({ severity: 'error', code: 'GATE-QUESTION', message: `${q.id} is open`, fix: 'Run /spex:clarify.' });
-      if (!findings.length && !verifyIsCurrent(root, check.config, feature)) findings.push({ severity: 'error', code: 'GATE-VERIFY', message: 'the whole-feature run is missing, red, or from another tree', fix: `Run /spex:verify ${feature.dir} first.` });
+      if (!findings.length && !verifyIsCurrent(root, check.config, feature)) findings.push({ severity: 'error', code: 'GATE-VERIFY', message: 'the whole-feature run is missing, red, or from another tree', fix: `Run /spex:run-tests ${feature.dir} first.` });
       if (!findings.length && reportStatus(root, reqs.feature, 'review') !== 'done') findings.push({ severity: 'error', code: 'GATE-REVIEW', message: 'no clean review report for this feature', fix: `Run /spex:review ${feature.dir}; ship needs its report at status done.` });
       break;
     }
@@ -607,6 +689,65 @@ export function unblock(root: string, dir: string, taskId: string): CmdResult {
   return { ok: true, findings: [], exit: 0, text: `${taskId} todo again; the reason stays in ${reason} for the lessons`, data: { task: taskId, reason } };
 }
 
+/**
+ * `spex paths <dir> <task> --add <path>… --reason "…"`: a developer found that the task must write a file outside its
+ * `paths`, and a decider said yes. tasks.yaml is the process's own work, so the process widens it: no person types a fix.
+ * The same rules as spex check hold (never a protected or test path); a change a rule refuses is undone. The record under
+ * .spex/runs/ says why, and spex show --review prints it: a plan a person approved stays approved, re-stamped with the new
+ * hash, and the person reads the change at review. A plan that was not approved before still waits for the person.
+ */
+export function paths(root: string, dir: string, taskId: string, add: string[], reason: string): CmdResult {
+  const rel = resolveFeatureDir(root, dir);
+  const feature = loadFeature(root, rel);
+  const errs = need(feature);
+  if (errs.length) return refuse(errs, 4);
+  if (!feature.tasks || !feature.requirements) return refuse([{ severity: 'error', code: 'SPEC-MISSING', message: `${feature.dir} has no tasks.yaml`, fix: 'Run /spex:tasks.' }], 4);
+  const i = feature.tasks.tasks.findIndex((t) => t.id === taskId);
+  if (i < 0) return refuse([{ severity: 'error', code: 'TASK-UNKNOWN', message: `${taskId} is not in ${feature.tasksPath}`, fix: 'Check the id.' }], 2);
+  const task = feature.tasks.tasks[i];
+  if (task.status === 'done') return refuse([{ severity: 'error', code: 'PATHS-DONE', message: `${taskId} is done`, fix: 'A done task stays done. New work is a new task: /spex:tasks.' }]);
+  if (!reason.trim()) return refuse([{ severity: 'error', code: 'PATHS-REASON', message: 'paths needs --reason', fix: 'Give the decider\'s verdict: why the task must write the file.' }], 2);
+  const fresh = [...new Set(add.map((p) => p.trim()).filter(Boolean))].filter((p) => !task.paths.includes(p));
+  if (!fresh.length) return refuse([{ severity: 'error', code: 'PATHS-NONE', message: add.length ? `${taskId} has ${add.join(', ')} in its paths already` : 'paths needs --add <path>', fix: 'Name a path the task does not have yet.' }], 2);
+  const file = join(root, feature.tasksPath);
+  const before = readText(file);
+  const config = loadConfig(root).config;
+  const approvedBefore = tasksApproval(config, feature.tasks).approved;
+  const errorsNow = (): Finding[] => runCheck(root, [rel]).findings.filter((f) => f.severity === 'error');
+  const key = (f: Finding): string => `${f.code} ${f.message}`;
+  const old = new Set(errorsNow().map(key));
+  const doc = openDocument(file);
+  for (const p of fresh) doc.addIn(['tasks', i, 'paths'], p);
+  saveDocument(file, doc);
+  // The rules of spex check, on the file as it is now: an error the change brings (a protected path, two parallel tasks on
+  // one file, the file limit) means the path is not the task's to write, so the file goes back as it was.
+  const added = errorsNow().filter((f) => !old.has(key(f)));
+  if (added.length) {
+    writeText(file, before);
+    return refuse(added, 6);
+  }
+  // A person's approval of the plan as it was stays: the only change since is this one, a decider's verdict under the
+  // check rules, and review shows it. Dex 017 asked the person to approve the same files twice. A plan that was not
+  // approved before the change still waits for the person, so no other edit rides through here.
+  if (approvedBefore) {
+    const stamped = openDocument(file);
+    setApproval(stamped, 'tasks', tasksHash(loadFeature(root, rel).tasks!));
+    saveDocument(file, stamped);
+  }
+  const record = `.spex/runs/${feature.requirements.feature}/paths-${taskId}.json`;
+  const prior = fileExists(join(root, record)) ? (JSON.parse(readText(join(root, record))) as { changes: unknown[] }).changes : [];
+  const approval = tasksApproval(config, loadFeature(root, rel).tasks!);
+  const due = approval.required && !approval.approved;
+  writeText(join(root, record), JSON.stringify({ task: taskId, changes: [...prior, { added: fresh, reason, approval: approvedBefore ? 'kept' : due ? 'due' : 'none', at: new Date().toISOString() }] }, null, 2) + '\n');
+  return {
+    ok: true,
+    findings: [],
+    exit: 0,
+    text: `${taskId} paths + ${fresh.join(', ')}; why in ${record}${approvedBefore ? '\nthe approval of tasks.yaml stays: /spex:review shows the change' : due ? `\ntasks.yaml was not approved before this change: a person approves it (/spex:approve ${feature.dir})` : ''}`,
+    data: { task: taskId, added: fresh, record, approval_due: due, approval_kept: approvedBefore },
+  };
+}
+
 /** approved → built, and the records this feature supersedes → retired, in their own files. The answers no person gave are listed. */
 function closeFeature(root: string, feature: Feature): { built: number; retired: string[]; defaults: string[] } {
   const reqs = feature.requirements!;
@@ -672,7 +813,7 @@ export function ship(root: string, dir: string, opts: { merged?: boolean } = {})
   findings.push(...repoFindings(root, config, repos));
   if (!closed && !findings.length) {
     if (!isGitRepo(root)) findings.push({ severity: 'error', code: 'GIT-REQUIRED', message: 'ship needs a git repository', fix: 'Run inside the repository.' });
-    else if (!verifyIsCurrent(root, config, feature)) findings.push({ severity: 'error', code: 'SHIP-VERIFY', message: 'the whole-feature run is missing, red, or from another tree', fix: `Run /spex:verify ${feature.dir} first.` });
+    else if (!verifyIsCurrent(root, config, feature)) findings.push({ severity: 'error', code: 'SHIP-VERIFY', message: 'the whole-feature run is missing, red, or from another tree', fix: `Run /spex:run-tests ${feature.dir} first.` });
     else if (reportStatus(root, reqs.feature, 'review') !== 'done') findings.push({ severity: 'error', code: 'SHIP-REVIEW', message: 'no clean review report for this feature', fix: `Run /spex:review ${feature.dir} first.` });
   }
   if (findings.length) return refuse(findings);

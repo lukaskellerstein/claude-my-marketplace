@@ -25,7 +25,10 @@ allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUD
 4. Get the answers:
    - Conversation: ask the user one question at a time, as a question block of
      `${CLAUDE_PLUGIN_ROOT}/reply.md` under a `❓ QUESTIONS` banner. Wait for the answer
-     before the next one.
+     before the next one. The run goes on after it, so the banner never says `reply 1 of
+     1`, and the reply has no NEXT block: the answer is the next step. The answer line:
+     `ok takes every pick · or answer by number · auto: an agent answers this and the
+     rest`. On `auto`, every open question takes the auto branch below.
    - Auto mode (`auto` or `--auto` among the arguments, in any position, or
      `.spex/config.yaml` has `auto: true`): nobody is asked. One `spex:researcher` per
      question that needs outside facts, in parallel; then one `spex:decider` for the file
