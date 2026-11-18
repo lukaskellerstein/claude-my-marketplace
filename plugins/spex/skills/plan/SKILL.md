@@ -2,7 +2,7 @@
 name: plan
 description: Do the thinking for one spec. Checks its note against the code, then writes the full spec, the requirements, the tasks and the test plan in the worktree of the spec, and ends with a digest of what it filled in. Type it with a spec folder when the turn of that spec comes, or again to go on. With "auto" a decider answers and nobody is asked.
 disable-model-invocation: true
-allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Read(${CLAUDE_PLUGIN_ROOT}/reply.md), Read(${CLAUDE_PLUGIN_ROOT}/skills/*/*.md), Agent, EnterWorktree
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Read(${CLAUDE_PLUGIN_ROOT}/reply.md), Read(${CLAUDE_PLUGIN_ROOT}/skills/*/*.md), Agent
 ---
 
 # spex plan
@@ -25,17 +25,22 @@ Two rules hold in every part:
   agent)`, with its evidence and a confidence. Never tell it a question is the
   person's: none is.
 
-## 1. The gate and the worktree
+## 1. The gate
 
-`SPEX start plan <dir>`. The argument is a spec folder; a pasted idea goes to
-`/spex:new`.
+The session started in the worktree of the spec (`claude -w spex/<spec>`), so the chat
+and every agent you start work there. `SPEX start plan <dir>`. The argument is a spec
+folder; a pasted idea goes to `/spex:new`.
 
-- Refused: nothing changed. Reply `⛔ NOT STARTED` with the `fix` text. It names the
-  spec to plan now (`GATE-TURN`, `GATE-OPEN`), the files to commit (`GATE-COMMIT`: the
-  note, or the config), or a base branch to push (`GATE-PUSH`). Stop.
-- It prints `enter: <path>`. Call `EnterWorktree` with `path: <that path>`; skip it when
-  the chat is there already. Every agent you start after that works there.
-- `WORKTREE-SETUP` is a warning: the run goes on, and it is a `Notes:` line.
+- `GATE-ENTER`: this session did not start in the worktree of the spec. Nothing changed.
+  Reply `⛔ NOT STARTED`, and put its fix text under `You:` as it is (`claude -w
+  spex/<spec>`, then the command in that session). Never move the chat yourself: no
+  skill enters or leaves a worktree. Stop.
+- Any other refusal: nothing changed. Reply `⛔ NOT STARTED` with the `fix` text. It
+  names the spec to plan now (`GATE-TURN`, `GATE-OPEN`), the files to commit
+  (`GATE-COMMIT`: the note, or the config), a base branch to push (`GATE-PUSH`), or a
+  worktree older than the note (`WORKTREE-BEHIND`). Stop.
+- The first start in the worktree runs `worktree.setup` one time (`setup: … ran`).
+  `WORKTREE-SETUP` is a warning: the run goes on, and it is a `Notes:` line.
 - `(it was plan, started)`, or more on disk than the note: a second run. Do the parts
   again in order. Each adds only what is missing and changes nothing that holds.
   Nothing missing in a part: say so in one line, and go on.

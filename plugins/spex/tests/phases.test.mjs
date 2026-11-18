@@ -7,7 +7,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, statSync, utimesSync, writ
 import { join } from 'node:path';
 import test from 'node:test';
 import { parse } from 'yaml';
-import { DIR, NAME, SPEX, builtSpec, codes, commitAll, configure, edit, gitIn, implementing, makeRepo, ok, planned, read, spex, tempDir, worktreeOf } from './helpers.mjs';
+import { DIR, NAME, SPEX, builtSpec, codes, commitAll, configure, edit, enter, gitIn, implementing, makeRepo, ok, planned, read, spex, tempDir, worktreeOf } from './helpers.mjs';
 
 const yaml = (root, file) => parse(read(root, `${DIR}/${file}`), { schema: 'core' });
 const taskStatus = (root, id) => yaml(root, 'tasks.yaml').tasks.find((t) => t.id === id).status;
@@ -26,7 +26,7 @@ const withWords = (repo) => {
 /** The lines as plan leaves them: each names its record, or says why none does. */
 const LINKED = '- open tasks as CSV ← source.md#L1 (you) → REQ-007-001\n- never overwrite a file ← source.md#L2 → REQ-007-002\n- separator: semicolon ← source.md#L3 → no record: csv-stringify has the option, and D1 keeps the comma\n';
 
-test('start plan: the turn of the spec, a note that is committed, then the branch, the worktree and status.yaml', () => {
+test('start plan: the turn of the spec, a session in its worktree, a note that is committed, then status.yaml', () => {
   const repo = makeRepo('csv-export');
   writeFileSync(join(repo, 'idea.txt'), 'I want a restore command.\n');
   ok(repo, 'new', 'restore', '--words', 'idea.txt');
@@ -39,55 +39,117 @@ test('start plan: the turn of the spec, a note that is committed, then the branc
   assert.equal(r.code, 6, r.stdout);
   assert.deepEqual(codes(r), ['GATE-TURN']);
   assert.ok(finding(r, 'GATE-TURN').message.includes('007-csv-export comes first, and it is a note') && finding(r, 'GATE-TURN').fix.endsWith(`Type: /spex:plan ${DIR}`), r.stdout);
-  assert.ok(!existsSync(join(repo, '.claude/worktrees')), 'a refused start makes no worktree');
+  commitAll(repo, 'the notes');
+
+  // a start on main: GATE-ENTER, with the command that opens the right session. The script makes nothing: no
+  // worktree, no branch, no state, no commit.
+  const head = gitIn(repo, ['rev-parse', 'HEAD']);
+  for (const phase of ['plan', 'implement', 'review']) {
+    r = spex(repo, 'start', phase, DIR);
+    assert.equal(r.code, 6, r.stdout);
+    assert.deepEqual(codes(r), ['GATE-ENTER'], phase);
+    assert.equal(finding(r, 'GATE-ENTER').fix, `Start a session in the spec's worktree: claude -w spex/${NAME}, then type /spex:${phase} ${DIR} there.`);
+    assert.ok(finding(r, 'GATE-ENTER').message.includes('this session is on main'), r.stdout);
+  }
+  assert.deepEqual(codes(spex(repo, 'comment', '--text', 'x')), ['COMMENT-NO-SPEC'], 'no spec is open yet');
+  assert.ok(!existsSync(join(repo, '.worktrees')) && !existsSync(join(repo, '.claude/worktrees')), 'no worktree');
+  assert.equal(gitIn(repo, ['branch', '--list', 'spex/*']).trim(), '', 'no branch');
+  assert.equal(gitIn(repo, ['worktree', 'list']).trim().split('\n').length, 1);
+  assert.ok(!existsSync(join(repo, DIR, 'status.yaml')) && !existsSync(join(repo, '.git/info/exclude')) || !read(repo, '.git/info/exclude').includes('worktrees'), 'no state, no ignore line');
+  assert.equal(gitIn(repo, ['rev-parse', 'HEAD']), head, 'no commit');
+  assert.equal(gitIn(repo, ['status', '--porcelain']).trim(), '', 'nothing new in the main folder');
+  // a session in another spec's worktree is the wrong session too
+  r = spex(enter(repo, 'specs/008-restore'), 'start', 'plan', DIR);
+  assert.deepEqual(codes(r), ['GATE-ENTER']);
+  assert.ok(finding(r, 'GATE-ENTER').message.includes('on spex/008-restore'), r.stdout);
 
   // a worktree gets only what is committed: a note changed after its commit is refused, by name
+  const wt = enter(repo);
   edit(repo, `${DIR}/spec.md`, (s) => `${s}\n## Who\nMe.\n`);
-  r = spex(repo, 'start', 'plan', DIR);
+  r = spex(wt, 'start', 'plan', DIR);
   assert.equal(r.code, 6, r.stdout);
   assert.deepEqual(codes(r), ['GATE-COMMIT']);
   assert.deepEqual(r.json.uncommitted, [`${DIR}/spec.md`]);
   assert.ok(finding(r, 'GATE-COMMIT').fix.startsWith('Commit them on main'), r.stdout);
-  assert.ok(!existsSync(join(repo, '.claude/worktrees')) && !gitIn(repo, ['branch', '--list', 'spex/*']).trim(), 'nothing made');
-  commitAll(repo, 'the notes');
+  assert.ok(!existsSync(join(wt, DIR, 'status.yaml')) && !existsSync(join(wt, '.spex/runs/worktree-setup.json')), 'nothing made');
+  commitAll(repo, 'the note');
   // the same for the config: in the worktree, one that is not committed would be read as the defaults, with no word about it
   configure(repo, 'close: {cmd: local}');
-  r = spex(repo, 'start', 'plan', DIR);
+  r = spex(wt, 'start', 'plan', DIR);
   assert.deepEqual([r.code, codes(r), r.json.uncommitted], [6, ['GATE-COMMIT'], ['.spex/config.yaml']]);
   assert.ok(finding(r, 'GATE-COMMIT').message.startsWith('1 file(s) the worktree needs are not committed on main: .spex/config.yaml'), r.stdout);
   commitAll(repo, 'the config');
 
-  r = spex(repo, 'start', 'plan', DIR);
+  // the session is in the worktree, on spex/<spec>: the start goes on. The worktree was made before the two commits,
+  // and its branch has no work of its own, so the first start brings the base in
+  r = spex(wt, 'start', 'plan', DIR);
   assert.equal(r.code, 0, r.stdout);
-  const wt = worktreeOf(repo);
-  assert.deepEqual([r.json.phase, r.json.dir, r.json.worktree, r.json.branch, r.json.base, r.json.made, r.json.was], ['plan', DIR, wt, `spex/${NAME}`, 'main', true, null]);
+  assert.deepEqual([r.json.phase, r.json.dir, r.json.worktree, r.json.branch, r.json.base, r.json.first, r.json.was], ['plan', DIR, wt, `spex/${NAME}`, 'main', true, null]);
   assert.deepEqual(r.json.state, { command: 'plan', state: 'started' });
-  assert.ok(r.json.text.includes(`enter: ${wt}\n`) && r.json.text.includes('made from main'), r.json.text);
-  // git: the branch, the worktree on it, and the main folder still on main with nothing new to show
-  assert.equal(gitIn(wt, ['rev-parse', '--abbrev-ref', 'HEAD']).trim(), `spex/${NAME}`);
+  assert.ok(r.json.text.includes(`worktree: ${wt} · branch spex/${NAME} · the first start here\n`) && r.json.text.includes('the base came in (fast-forward): main (2 commit(s))'), r.json.text);
+  assert.ok(!r.json.text.includes('enter:'), 'the session is there already: nothing to enter');
+  assert.equal(gitIn(wt, ['rev-parse', 'HEAD']), gitIn(repo, ['rev-parse', 'main']), 'the branch is at the base');
   assert.equal(gitIn(repo, ['rev-parse', '--abbrev-ref', 'HEAD']).trim(), 'main');
-  assert.equal(gitIn(wt, ['rev-parse', 'HEAD']), gitIn(repo, ['rev-parse', 'main']), 'the branch starts at the base');
-  assert.equal(read(repo, '.git/info/exclude').split('\n').filter((l) => l === '.claude/worktrees/').length, 1);
-  assert.equal(gitIn(repo, ['status', '--porcelain']).trim(), '', 'the main folder does not show the worktree as new files');
+  assert.equal(gitIn(repo, ['status', '--porcelain']).trim(), '', 'the repo ignores .worktrees/: the main folder shows nothing new');
   // the state is in the worktree, and only there
   assert.equal(read(wt, `${DIR}/status.yaml`), 'command: plan\nstate: started\n');
   assert.ok(!existsSync(join(repo, DIR, 'status.yaml')), 'the base branch has no state of an open spec');
   // the note opened: the sections of the full spec it lacks are there now, each with its hint
   assert.deepEqual([...read(wt, `${DIR}/spec.md`).matchAll(/^## (.+)$/gm)].map((m) => m[1]), ['Why', 'What', 'Not this', 'Success', 'Who', 'Constraints', 'Alternatives', 'Open questions', 'Decisions']);
 
-  // typed again: the worktree is found, nothing is made twice, the spec keeps what the first run wrote
+  // typed again: a second run. Nothing is set up twice, the spec keeps what the first run wrote
   edit(wt, `${DIR}/spec.md`, (s) => s.replace('## Constraints\n', '## Constraints\nNode 20.\n'));
   const before = read(wt, `${DIR}/spec.md`);
-  r = spex(repo, 'start', 'plan', DIR);
+  r = spex(wt, 'start', 'plan', DIR);
   assert.equal(r.code, 0, r.stdout);
-  assert.deepEqual([r.json.made, r.json.was, r.json.again], [false, { command: 'plan', state: 'started' }, true]);
+  assert.deepEqual([r.json.first, r.json.was, r.json.again], [false, { command: 'plan', state: 'started' }, true]);
   assert.equal(read(wt, `${DIR}/spec.md`), before);
-  assert.equal(read(repo, '.git/info/exclude').split('\n').filter((l) => l === '.claude/worktrees/').length, 1);
-  // from inside the worktree the same command finds the same spec
-  assert.equal(spex(wt, 'start', 'plan', DIR).json.worktree, wt);
+  // from a folder under the worktree the same command finds the same spec
+  assert.equal(spex(join(wt, 'specs'), 'start', 'plan', DIR).json.worktree, wt);
+  // the list reads the open spec in its worktree, found by its branch
+  assert.deepEqual(spex(repo, 'list').json.specs[0], { dir: DIR, number: 7, state: 'plan, started', worktree: true });
   // and the next spec still waits, now for an open one
   r = spex(repo, 'start', 'plan', 'specs/008-restore');
   assert.ok(finding(r, 'GATE-TURN').message.includes('it is plan, started'), r.stdout);
+});
+
+test('start in the worktree: worktree.setup runs at the first start there and never again; the hook does not run it', () => {
+  const repo = makeRepo('csv-export');
+  configure(repo, 'worktree: {setup: "echo ran >> setup.log"}');
+  commitAll(repo, 'setup');
+  const wt = enter(repo);
+  assert.ok(!existsSync(join(wt, 'setup.log')), 'the worktree is made, and nothing ran in it');
+  let r = ok(wt, 'start', 'plan', DIR);
+  assert.deepEqual([r.json.first, r.json.setup], [true, { cmd: 'echo ran >> setup.log', ok: true, tail: r.json.setup.tail }]);
+  assert.ok(r.json.text.includes('setup: `echo ran >> setup.log` ran'), r.json.text);
+  const record = JSON.parse(read(wt, '.spex/runs/worktree-setup.json'));
+  assert.deepEqual([record.setup, record.ok], ['echo ran >> setup.log', true]);
+  // the second start finds the record and skips it; so do the starts of the next phases
+  r = ok(wt, 'start', 'plan', DIR);
+  assert.deepEqual([r.json.first, r.json.setup], [false, null]);
+  assert.ok(r.json.text.includes('setup: ran at the first start here'), r.json.text);
+  ok(repo, 'end', 'plan', DIR);
+  ok(wt, 'start', 'implement', DIR);
+  assert.equal(read(wt, 'setup.log'), 'ran\n', 'one run, in the worktree');
+  assert.ok(!existsSync(join(repo, 'setup.log')));
+  assert.equal(gitIn(wt, ['status', '--porcelain', '--', '.spex']).trim(), '', 'git does not see the record');
+  assert.ok(!gitIn(wt, ['log', '--name-only', '--format=']).includes('worktree-setup.json'), 'the record is never committed');
+});
+
+test('the spec in flight before 3.1: a worktree moved to .worktrees/spex/<spec> by hand, with a state that is not committed, goes on as a second run', () => {
+  const repo = makeRepo('csv-export');
+  configure(repo, 'worktree: {setup: "echo ran >> setup.log"}');
+  commitAll(repo, 'setup');
+  // as the dex spec is: the branch spex/<spec> at the base, in .worktrees/spex/<spec>, and the run of plan in its files only
+  const wt = enter(repo);
+  writeFileSync(join(wt, DIR, 'status.yaml'), 'command: plan\nstate: started\n');
+  edit(wt, `${DIR}/spec.md`, (s) => `${s}\n## Who\nThe person who exports.\n`);
+  const r = ok(wt, 'start', 'plan', DIR);
+  assert.deepEqual([r.json.was, r.json.first], [{ command: 'plan', state: 'started' }, true]);
+  assert.ok(r.json.text.startsWith(`plan started for ${DIR} (it was plan, started)\n`), r.json.text);
+  assert.ok(read(wt, `${DIR}/spec.md`).includes('The person who exports.'), 'the work of the first run stays');
+  assert.equal(read(wt, 'setup.log'), 'ran\n', 'setup ran: the record of the first start was not there');
+  assert.equal(spex(repo, 'status').json.next, `/spex:plan ${DIR}`);
 });
 
 test('start plan: a spec with a higher number that is open, a folder that is no git repo, a failing worktree.setup', () => {
@@ -97,7 +159,7 @@ test('start plan: a spec with a higher number that is open, a folder that is no 
   writeFileSync(join(repo, 'specs/008-restore/spec.md'), '# 008 Restore\n\n## Why\nw\n\n## What\nw\n\n## Not this\nw\n\n## Success\nw\n');
   writeFileSync(join(repo, 'specs/008-restore/status.yaml'), 'command: plan\nstate: started\n');
   commitAll(repo, 'in flight');
-  let r = spex(repo, 'start', 'plan', DIR);
+  let r = spex(enter(repo), 'start', 'plan', DIR);
   assert.equal(r.code, 6, r.stdout);
   assert.deepEqual(codes(r), ['GATE-OPEN']);
   assert.ok(finding(r, 'GATE-OPEN').message === '008-restore is open (plan, started)' && finding(r, 'GATE-OPEN').fix.endsWith('Type: /spex:plan specs/008-restore'), r.stdout);
@@ -114,14 +176,14 @@ test('start plan: a spec with a higher number that is open, a folder that is no 
   repo = makeRepo('csv-export');
   configure(repo, 'worktree: {setup: "echo ready > setup.flag && exit 3"}');
   commitAll(repo, 'setup');
-  r = spex(repo, 'start', 'plan', DIR);
+  r = spex(enter(repo), 'start', 'plan', DIR);
   assert.equal(r.code, 0, r.stdout);
   assert.deepEqual(codes(r), ['WORKTREE-SETUP']);
   assert.equal(finding(r, 'WORKTREE-SETUP').severity, 'warning');
   assert.equal(read(worktreeOf(repo), 'setup.flag'), 'ready\n', 'it ran in the worktree');
   assert.ok(!existsSync(join(repo, 'setup.flag')));
   rmSync(join(worktreeOf(repo), 'setup.flag'));
-  r = spex(repo, 'start', 'plan', DIR);
+  r = spex(enter(repo), 'start', 'plan', DIR);
   assert.deepEqual(codes(r), [], 'a worktree that is found is not set up again');
   assert.ok(!existsSync(join(worktreeOf(repo), 'setup.flag')));
 });
@@ -140,10 +202,10 @@ test('a note of the person\'s words opens at plan: the note line goes, the secti
   assert.equal(r.code, 6, r.stdout);
   assert.deepEqual(codes(r), ['PHASE-NOT-STARTED']);
   assert.deepEqual(codes(spex(repo, 'stamp', dir)), ['PHASE-NOT-STARTED']);
-  assert.deepEqual(codes(spex(repo, 'start', 'implement', dir)), ['GATE-PLAN']);
-  assert.deepEqual(codes(spex(repo, 'start', 'review', dir)), ['GATE-BUILT']);
+  assert.deepEqual(codes(spex(enter(repo, dir), 'start', 'implement', dir)), ['GATE-PLAN']);
+  assert.deepEqual(codes(spex(enter(repo, dir), 'start', 'review', dir)), ['GATE-BUILT']);
 
-  r = ok(repo, 'start', 'plan', dir);
+  r = ok(enter(repo, dir), 'start', 'plan', dir);
   assert.equal(r.json.again, false, 'no records yet: a first run');
   const wt = worktreeOf(repo, '001-restore');
   const opened = read(wt, `${dir}/spec.md`);
@@ -166,7 +228,7 @@ test('end plan: "All linked?" from the person\'s line to a record, then the stam
   const repo = makeRepo('csv-export');
   withWords(repo);
   commitAll(repo, 'the note with its words');
-  ok(repo, 'start', 'plan', DIR);
+  ok(enter(repo), 'start', 'plan', DIR);
   const wt = worktreeOf(repo);
   const spec = `${DIR}/spec.md`;
   const end = () => spex(repo, 'end', 'plan', DIR);
@@ -242,7 +304,7 @@ test('end plan: "All linked?" from the person\'s line to a record, then the stam
 
 test('start implement: the plan as it was stamped is approved; a file changed by hand since sends the person to plan', () => {
   const { repo, wt } = planned();
-  const start = () => spex(repo, 'start', 'implement', DIR);
+  const start = () => spex(enter(repo), 'start', 'implement', DIR);
   // each file of the plan is in the stamp: a hand edit of any of them is named
   const edits = [
     ['tasks.yaml', 'Rows follow list order', 'Rows follow the list order'],
@@ -265,7 +327,7 @@ test('start implement: the plan as it was stamped is approved; a file changed by
 
   // the way back in for a change by hand: plan, typed again, checks the files and stamps them again
   edit(wt, `${DIR}/tasks.yaml`, (s) => s.replace('Rows follow list order', 'Rows follow the list order'));
-  ok(repo, 'start', 'plan', DIR);
+  ok(enter(repo), 'start', 'plan', DIR);
   ok(repo, 'end', 'plan', DIR);
   let r = start();
   assert.equal(r.code, 0, r.stdout);
@@ -294,7 +356,7 @@ test('start implement: a correction that is not finished lets the run in to fini
   edit(wt, `${DIR}/tasks.yaml`, (s) => s.replace('Rows follow list order', 'Rows follow the list order'));
   let r = ok(repo, 'correction', DIR, '--title', 'implement, round 1 · the spec was wrong (small)', '--found', 'D1 says list order, the page sorts by name', '--changed', 'D1');
   assert.deepEqual([r.json.entry, r.json.open], ['C1', true]);
-  r = spex(repo, 'start', 'implement', DIR);
+  r = spex(enter(repo), 'start', 'implement', DIR);
   assert.equal(r.code, 0, r.stdout);
   assert.deepEqual(r.json.resume, ['C1']);
   assert.deepEqual(r.json.state, { command: 'implement', state: 'started' });
@@ -304,30 +366,30 @@ test('start implement: a correction that is not finished lets the run in to fini
   r = ok(repo, 'stamp', DIR, '--close', 'C1');
   assert.deepEqual([r.json.stamped, r.json.closed, r.json.state], [true, ['C1'], { command: 'implement', state: 'started' }]);
   assert.deepEqual(recordStatus(wt), ['approved', 'approved']);
-  r = spex(repo, 'start', 'implement', DIR);
+  r = spex(enter(repo), 'start', 'implement', DIR);
   assert.equal(r.code, 0, r.stdout);
   assert.equal(r.json.resume, undefined);
 
   // a need only the person can give: named before any code is written; the phase is started, so the same command goes on
   ({ repo, wt } = planned((main) => edit(main, `${DIR}/tests.yaml`, (s) => s.replace('    name: REQ_007_001_AC_1_writes_open_tasks_as_csv\n', '    name: REQ_007_001_AC_1_writes_open_tasks_as_csv\n    needs: [SPEX_TEST_TOKEN, "test -f src/state.txt"]\n'))));
   assert.deepEqual(spex(repo, 'end', 'plan', DIR).json.needs, ['SPEX_TEST_TOKEN', 'test -f src/state.txt']);
-  r = spex(repo, 'start', 'implement', DIR);
+  r = spex(enter(repo), 'start', 'implement', DIR);
   assert.equal(r.code, 6, r.stdout);
   assert.deepEqual(codes(r), ['GATE-NEEDS']);
   assert.deepEqual(r.json.needs, ['TS01 needs SPEX_TEST_TOKEN, which is not set']);
   assert.ok(finding(r, 'GATE-NEEDS').fix.startsWith('A person sets SPEX_TEST_TOKEN'), r.stdout);
   assert.equal(read(wt, `${DIR}/status.yaml`), 'command: implement\nstate: started\n');
-  const withToken = spawnSync('node', [SPEX, 'start', 'implement', DIR, '--json'], { cwd: repo, encoding: 'utf8', env: { ...process.env, SPEX_TEST_TOKEN: 'x' } });
+  const withToken = spawnSync('node', [SPEX, 'start', 'implement', DIR, '--json'], { cwd: enter(repo), encoding: 'utf8', env: { ...process.env, SPEX_TEST_TOKEN: 'x' } });
   assert.equal(withToken.status, 0, withToken.stdout);
 
   // env.up is the project's own script: when it fails, only the person can give the environment
   ({ repo, wt } = planned((main) => configure(main, 'env: {up: "echo no cluster >&2; exit 3"}')));
-  r = spex(repo, 'start', 'implement', DIR);
+  r = spex(enter(repo), 'start', 'implement', DIR);
   assert.equal(r.code, 6, r.stdout);
   assert.deepEqual(codes(r), ['ENV-UP']);
   assert.ok(finding(r, 'ENV-UP').message.includes('exited 3') && finding(r, 'ENV-UP').fix.includes('no cluster'), r.stdout);
   edit(wt, '.spex/config.yaml', (s) => s.replace('echo no cluster >&2; exit 3', 'echo up > env.flag'));
-  r = spex(repo, 'start', 'implement', DIR);
+  r = spex(enter(repo), 'start', 'implement', DIR);
   assert.equal(r.code, 0, r.stdout);
   assert.ok(r.json.text.includes('every need is met and the environment is up'), r.json.text);
   assert.equal(read(wt, 'env.flag'), 'up\n', 'env.up ran in the worktree');
@@ -340,7 +402,7 @@ test('end implement: every task done by the script, the plan as stamped, the pro
   assert.equal(r.code, 6, r.stdout);
   assert.deepEqual(codes(r), ['GATE-TASKS', 'GATE-TASKS']);
   assert.deepEqual(r.json.findings.map((f) => f.message), ['T01 is todo', 'T02 is todo']);
-  assert.deepEqual(codes(spex(repo, 'start', 'review', DIR)), ['GATE-BUILT'], 'review waits for the end of implement');
+  assert.deepEqual(codes(spex(enter(repo), 'start', 'review', DIR)), ['GATE-BUILT'], 'review waits for the end of implement');
 
   writeFileSync(join(wt, 'src/state.txt'), 'implemented\n');
   ok(repo, 'done', DIR, 'T01');
@@ -378,7 +440,7 @@ test('end implement: every task done by the script, the plan as stamped, the pro
 
   // the commit, and the entry the end closed, did not move the tree id: the proof of before still holds for review
   assert.equal(ok(repo, 'run', DIR, '--test', 'TS01').json.evidence.tree, proof.tree);
-  r = spex(repo, 'start', 'review', DIR);
+  r = spex(enter(repo), 'start', 'review', DIR);
   assert.equal(r.code, 0, r.stdout);
   assert.deepEqual([r.json.phase, r.json.was, r.json.state, r.json.corrections], ['review', { command: 'implement', state: 'done' }, { command: 'review', state: 'started' }, ['C1']]);
   assert.equal(read(wt, `${DIR}/status.yaml`), 'command: review\nstate: started\n');
@@ -388,7 +450,7 @@ test('end implement: every task done by the script, the plan as stamped, the pro
 test('start review: a built spec whose proof is of this tree; a change after the proof sends it back to implement', () => {
   const { repo, wt } = builtSpec();
   writeFileSync(join(wt, 'src/state.txt'), 'implemented, and changed after the proof\n');
-  let r = spex(repo, 'start', 'review', DIR);
+  let r = spex(enter(repo), 'start', 'review', DIR);
   assert.equal(r.code, 6, r.stdout);
   assert.deepEqual(codes(r), ['GATE-VERIFY']);
   assert.ok(finding(r, 'GATE-VERIFY').fix.startsWith(`Type /spex:implement ${DIR}`), r.stdout);
@@ -396,14 +458,14 @@ test('start review: a built spec whose proof is of this tree; a change after the
   writeFileSync(join(wt, 'src/state.txt'), 'implemented\n');
   // a task the script did not close keeps review shut, whatever the file says about the proof
   edit(wt, `${DIR}/tasks.yaml`, (s) => s.replace(/(id: T02[\s\S]*?status: )done/, '$1blocked'));
-  r = spex(repo, 'start', 'review', DIR);
+  r = spex(enter(repo), 'start', 'review', DIR);
   assert.deepEqual(codes(r), ['GATE-TASKS']);
   assert.equal(r.json.findings[0].message, 'T02 is blocked');
   gitIn(wt, ['checkout', '--', `${DIR}/tasks.yaml`]);
-  r = ok(repo, 'start', 'review', DIR);
+  r = ok(enter(repo), 'start', 'review', DIR);
   assert.ok(r.json.text.includes('every task is done and every test is green on this tree') && r.json.text.includes('corrections.md: no entry'), r.json.text);
   // typed again while review is started: the same phase, from its first box
-  r = ok(repo, 'start', 'review', DIR);
+  r = ok(enter(repo), 'start', 'review', DIR);
   assert.deepEqual(r.json.was, { command: 'review', state: 'started' });
 });
 
@@ -458,14 +520,14 @@ test('stamp: the process changed the plan, so the script checks the links, stamp
 
   // in plan: a comment changed a task. The stamp keeps the state, closes the entry with what changed, and commits
   edit(wt, `${DIR}/tasks.yaml`, (s) => s.replace('Rows follow list order', 'Rows follow the list order'));
-  ok(repo, 'comment', '--text', 'Sort the rows as the page does.');
+  ok(enter(repo), 'comment', '--text', 'Sort the rows as the page does.');
   let r = ok(repo, 'stamp', DIR, '--close', 'C1', '--changed', 'D1 of tasks.yaml');
   assert.deepEqual([r.json.dir, r.json.stamped, r.json.closed, r.json.state, r.json.committed], [DIR, true, ['C1'], { command: 'plan', state: 'done' }, true]);
   const entry = read(wt, `${DIR}/corrections.md`);
   assert.ok(entry.includes('## C1 · comment · your words\nYou said: "Sort the rows as the page does."\nChanged: D1 of tasks.yaml\nState: closed: the script stamped the changed plan\n'), entry);
   assert.equal(lastCommit(wt), `${NAME}: comment · your words`);
   assert.deepEqual(committedFiles(wt), [`${DIR}/corrections.md`, `${DIR}/tasks.yaml`]);
-  assert.equal(spex(repo, 'start', 'implement', DIR).code, 0, 'no approval is lost: implement takes the stamped plan');
+  assert.equal(spex(enter(repo), 'start', 'implement', DIR).code, 0, 'no approval is lost: implement takes the stamped plan');
   assert.equal(spex(repo, 'stamp', DIR, '--close', 'C9').json.closed.length, 0, 'an id that is not open closes nothing');
 
   // a change that breaks a link is not stamped: a task with no test is a gap, and the entry stays open
@@ -495,13 +557,13 @@ test('stamp: the process changed the plan, so the script checks the links, stamp
   edit(wt, `${DIR}/requirements.yaml`, (s) => s + record);
   edit(wt, `${DIR}/tasks.yaml`, (s) => s + T04.replace('requirements: []', 'requirements: [REQ-007-003]').replace('kind: setup', 'kind: story'));
   edit(wt, `${DIR}/tests.yaml`, (s) => s + TS03.replace(/TS03/g, 'TS04').replace('[T03]', '[REQ-007-003/AC-1, T04]').replace('src/fix.txt', 'src/fix2.txt'));
-  ok(repo, 'comment', '--text', 'Print the count of the rows too.');
+  ok(enter(repo), 'comment', '--text', 'Print the count of the rows too.');
   r = ok(repo, 'stamp', DIR, '--close', 'C3');
   assert.deepEqual([r.json.stamped, r.json.closed, r.json.state], [true, ['C3'], { command: 'implement', state: 'started' }]);
   assert.ok(r.json.text.includes('1 new record(s) approved') && r.json.text.includes('state: implement, started (it was built): the code must follow the plan'), r.json.text);
   assert.equal(read(wt, `${DIR}/status.yaml`), 'command: implement\nstate: started\n');
   assert.deepEqual(recordStatus(wt), ['approved', 'approved', 'approved']);
-  assert.deepEqual(codes(spex(repo, 'start', 'review', DIR)), ['GATE-BUILT']);
+  assert.deepEqual(codes(spex(enter(repo), 'start', 'review', DIR)), ['GATE-BUILT']);
   assert.equal(spex(repo, 'gate', 'develop', DIR, 'T04').code, 0, 'the new task is open for a developer, with no second approval');
 });
 
@@ -509,9 +571,9 @@ test('stamp with no plan on disk stamps nothing: the spec keeps the change, and 
   const repo = makeRepo('csv-export');
   for (const f of ['requirements.yaml', 'tasks.yaml', 'tests.yaml']) rmSync(join(repo, DIR, f));
   commitAll(repo, 'only a note');
-  ok(repo, 'start', 'plan', DIR);
+  ok(enter(repo), 'start', 'plan', DIR);
   const wt = worktreeOf(repo);
-  let r = ok(repo, 'comment', '--text', 'Also export the finished tasks.');
+  let r = ok(enter(repo), 'comment', '--text', 'Also export the finished tasks.');
   assert.equal(r.json.planned, false);
   edit(wt, `${DIR}/spec.md`, (s) => s.replace('## Not this\n', '## Not this\n- (you) finished tasks are in: see What.\n'));
   r = ok(repo, 'stamp', DIR, '--close', 'C1');

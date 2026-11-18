@@ -156,7 +156,7 @@ test('the four commands for any time: no agent in status, new-bug and delete; co
   assert.ok(/the NEXT block that `SPEX commit` printed/.test(bug), 'the reply ends with the block the script printed');
   const del = skill('delete');
   assert.ok(/`SPEX delete <dir>… --reason "<their words>"`/.test(del) && /Never invent one/.test(del), 'the reason is the person\'s');
-  assert.ok(/`DELETE-LEAVE`[\s\S]*`ExitWorktree` with `action: keep`/.test(del) && /^allowed-tools: .*ExitWorktree/m.test(del), 'delete leaves the worktree first');
+  assert.ok(/`DELETE-LEAVE`[\s\S]*a session on the\s+main folder/.test(del) && !/^allowed-tools: .*Worktree/m.test(del), 'delete runs in a session on the main folder');
   assert.ok(/Exit 8, `DELETE-WORKTREE`[\s\S]*one time, outside the sandbox/.test(del), 'a worktree a sandbox keeps is removed with one prompt');
   assert.ok(/`DELETE-MERGED`/.test(del) && /`DELETE-DEPENDED`/.test(del) && /Never pick one for them/.test(del), 'a merged spec and a spec another one needs are refused');
   assert.ok(/never restore one from the\s+archive/.test(del), 'what the person deleted stays deleted');
@@ -169,7 +169,7 @@ test('the four commands for any time: no agent in status, new-bug and delete; co
   assert.ok(/No plan exists \(step 2 said so\): skip to step 5/.test(comment), 'with no plan, only the spec changes');
   assert.ok(/`SPEX stamp <dir> --close <C> --changed/.test(comment) && /At most 3\s+tries/.test(comment), 'the script stamps the changed plan and closes the entry');
   assert.ok(/You write no code and no test file, and you\s+run no other command/.test(comment) && /`Typing it approves the change\.`/.test(comment), 'no code, and the next command is the ok');
-  assert.ok(/^allowed-tools: .*EnterWorktree/m.test(comment) && /`EnterWorktree` with `path: <that path>`/.test(comment), 'comment works in the worktree of the open spec');
+  assert.ok(/`GATE-ENTER`: this session did not start in the worktree of the\s+open spec/.test(comment) && /The session is in that worktree/.test(comment), 'comment works in the worktree of the open spec');
 });
 
 test('the parts of a run read what the script prints, and never guess it from a file', () => {
@@ -188,7 +188,7 @@ test('the parts of a run read what the script prints, and never guess it from a 
   assert.ok(/`round <n> waits for its answer: <file>`/.test(review) && /Do not read\s+the diff and do not run the tests/.test(review), 'a round that waits is shown again, never reviewed again');
   const close = part('review', 'close');
   for (const step of ['sync', 'later', 'prove', 'built', 'merge', 'finish']) assert.ok(close.includes(`SPEX close <dir> ${step}`) || close.includes(`close <dir> ${step}`), `the close has the step ${step}`);
-  assert.ok(/`ExitWorktree` with `action: keep`\. Then, in the main folder/.test(close) && /Exit 8, `CLOSE-WORKTREE`/.test(close) && /`GATE-PUSH`/.test(close), 'the chat leaves the worktree before finish');
+  assert.ok(/`SPEX close <dir> finish`, only in a session on the main folder/.test(close) && /Exit 8, `CLOSE-WORKTREE`/.test(close) && /`GATE-PUSH`/.test(close), 'finish runs in a session on the main folder');
   assert.ok(/Never merge, delete a branch or remove a worktree by hand/.test(close), 'each of those is a step of the script');
   const newSkill = skill('new');
   assert.ok(/NEXT: the block `SPEX commit` printed/.test(newSkill) && /`COMMIT-PUSH`/.test(newSkill) && /new only adds/.test(newSkill), 'new commits, and ends with the block of the script');
@@ -211,6 +211,32 @@ test('README.html is the design of 3.0: the eight commands, the map with its sel
   assert.ok(/window\.spexCheck/.test(html), 'the page checks its own map');
   const cases = (html.match(/^\s+\{ id: '[ABC]\d+',/gm) || []).length;
   assert.ok(cases >= 48, `the page has ${cases} cases`);
-  for (const needle of ['status.yaml', 'corrections.md', 'source.md', 'spex/007-csv-export', '.claude/worktrees/', 'close.cmd', 'What the worktree test showed']) assert.ok(html.includes(needle), `the page shows ${needle}`);
+  for (const needle of ['status.yaml', 'corrections.md', 'source.md', 'spex/007-csv-export', '.worktrees/spex/', 'claude -w spex/', 'close.cmd', 'What the worktree test showed']) assert.ok(html.includes(needle), `the page shows ${needle}`);
   assert.ok(/prefers-color-scheme/.test(html) && /prefers-reduced-motion/.test(html), 'both themes, reduced motion');
+});
+
+// A session starts in the worktree of its spec (`claude -w spex/<spec>`): the guard of the machine denies every edit into a
+// worktree from a session that started elsewhere, so no skill moves the chat, and the script never makes a worktree.
+test('no skill enters or leaves a worktree: no EnterWorktree, no ExitWorktree, and a start that is refused names claude -w', () => {
+  const texts = skills.flatMap((s) => readdirSync(join(skillsDir, s)).filter((f) => f.endsWith('.md')).map((f) => [`${s}/${f}`, read('skills', s, f)]));
+  for (const [name, text] of texts) assert.ok(!/EnterWorktree|ExitWorktree/.test(text), `${name} names a worktree tool`);
+  for (const s of skills) assert.ok(!/EnterWorktree|ExitWorktree/.test(skill(s).match(/^allowed-tools:.*$/m)?.[0] ?? ''), `${s} allows a worktree tool`);
+  for (const s of ['plan', 'implement', 'review', 'comment']) assert.ok(skill(s).includes('`GATE-ENTER`') && /fix text under\s+`You:`/.test(skill(s)), `${s} relays GATE-ENTER`);
+  assert.ok(!/\.claude\/worktrees/.test(texts.map(([, t]) => t).join('\n') + read('src', 'repos.ts') + read('src', 'worktree.ts')), 'no .claude/worktrees');
+  // the close: steps 1 to 5 in the worktree, finish in a session on the main folder
+  const close = part('review', 'close');
+  assert.ok(/`SPEX close <dir> finish`, only in a session on the main folder/.test(close) && /type `\/spex:review <dir>` in a\s+session on the main folder/.test(close), close);
+});
+
+test('/spex:new asks "commit and push to origin/main" and commits and pushes only after the yes', () => {
+  const notes = part('new', 'notes');
+  const ask = notes.indexOf('`SPEX commit --preview`');
+  const question = notes.indexOf('### 1 · Commit and push to origin/main?');
+  const approved = notes.indexOf('`SPEX commit --approved');
+  assert.ok(ask > 0 && question > ask && approved > question, 'preview, then the question, then the commit');
+  assert.ok(/The yes \(`ok`, `yes`\): `SPEX commit --approved/.test(notes) && notes.includes('Never run `SPEX commit --approved` before the yes'), notes);
+  assert.ok(/also in auto mode/.test(notes), 'a push waits for the person in auto mode too');
+  assert.ok(!/SPEX commit --message/.test(notes), 'no commit without the flag of the yes');
+  assert.ok(/`You:` `claude -w spex\/<spec>`, then\s+`\/spex:plan specs\/<spec>` in that session/.test(skill('new')), 'the reply ends with the session to start');
+  assert.ok(HELP.includes('spex commit --preview') && HELP.includes('spex commit --approved'), 'the script has both');
 });

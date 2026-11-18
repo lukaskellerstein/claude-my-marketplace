@@ -1,0 +1,8 @@
+{"Time":"2026-11-18T14:57:47.520334+01:00","Action":"start","Package":"example.com/skip"}
+{"Time":"2026-11-18T14:57:47.524219+01:00","Action":"run","Package":"example.com/skip","Test":"TestPasses"}
+{"Time":"2026-11-18T14:57:47.524243+01:00","Action":"output","Package":"example.com/skip","Test":"TestPasses","Output":"=== RUN   TestPasses\n"}
+{"Time":"2026-11-18T14:57:47.524256+01:00","Action":"output","Package":"example.com/skip","Test":"TestPasses","Output":"--- PASS: TestPasses (0.00s)\n"}
+{"Time":"2026-11-18T14:57:47.524261+01:00","Action":"pass","Package":"example.com/skip","Test":"TestPasses","Elapsed":0}
+{"Time":"2026-11-18T14:57:47.524263+01:00","Action":"output","Package":"example.com/skip","Output":"PASS\n"}
+{"Time":"2026-11-18T14:57:47.524576+01:00","Action":"output","Package":"example.com/skip","Output":"ok  \texample.com/skip\t0.004s\n"}
+{"Time":"2026-11-18T14:57:47.524586+01:00","Action":"pass","Package":"example.com/skip","Elapsed":0.004}

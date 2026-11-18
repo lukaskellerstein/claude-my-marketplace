@@ -1,0 +1,48 @@
+Run complete
+1
+CYCLES
+1
+COMPLETED
+0
+SKIPPED
+Digest
+1 spec closed
+1 skipped
+✖ TS94_completion_page_names_the_merge (0.557334ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 30.198791
+
+✖ failing tests:
+
+test at page.test.mjs:5:1
+✖ TS94_completion_page_names_the_merge (0.557334ms)
+  AssertionError [ERR_ASSERTION]: the completion page has no Merged line:
+  Run complete
+  1
+  CYCLES
+  1
+  COMPLETED
+  0
+  SKIPPED
+  Digest
+  1 spec closed
+  1 skipped
+  1 skipped
+      at TestContext.<anonymous> (file:///work/dex/page.test.mjs:7:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1306:25)
+      at Test.start (node:internal/test_runner/test:1177:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:385:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: false,
+    expected: true,
+    operator: '==',
+    diff: 'simple'
+  }

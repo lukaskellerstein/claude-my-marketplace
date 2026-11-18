@@ -14,6 +14,7 @@ import { nextFor } from '../next.js';
 import { loadFeature } from '../specs.js';
 import { findSpec, isClosed, specList, stateWord } from '../state.js';
 import type { Finding } from '../types.js';
+import { enterGate } from '../worktree.js';
 import type { CmdResult } from './lifecycle.js';
 
 const refuse = (findings: Finding[], exit = 6, data: Record<string, unknown> = {}): CmdResult => ({ ok: false, findings, exit, text: '', data });
@@ -26,6 +27,9 @@ export function comment(root: string, opts: { words?: string; text?: string }): 
     const n = nextFor(root);
     return refuse([{ severity: 'error', code: 'COMMENT-NO-SPEC', message: 'no spec is open: comment works on the one spec that plan has started and that is not merged', fix: `A note that waits is changed with /spex:delete and /spex:new. Merged code is changed with /spex:new-bug or /spex:new.${n.command ? ` Next: ${n.command}` : ''}` }], 6, { next: n.command || null });
   }
+  // The words go into corrections.md of the open spec, in its worktree: only a session that started there writes it.
+  const gate = enterGate(root, open.name, open.dir, 'comment');
+  if (gate) return refuse([{ ...gate, fix: (gate.fix ?? '').replace(`/spex:comment ${open.dir}`, '/spex:comment <your words>') }], 6, { dir: open.dir });
   let words = opts.text?.trim() ?? '';
   if (opts.words) {
     const src = fileExists(opts.words) ? opts.words : join(root, opts.words);
@@ -45,7 +49,7 @@ export function comment(root: string, opts: { words?: string; text?: string }): 
   const lines = [
     `comment kept as ${entry.id} in ${open.dir}/corrections.md${resumed ? ' (it was not finished; this run goes on from there)' : ', word for word'}`,
     `spec: ${open.dir} · ${stateWord(open.state)}`,
-    open.worktree ? `enter: ${home}` : 'no worktree',
+    `worktree: ${home}`,
     `you said: ${entry.fields['You said'] ?? ''}`,
     planned ? 'a plan exists: a change goes through the analyst, the planner and the test analyst, then `spex stamp`' : 'no plan exists yet: a change goes through the analyst only; plan writes the tasks and the tests when it runs again',
   ];

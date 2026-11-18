@@ -23,8 +23,8 @@ Say so, name `/spex:comment`, and stop.
    (`export-cuts-long-names`). The script takes the next turn: the number after the last
    spec that is closed or open. It moves each later note one number up, and rewrites each
    place that names one. It prints the folder and `moved up: 006 → 007 …`. Refused in a
-   worktree: `SPEX status` names the open spec; say that the report waits until the chat
-   is in the main folder, and stop.
+   worktree (`NEWBUG-LEAVE`): `SPEX status` names the open spec; say that the report waits
+   for a session on the main folder, and stop.
 3. Write the note: `specs/<NNN>-<slug>/spec.md`. Fill only what the report gives:
    - **Why**: what the person did, and what happened.
    - **What**: what must happen.

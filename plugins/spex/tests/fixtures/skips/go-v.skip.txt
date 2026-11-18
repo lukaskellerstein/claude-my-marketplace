@@ -1,0 +1,7 @@
+=== RUN   TestPasses
+--- PASS: TestPasses (0.00s)
+=== RUN   TestSkips
+    a_test.go:4: no live record
+--- SKIP: TestSkips (0.00s)
+PASS
+ok  	example.com/skip	0.004s

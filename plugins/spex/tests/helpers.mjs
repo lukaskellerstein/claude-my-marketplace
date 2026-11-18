@@ -1,9 +1,10 @@
 // Test helpers: a throwaway git repo from a fixture, a way to call the bundled script, and the short ways into a
-// phase. A spec that is open lives in its worktree: a test writes its files there (`wt`), and calls the script from
-// anywhere in the repo, as a chat does.
+// phase. A spec that is open lives in its worktree: a test writes its files there (`wt`). A phase starts only in a
+// session in that worktree, so a test starts it there (`enter` makes the folder as the WorktreeCreate hook of
+// `claude -w spex/<spec>` does); the other commands work from anywhere in the repo, as a chat does.
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { appendFileSync, cpSync, existsSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,10 +13,10 @@ export const PLUGIN = dirname(dirname(fileURLToPath(import.meta.url)));
 export const SPEX = join(PLUGIN, 'scripts', 'spex.mjs');
 export const FIXTURES = join(PLUGIN, 'tests', 'fixtures');
 
-/** The spec of the csv-export fixture, and where its worktree is. */
+/** The spec of the csv-export fixture, and where its worktree is: <repo>/.worktrees/spex/<spec>, as the hook makes it. */
 export const DIR = 'specs/007-csv-export';
 export const NAME = '007-csv-export';
-export const worktreeOf = (repo, name = NAME) => join(repo, '.claude/worktrees', name);
+export const worktreeOf = (repo, name = NAME) => join(repo, '.worktrees', 'spex', name);
 
 export function gitIn(cwd, args) {
   return execFileSync('git', ['-c', 'user.name=spex-test', '-c', 'user.email=spex@test', '-c', 'commit.gpgsign=false', ...args], { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
@@ -38,6 +39,30 @@ export function makeRepo(fixture) {
   gitIn(dir, ['add', '-A']);
   gitIn(dir, ['commit', '-q', '-m', 'fixture']);
   return dir;
+}
+
+/**
+ * What `claude -w spex/<name>` does through the WorktreeCreate hook of the machine: <repo>/.worktrees/spex/<name> on
+ * the branch spex/<name>. A folder that is there is adopted. A branch that is there is checked out. A new branch
+ * starts from origin/main after a fetch, else from main. The repo ignores .worktrees/, as every repo of the contract
+ * does. Returns the folder, where the session works.
+ */
+export function enter(repo, spec = NAME) {
+  const name = spec.split('/').pop();
+  const wt = worktreeOf(repo, name);
+  if (existsSync(wt)) return wt;
+  const exclude = join(repo, '.git', 'info', 'exclude');
+  if (!existsSync(exclude) || !readFileSync(exclude, 'utf8').includes('.worktrees/')) appendFileSync(exclude, '\n.worktrees/\n');
+  const branch = `spex/${name}`;
+  const has = (ref) => spawnSync('git', ['rev-parse', '--verify', '--quiet', ref], { cwd: repo }).status === 0;
+  let base = 'main';
+  if (has('refs/remotes/origin/main')) {
+    spawnSync('git', ['fetch', '-q', 'origin', 'main'], { cwd: repo });
+    base = 'origin/main';
+  }
+  if (has(`refs/heads/${branch}`)) gitIn(repo, ['worktree', 'add', '-q', wt, branch]);
+  else gitIn(repo, ['worktree', 'add', '-q', '-b', branch, wt, base]);
+  return wt;
 }
 
 /** Run spex with --json and parse the document. */
@@ -86,15 +111,16 @@ export function planned(before, fixture = 'csv-export') {
     before(repo);
     if (gitIn(repo, ['status', '--porcelain']).trim()) commitAll(repo, 'before the plan');
   }
-  ok(repo, 'start', 'plan', DIR);
+  const wt = enter(repo);
+  ok(wt, 'start', 'plan', DIR);
   ok(repo, 'end', 'plan', DIR);
-  return { repo, wt: worktreeOf(repo) };
+  return { repo, wt };
 }
 
 /** The fixture in `implement, started`: the plan is approved, and the gates inside implement are open. */
 export function implementing(before, fixture = 'csv-export') {
   const s = planned(before, fixture);
-  ok(s.repo, 'start', 'implement', DIR);
+  ok(s.wt, 'start', 'implement', DIR);
   return s;
 }
 
@@ -112,6 +138,6 @@ export function builtSpec(before, fixture = 'csv-export') {
 /** The fixture in `review, started`, with no finding to answer. */
 export function reviewing(before, fixture = 'csv-export') {
   const s = builtSpec(before, fixture);
-  ok(s.repo, 'start', 'review', DIR);
+  ok(s.wt, 'start', 'review', DIR);
   return s;
 }

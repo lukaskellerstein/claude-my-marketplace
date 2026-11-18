@@ -1,6 +1,6 @@
 {
   "name": "spex",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Spec-driven development in small, checkable files, where the one who writes a claim never writes its proof. Four commands carry a spec: new splits an idea into specs and writes one note for each, with every detail the person gave; plan turns a note into the full spec, EARS requirement records, tasks sized for one agent run and a proof plan (tests.yaml), in the spec's own branch and worktree; implement writes the tests red, builds each task with a fresh developer subagent, proves the whole spec, and has a decider name the cause of each red test (the test, the code, the tasks or the spec); review reads the diff for what no test sees and, when clean, closes the spec: it takes in the base branch, corrects the later notes, merges, and removes the worktree. There is no approve: the next command the person types is the approval. Four more commands work at any time: comment (the person's words about the open spec: a question is answered from the files, a change goes through the spec, the tasks and the test plan), new-bug, delete and status. A bundled script, not the model, gates every phase, keeps the state of a spec in status.yaml, decides when a task is done, and commits on the branch of the spec at the end of each phase. What changed after the plan, and why, is in corrections.md. Every skill is user-invoked only.",
   "author": {
     "name": "Lukas Kellerstein"

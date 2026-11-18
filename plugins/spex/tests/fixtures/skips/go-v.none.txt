@@ -1,0 +1,4 @@
+=== RUN   TestPasses
+--- PASS: TestPasses (0.00s)
+PASS
+ok  	example.com/skip	0.004s

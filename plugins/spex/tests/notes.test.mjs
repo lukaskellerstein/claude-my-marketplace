@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
-import { DIR, NAME, builtSpec, codes, commitAll, configure, edit, gitIn, implementing, makeRepo, ok, planned, read, spex, tempDir, worktreeOf } from './helpers.mjs';
+import { DIR, NAME, builtSpec, codes, commitAll, configure, edit, enter, gitIn, implementing, makeRepo, ok, planned, read, spex, tempDir, worktreeOf } from './helpers.mjs';
 
 const RULE = '─'.repeat(40);
 const finding = (r, code) => r.json.findings.find((f) => f.code === code);
@@ -103,7 +103,8 @@ test('status, list and commit: where the work stopped, the one command to go on,
   twoNotes(repo);
   r = spex(repo, 'status');
   assert.deepEqual([r.json.open, r.json.next, r.json.closed, r.json.waiting], [null, `/spex:plan ${DIR}`, 0, 3]);
-  assert.equal(r.json.text, `📍 no spec is open · 0 closed · 3 note(s) wait\n${RULE}\nNEXT   /spex:plan ${DIR}\n       It is the turn of this spec.\n${RULE}`);
+  // the main folder is not on the branch of the spec: the block names the session first
+  assert.equal(r.json.text, `📍 no spec is open · 0 closed · 3 note(s) wait\n${RULE}\nNEXT   claude -w spex/${NAME}\n       then, in that session: /spex:plan ${DIR}\n       It is the turn of this spec.\n${RULE}`);
   r = spex(repo, 'list');
   assert.deepEqual(r.json.specs, [7, 8, 9].map((n, i) => ({ dir: ['specs/007-csv-export', 'specs/008-restore', 'specs/009-undo'][i], number: n, state: 'a note', worktree: false })));
   assert.deepEqual([r.json.open, r.json.next], [3, 10]);
@@ -115,39 +116,41 @@ test('status, list and commit: where the work stopped, the one command to go on,
   assert.deepEqual(codes(r), ['COMMIT-YOURS']);
   assert.deepEqual([r.json.committed, r.json.files.sort()], [false, ['specs/008-restore/source.md', 'specs/008-restore/spec.md', 'specs/009-undo/source.md', 'specs/009-undo/spec.md']]);
   assert.equal(lastCommit(repo), 'fixture');
-  // with it, one commit of specs/ on the base branch, and nothing else of the main folder
+  // with it, one commit of specs/ on the base branch, with the changed .spex/config.yaml (D24), and nothing else of the main folder
   configure(repo, 'commit: true');
   writeFileSync(join(repo, 'scratch.txt'), 'mine\n');
   r = spex(repo, 'commit', '--message', 'two notes');
   assert.equal(r.code, 0, r.stdout);
-  assert.deepEqual([r.json.committed, r.json.files.length, codes(r)], [true, 4, []]);
+  assert.deepEqual([r.json.committed, r.json.files.length, codes(r)], [true, 5, []]);
+  assert.ok(r.json.files.includes('.spex/config.yaml'), r.json.files.join(', '));
   assert.equal(lastCommit(repo), 'two notes');
-  assert.deepEqual(gitIn(repo, ['status', '--porcelain']).split('\n').filter(Boolean).map((l) => l.slice(3)).sort(), ['.spex/config.yaml', 'scratch.txt']);
+  assert.deepEqual(gitIn(repo, ['status', '--porcelain']).split('\n').filter(Boolean).map((l) => l.slice(3)).sort(), ['scratch.txt']);
   r = spex(repo, 'commit');
   // the reply of new ends with this block: the spec whose turn it is, in a fresh context
-  assert.deepEqual([r.json.committed, r.json.text], [false, `nothing to commit under specs/ on main\n${RULE}\nNEXT   /clear\n       /spex:plan ${DIR}\n       It is the turn of this spec.\n${RULE}`]);
-  gitIn(repo, ['commit', '-qam', 'the config']);
+  assert.deepEqual([r.json.committed, r.json.text], [false, `nothing to commit under specs/ on main\n${RULE}\nNEXT   claude -w spex/${NAME}\n       then, in that session: /spex:plan ${DIR}\n       It is the turn of this spec.\n${RULE}`]);
 
-  // an open spec: the phase, the worktree, and the command of the phase; the same from inside the worktree
-  ok(repo, 'start', 'plan', DIR);
+  // an open spec: the phase, the worktree, and the command of the phase. In the main folder the block names the
+  // session first; inside the worktree the session is there already
+  ok(enter(repo), 'start', 'plan', DIR);
   const wt = worktreeOf(repo);
   for (const cwd of [repo, wt]) {
     r = spex(cwd, 'status');
     assert.deepEqual(r.json.open, { dir: DIR, state: { command: 'plan', state: 'started' }, worktree: wt, corrections: [] });
-    assert.equal(r.json.text, `📍 007 csv-export · plan, started · worktree ${NAME} · today\n   worktree: ${wt}\n${RULE}\nNEXT   /spex:plan ${DIR}\n       The phase runs again from its first box. The files of the first run stay, and each agent reads them.\n${RULE}`);
+    const next = cwd === repo ? `NEXT   claude -w spex/${NAME}\n       then, in that session: /spex:plan ${DIR}` : `NEXT   /spex:plan ${DIR}`;
+    assert.equal(r.json.text, `📍 007 csv-export · plan, started · worktree ${NAME} · today\n   worktree: ${wt}\n${RULE}\n${next}\n       The phase runs again from its first box. The files of the first run stay, and each agent reads them.\n${RULE}`);
   }
   assert.deepEqual(codes(spex(wt, 'commit')), ['COMMIT-LEAVE'], 'the notes are in the main folder');
   assert.equal(spex(repo, 'list').json.text.split('\n')[0], '007-csv-export  plan, started  (worktree)');
   // each state has its one command
   ok(repo, 'end', 'plan', DIR);
-  r = spex(repo, 'status');
+  r = spex(wt, 'status');
   assert.ok(r.json.text.startsWith('📍 007 csv-export · planned · worktree'), r.json.text);
   assert.ok(r.json.text.includes(`NEXT   /spex:implement ${DIR}\n       Typing it approves the plan.`), r.json.text);
-  ok(repo, 'start', 'implement', DIR);
+  ok(enter(repo), 'start', 'implement', DIR);
   assert.equal(spex(repo, 'status').json.next, `/spex:implement ${DIR}`);
   // a comment that is not finished comes first, whatever the phase
-  ok(repo, 'comment', '--text', 'Why a comma?');
-  r = spex(repo, 'status');
+  ok(enter(repo), 'comment', '--text', 'Why a comma?');
+  r = spex(wt, 'status');
   assert.deepEqual([r.json.next, r.json.open.corrections], ['/spex:comment', ['C1']]);
   assert.ok(r.json.text.includes('\n   not finished: C1 · comment · your words\n') && r.json.text.includes('NEXT   /spex:comment\n       C1 is a comment that is not finished'), r.json.text);
   ok(repo, 'correction', DIR, '--close', 'C1', '--done', 'answered from D1');
@@ -158,7 +161,7 @@ test('status, list and commit: where the work stopped, the one command to go on,
   r = spex(repo, 'status');
   assert.ok(r.json.text.startsWith('📍 007 csv-export · built · worktree') && r.json.next === `/spex:review ${DIR}`, r.json.text);
   assert.deepEqual(spex(repo, 'list').json.specs.map((s) => s.state), ['built', 'a note', 'a note']);
-  ok(repo, 'start', 'review', DIR);
+  ok(enter(repo), 'start', 'review', DIR);
   r = spex(repo, 'status');
   assert.ok(r.json.text.includes('· review, started ·') && r.json.text.includes('the findings that wait for your answer are shown again'), r.json.text);
   for (const gone of ['next', 'approve', 'ship', 'drop']) assert.equal(spex(repo, gone, DIR).code, 2, `${gone} is gone`);
@@ -199,7 +202,7 @@ test('new-bug: the bug gets the turn after the open spec, the notes that wait mo
   // the list: the open spec kept its number, the fix is next, and the turn of each note is one later
   assert.deepEqual(spex(repo, 'list').json.specs.map((s) => [s.dir, s.state]), [[DIR, 'planned'], ['specs/008-export-cuts-long-names', 'a note'], ['specs/009-restore', 'a note'], ['specs/010-undo', 'a note']]);
   assert.equal(read(wt, `${DIR}/status.yaml`), 'command: plan\nstate: done\n', 'the open spec is not touched');
-  assert.deepEqual(codes(spex(repo, 'start', 'plan', 'specs/008-export-cuts-long-names')), ['GATE-TURN']);
+  assert.deepEqual(codes(spex(enter(repo, 'specs/008-export-cuts-long-names'), 'start', 'plan', 'specs/008-export-cuts-long-names')), ['GATE-TURN']);
 
   // a second bug gets the same turn, in front of the first: both wait for the one open spec
   r = ok(repo, 'new-bug', 'export-drops-last-row', '--words', 'bug.txt');
@@ -245,7 +248,7 @@ test('delete a note: it goes to .spex/archive with the reason, the later notes c
   assert.equal(r.json.committed, false);
   assert.deepEqual(r.json.uncommitted.sort(), ['specs/008-bulk-delete/spec.md', 'specs/008-restore/source.md', 'specs/008-restore/spec.md', 'specs/009-undo/source.md', 'specs/009-undo/spec.md', 'specs/010-bulk-delete/spec.md']);
   assert.ok(r.json.text.includes('moved: 010 → 008') && r.json.text.includes('not committed (commit: true is not set): commit specs/ on main yourself, 6 file(s)'), r.json.text);
-  assert.ok(r.json.text.endsWith(`${RULE}\nNEXT   /clear\n       /spex:plan ${DIR}\n       It is the turn of this spec.\n${RULE}`), r.json.text);
+  assert.ok(r.json.text.endsWith(`${RULE}\nNEXT   claude -w spex/${NAME}\n       then, in that session: /spex:plan ${DIR}\n       It is the turn of this spec.\n${RULE}`), r.json.text);
   assert.equal(gitIn(repo, ['status', '--porcelain', '--', '.spex']).trim(), '', 'the archive is the work of the script: git does not see it');
   commitAll(repo, 'two notes less');
 
@@ -275,7 +278,7 @@ test('delete a spec with a worktree: its folder and its code are saved first, th
   mkdirSync(join(wt, 'src/cli/commands'), { recursive: true });
   writeFileSync(join(wt, 'src/cli/commands/export.ts'), 'export const exportCsv = () => 0;\n');
   ok(repo, 'done', DIR, 'T01');
-  ok(repo, 'comment', '--text', 'Stop: the export moves to the sync service.');
+  ok(enter(repo), 'comment', '--text', 'Stop: the export moves to the sync service.');
 
   let r = spex(wt, 'delete', DIR, '--reason', 'x');
   assert.equal(r.code, 6, r.stdout);
@@ -333,23 +336,28 @@ test('delete: an open spec keeps its number, so a note in front of it leaves a g
 test('comment: the person\'s words are kept word for word in corrections.md of the open spec, before any agent reads them', () => {
   const repo = makeRepo('csv-export');
   // no open spec: a note that waits is changed with delete and new, merged code with new-bug
-  let r = spex(repo, 'comment', '--text', 'Use a semicolon.');
+  let r = spex(enter(repo), 'comment', '--text', 'Use a semicolon.');
   assert.equal(r.code, 6, r.stdout);
   assert.deepEqual(codes(r), ['COMMENT-NO-SPEC']);
   assert.equal(r.json.next, `/spex:plan ${DIR}`);
   assert.ok(finding(r, 'COMMENT-NO-SPEC').fix.includes('/spex:new-bug') && finding(r, 'COMMENT-NO-SPEC').fix.endsWith(`Next: /spex:plan ${DIR}`), r.stdout);
 
-  ok(repo, 'start', 'plan', DIR);
+  ok(enter(repo), 'start', 'plan', DIR);
   const wt = worktreeOf(repo);
   ok(repo, 'end', 'plan', DIR);
-  assert.equal(spex(repo, 'comment').code, 2, 'no words, and no comment that waits');
-  assert.equal(spex(repo, 'comment', '--words', 'missing.txt').code, 2);
+  // the words go into the worktree of the open spec: a session on main is refused, and nothing is written
+  r = spex(repo, 'comment', '--text', 'Use a semicolon.');
+  assert.deepEqual([r.code, codes(r)], [6, ['GATE-ENTER']]);
+  assert.equal(finding(r, 'GATE-ENTER').fix, `Start a session in the spec's worktree: claude -w spex/${NAME}, then type /spex:comment <your words> there.`);
+  assert.ok(!existsSync(join(wt, DIR, 'corrections.md')), 'no entry');
+  assert.equal(spex(enter(repo), 'comment').code, 2, 'no words, and no comment that waits');
+  assert.equal(spex(enter(repo), 'comment', '--words', 'missing.txt').code, 2);
   const words = 'Why is it a comma?\n\nMy sheet wants a semicolon: "a;b".\n  And no header, please.';
-  writeFileSync(join(repo, 'words.txt'), `${words}\n`);
-  r = spex(repo, 'comment', '--words', 'words.txt');
+  writeFileSync(join(wt, 'words.txt'), `${words}\n`);
+  r = spex(enter(repo), 'comment', '--words', 'words.txt');
   assert.equal(r.code, 0, r.stdout);
   assert.deepEqual([r.json.dir, r.json.entry, r.json.words, r.json.worktree, r.json.state, r.json.planned, r.json.resumed, r.json.open], [DIR, 'C1', `"${words}"`, wt, { command: 'plan', state: 'done' }, true, false, []]);
-  assert.ok(r.json.text.startsWith(`comment kept as C1 in ${DIR}/corrections.md, word for word\nspec: ${DIR} · planned\nenter: ${wt}\n`), r.json.text);
+  assert.ok(r.json.text.startsWith(`comment kept as C1 in ${DIR}/corrections.md, word for word\nspec: ${DIR} · planned\nworktree: ${wt}\n`), r.json.text);
   assert.ok(r.json.text.endsWith('a plan exists: a change goes through the analyst, the planner and the test analyst, then `spex stamp`'), r.json.text);
   // the file: one entry, open, in the worktree of the spec; a line after the first is indented, so the file stays a list of `Key: value`
   const file = read(wt, `${DIR}/corrections.md`);
@@ -357,16 +365,16 @@ test('comment: the person\'s words are kept word for word in corrections.md of t
   assert.ok(file.endsWith('## C1 · comment · your words\nYou said: "Why is it a comma?\n  \n  My sheet wants a semicolon: "a;b".\n    And no header, please."\nState: open\n'), file);
   assert.ok(!existsSync(join(repo, DIR, 'corrections.md')), 'the base branch has nothing of an open spec');
   // read back, the words are as the person typed them
-  assert.equal(spex(repo, 'comment').json.words, `"${words}"`);
+  assert.equal(spex(enter(repo), 'comment').json.words, `"${words}"`);
 
   // the chat ended before the answer: the command with no words goes on with the entry that is open
-  r = spex(repo, 'comment');
+  r = spex(enter(repo), 'comment');
   assert.equal(r.code, 0, r.stdout);
   assert.deepEqual([r.json.entry, r.json.resumed, r.json.open], ['C1', true, ['C1']]);
   assert.ok(r.json.text.startsWith('comment kept as C1 in specs/007-csv-export/corrections.md (it was not finished; this run goes on from there)\n'), r.json.text);
   assert.equal(read(wt, `${DIR}/corrections.md`), file, 'nothing is written twice');
   // new words while one waits: a second entry, and the first is named
-  r = spex(repo, 'comment', 'And', 'drop', 'the', 'header.');
+  r = spex(enter(repo), 'comment', 'And', 'drop', 'the', 'header.');
   assert.deepEqual([r.json.entry, r.json.words, r.json.open], ['C2', '"And drop the header."', ['C1']]);
   assert.ok(r.json.text.endsWith('also not finished: C1'), r.json.text);
 
@@ -375,12 +383,12 @@ test('comment: the person\'s words are kept word for word in corrections.md of t
   r = ok(repo, 'correction', DIR, '--close', 'C1', '--done', 'a question: answered from D1 of tasks.yaml');
   assert.deepEqual(r.json.closed, ['C1']);
   assert.ok(read(wt, `${DIR}/corrections.md`).includes('And no header, please."\nState: closed: a question: answered from D1 of tasks.yaml\n'));
-  r = spex(repo, 'comment');
+  r = spex(enter(repo), 'comment');
   assert.deepEqual([r.json.entry, r.json.resumed], ['C2', true]);
   assert.deepEqual(ok(repo, 'stamp', DIR, '--close', 'C2').json.closed, ['C2']);
-  assert.equal(spex(repo, 'comment').code, 2, 'nothing waits now');
+  assert.equal(spex(enter(repo), 'comment').code, 2, 'nothing waits now');
   // the words and their entries are no part of the plan: implement takes the stamped plan
-  assert.equal(spex(repo, 'start', 'implement', DIR).code, 0);
+  assert.equal(spex(enter(repo), 'start', 'implement', DIR).code, 0);
 });
 
 test('correction: one entry of corrections.md for a verdict, an answer or a pick; the proof of the spec does not depend on it', () => {
@@ -400,5 +408,5 @@ test('correction: one entry of corrections.md for a verdict, an answer or a pick
   assert.deepEqual(r.json.closed, ['C1']);
   assert.ok(read(wt, `${DIR}/corrections.md`).includes('Changed: REQ-007-001, T01, TS01, and D1\nPick: B: by name\nWhy: the page is what the user sees\nReaches: no other spec\nState: closed: done\n'));
   // the file says how the spec got here; it is no part of the plan, and no part of what was proved
-  assert.equal(spex(repo, 'start', 'review', DIR).code, 0, 'the proof of implement still holds');
+  assert.equal(spex(enter(repo), 'start', 'review', DIR).code, 0, 'the proof of implement still holds');
 });

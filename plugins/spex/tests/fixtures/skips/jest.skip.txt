@@ -1,0 +1,9 @@
+PASS jt/a.test.js
+  ✓ REQ_1_passes (1 ms)
+  ○ skipped REQ_2_skips
+
+Test Suites: 1 passed, 1 total
+Tests:       1 skipped, 1 passed, 2 total
+Snapshots:   0 total
+Time:        0.061 s, estimated 1 s
+Ran all test suites matching /jt\/a.test.js/i.

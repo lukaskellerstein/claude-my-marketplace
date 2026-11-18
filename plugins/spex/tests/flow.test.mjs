@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { chmodSync, existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
-import { DIR, NAME, codes, commitAll, configure, edit, gitIn, implementing, makeRepo, ok, read, reviewing, spex, tempDir, worktreeOf } from './helpers.mjs';
+import { DIR, NAME, codes, commitAll, configure, edit, enter, gitIn, implementing, makeRepo, ok, read, reviewing, spex, tempDir, worktreeOf } from './helpers.mjs';
 
 const RULE = '─'.repeat(40);
 const finding = (r, code) => r.json.findings.find((f) => f.code === code);
@@ -54,18 +54,18 @@ test('a remote and a squash merge: commit pushes the notes, a base branch that i
   ok(repo, 'new', 'restore', '--words', words);
   let r = ok(repo, 'commit', '--message', 'spex: notes for a restore');
   assert.deepEqual([r.json.committed, r.json.pushed, codes(r)], [true, true, []]);
-  assert.equal(r.json.text, `committed on main: spex: notes for a restore (2 file(s))\npushed main to origin/main\n${RULE}\nNEXT   /clear\n       /spex:plan ${DIR}\n       It is the turn of this spec.\n${RULE}`);
+  assert.equal(r.json.text, `committed on main: spex: notes for a restore (2 file(s))\npushed main to origin/main\n${RULE}\nNEXT   claude -w spex/${NAME}\n       then, in that session: /spex:plan ${DIR}\n       It is the turn of this spec.\n${RULE}`);
   assert.equal(lastCommit(remote, 'main'), 'spex: notes for a restore');
 
   // one spec, start to end, through the request
-  ok(repo, 'start', 'plan', DIR);
+  ok(enter(repo), 'start', 'plan', DIR);
   ok(repo, 'end', 'plan', DIR);
-  ok(repo, 'start', 'implement', DIR);
+  ok(enter(repo), 'start', 'implement', DIR);
   writeFileSync(join(wt, 'src/state.txt'), 'implemented\n');
   for (const t of ['T01', 'T02']) ok(repo, 'done', DIR, t);
   ok(repo, 'verify', DIR);
   ok(repo, 'end', 'implement', DIR);
-  ok(repo, 'start', 'review', DIR);
+  ok(enter(repo), 'start', 'review', DIR);
   // a commit on the base branch that the remote does not have: the request would carry it, so the close waits
   edit(repo, 'specs/008-restore/spec.md', (s) => `${s}\nOne more line, committed by hand.\n`);
   commitAll(repo, 'a note, by hand');
@@ -81,7 +81,7 @@ test('a remote and a squash merge: commit pushes the notes, a base branch that i
   r = spex(repo, 'close', DIR, 'finish');
   assert.equal(r.code, 0, r.stdout);
   assert.deepEqual(codes(r), [], 'the pull is a fast-forward: the remote had every commit of the base branch');
-  assert.ok(r.json.text.startsWith('pulled main\n') && r.json.text.includes(`NEXT   /clear\n       /spex:plan specs/008-restore`), r.json.text);
+  assert.ok(r.json.text.startsWith('pulled main\n') && r.json.text.includes(`NEXT   claude -w spex/008-restore\n       then, in that session: /spex:plan specs/008-restore`), r.json.text);
   assert.equal(rev(repo, 'main'), rev(repo, 'origin/main'));
   assert.ok(!existsSync(wt) && read(repo, `${DIR}/status.yaml`) === 'command: review\nstate: done\n');
 
@@ -92,14 +92,96 @@ test('a remote and a squash merge: commit pushes the notes, a base branch that i
   assert.equal(r.code, 0, r.stdout);
   assert.deepEqual([r.json.committed, r.json.pushed, codes(r)], [true, false, ['COMMIT-PUSH']]);
   assert.ok(finding(r, 'COMMIT-PUSH').message.startsWith('git push of main failed: '), r.stdout);
-  r = spex(repo, 'start', 'plan', 'specs/008-restore');
+  r = spex(enter(repo, 'specs/008-restore'), 'start', 'plan', 'specs/008-restore');
   assert.equal(r.code, 6, r.stdout);
   assert.deepEqual(codes(r), ['GATE-PUSH']);
   assert.ok(finding(r, 'GATE-PUSH').fix.endsWith('Then type /spex:plan specs/008-restore again.'), r.stdout);
-  assert.ok(!existsSync(worktreeOf(repo, '008-restore')), 'a refused start makes no worktree');
+  assert.ok(!existsSync(join(worktreeOf(repo, '008-restore'), 'specs/008-restore/status.yaml')), 'a refused start writes no state');
   gitIn(repo, ['remote', 'set-url', 'origin', remote]);
   gitIn(repo, ['push', '-q', 'origin', 'main']);
-  ok(repo, 'start', 'plan', 'specs/008-restore');
+  ok(enter(repo, 'specs/008-restore'), 'start', 'plan', 'specs/008-restore');
+});
+
+test('/spex:new commits and pushes only after the yes: preview changes nothing, approved commits and pushes, and the worktree of the hook has the note', () => {
+  const remote = tempDir('spex-remote-');
+  gitIn(remote, ['init', '-q', '--bare', '-b', 'main']);
+  // commit: false and no close.cmd: before 3.1 nothing was committed or pushed here
+  const repo = makeRepo('csv-export');
+  gitIn(repo, ['remote', 'add', 'origin', remote]);
+  gitIn(repo, ['push', '-q', '-u', 'origin', 'main']);
+  const words = join(tempDir('spex-words-'), 'words.md');
+  writeFileSync(words, 'A restore command.\n');
+  ok(repo, 'new', 'restore', '--words', words);
+  const head = rev(repo, 'main');
+
+  // before the yes: the question, with the real names, and nothing committed or pushed
+  let r = ok(repo, 'commit', '--preview');
+  assert.deepEqual([r.json.asked, r.json.question, r.json.committed, r.json.pushed, r.json.upstream], [true, 'Commit and push to origin/main?', false, false, 'origin/main']);
+  assert.deepEqual(r.json.files.sort(), ['specs/008-restore/source.md', 'specs/008-restore/spec.md']);
+  assert.ok(r.json.text.includes('ask: Commit and push to origin/main?'), r.json.text);
+  // a plain commit, as before: commit: false, so it only names the files
+  r = ok(repo, 'commit', '--message', 'spex: notes');
+  assert.deepEqual([r.json.committed, r.json.pushed, codes(r)], [false, false, ['COMMIT-YOURS']]);
+  assert.equal(rev(repo, 'main'), head, 'no commit before the yes');
+  assert.equal(rev(remote, 'main'), head, 'no push before the yes');
+  assert.ok(gitIn(repo, ['status', '--porcelain', '--', 'specs']).trim(), 'the notes wait in the main folder');
+
+  // the yes: one commit on main, pushed to the branch it tracks
+  r = ok(repo, 'commit', '--approved', '--message', 'spex: notes for a restore');
+  assert.deepEqual([r.json.committed, r.json.pushed, codes(r)], [true, true, []]);
+  assert.ok(r.json.text.startsWith('committed on main: spex: notes for a restore (2 file(s))\npushed main to origin/main\n'), r.json.text);
+  assert.equal(lastCommit(remote, 'main'), 'spex: notes for a restore');
+  assert.equal(rev(remote, 'main'), rev(repo, 'main'));
+  // the reply ends with the session to start, then the command to type in it
+  assert.ok(r.json.text.endsWith(`${RULE}\nNEXT   claude -w spex/${NAME}\n       then, in that session: /spex:plan ${DIR}\n       It is the turn of this spec.\n${RULE}`), r.json.text);
+  // the hook makes the worktree from origin/main after a fetch: the note is in it
+  assert.ok(existsSync(join(enter(repo, 'specs/008-restore'), 'specs/008-restore/spec.md')));
+  // with no remote branch to track, the yes commits, and says that nothing is pushed
+  const local = makeRepo('csv-export');
+  ok(local, 'new', 'restore', '--words', words);
+  assert.equal(ok(local, 'commit', '--preview').json.question, 'Commit on main? (it tracks no remote branch: nothing is pushed)');
+  r = ok(local, 'commit', '--approved', '--message', 'spex: notes');
+  assert.deepEqual([r.json.committed, r.json.pushed], [true, false]);
+  assert.ok(r.json.text.includes('main tracks no remote branch: nothing to push'), r.json.text);
+});
+
+test('a new project: spex commit takes the loose .spex/config.yaml and .spex/.gitignore along with the note, in one commit, and plan starts (D24)', () => {
+  // a fresh repo with a commit of its own, then spex init and a note: nothing under .spex/ is committed yet
+  const repo = tempDir('spex-new-project-');
+  gitIn(repo, ['init', '-q', '-b', 'main']);
+  for (const [key, value] of [['user.name', 'spex-test'], ['user.email', 'spex@test'], ['commit.gpgsign', 'false']]) gitIn(repo, ['config', key, value]);
+  writeFileSync(join(repo, 'README.md'), '# shop\n');
+  commitAll(repo, 'first');
+  ok(repo, 'init');
+  const words = join(tempDir('spex-words-'), 'words.md');
+  writeFileSync(words, 'A promo code at checkout.\n');
+  ok(repo, 'new', 'promo', '--words', words);
+  writeFileSync(join(repo, 'scratch.txt'), 'mine\n');
+  const spec = 'specs/001-promo';
+  const files = ['.spex/.gitignore', '.spex/config.yaml', `${spec}/source.md`, `${spec}/spec.md`];
+
+  // the question names spex's two files with the note
+  let r = ok(repo, 'commit', '--preview');
+  assert.deepEqual(r.json.files.sort(), files);
+  // the yes: one commit on the branch the main folder is on, with the note and the two files, and nothing else
+  r = ok(repo, 'commit', '--approved', '--message', 'spex: notes for a promo');
+  assert.deepEqual([r.json.committed, r.json.pushed, codes(r)], [true, false, []]);
+  assert.ok(r.json.text.startsWith('committed on main: spex: notes for a promo (4 file(s))\n'), r.json.text);
+  assert.equal(lastCommit(repo), 'spex: notes for a promo');
+  assert.deepEqual(gitIn(repo, ['show', '--name-only', '--format=', 'HEAD']).split('\n').filter(Boolean).sort(), files);
+  assert.deepEqual(gitIn(repo, ['status', '--porcelain']).split('\n').filter(Boolean), ['?? scratch.txt'], 'never another file');
+
+  // the first start of plan finds the note and the config on the base branch
+  r = spex(enter(repo, spec), 'start', 'plan', spec);
+  assert.equal(r.code, 0, r.stdout);
+  assert.ok(!codes(r).includes('GATE-COMMIT'), r.stdout);
+
+  // the two files go along with notes, never alone: a changed config with no note to commit stays as it is
+  edit(repo, '.spex/config.yaml', (s) => s.replace(/^commit: false/m, 'commit: true'));
+  r = ok(repo, 'commit', '--approved', '--message', 'only the config');
+  assert.deepEqual([r.json.committed, r.json.files], [false, []]);
+  assert.equal(lastCommit(repo), 'spex: notes for a promo');
+  assert.deepEqual(gitIn(repo, ['status', '--porcelain']).split('\n').filter(Boolean).sort(), [' M .spex/config.yaml', '?? scratch.txt']);
 });
 
 test('no remote, no merge command, or close.cmd local: nothing is pushed and nothing is asked', () => {
@@ -121,7 +203,7 @@ test('no remote, no merge command, or close.cmd local: nothing is pushed and not
     const r = ok(main, 'commit', '--message', 'notes');
     assert.deepEqual([r.json.committed, r.json.pushed, codes(r)], [true, false, []], `close.cmd "${cmd}"`);
     assert.equal(lastCommit(remote, 'main'), 'the config');
-    ok(main, 'start', 'plan', DIR);
+    ok(enter(main), 'start', 'plan', DIR);
   }
 });
 
@@ -158,7 +240,7 @@ test('a write with no undo: the question of a blocked task is shown by status, b
   const ask = 'waits for your yes: T01 · Delete 214 files of the old tool in the bucket backups-prod?';
   let r = ok(repo, 'status');
   assert.ok(r.json.text.includes(`   ${ask}\n   a write with no undo runs only on the word yes: as the reply, or after the folder in the command\n`), r.json.text);
-  r = ok(repo, 'start', 'implement', DIR);
+  r = ok(enter(repo), 'start', 'implement', DIR);
   assert.ok(r.json.text.endsWith(`${ask}\na write with no undo runs only on the word yes: as the reply, or after the folder in the command`), r.json.text);
   r = ok(repo, 'show', DIR, '--ready');
   assert.ok(r.json.text.startsWith('ready: none\n') && r.json.text.endsWith(ask), r.json.text);
@@ -180,7 +262,7 @@ test('the rounds of a run: a call on the same green tree is the same round, a fi
   writeFileSync(join(wt, 'src/more.txt'), 'a second fix\n');
   assert.equal(ok(repo, 'verify', DIR).json.evidence.round, 3);
   // the person types implement again: the same number of rounds once more
-  ok(repo, 'start', 'implement', DIR);
+  ok(enter(repo), 'start', 'implement', DIR);
   writeFileSync(join(wt, 'src/more.txt'), 'a third fix\n');
   const r = ok(repo, 'verify', DIR);
   assert.equal(r.json.evidence.round, 1);

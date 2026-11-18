@@ -100,10 +100,47 @@ export interface RunOutcome {
 }
 
 /**
- * A skipped, ignored or pending test in the runner's own words: pytest and jest (`1 skipped`), vitest, node:test
- * (`skipped 1`), go (`--- SKIP:`), cargo (`1 ignored`), mocha and rspec (`1 pending`). Zero counts do not match.
+ * A skipped, ignored or pending test, in the runner's own summary or result line. Each rule reads one whole line from
+ * its start, so a word in other output never counts: an app test that prints its page (a `SKIPPED` stat label) or
+ * `1 skipped` in an assertion message is a red test, not a skip. Zero counts do not match. Mocha's summary line is
+ * indented like free text, so it counts only right after mocha's `N passing (…)` line. go prints a skip only with
+ * -v or -json.
  */
-export const SKIP_PATTERN = /\b[1-9]\d* (?:skipped|ignored|pending)\b|\bskip(?:ped)? [1-9]|--- SKIP:|\bSKIPPED\b/;
+const SKIP_RULES: { runner: string; line: RegExp; after?: RegExp }[] = [
+  // ===== 1 passed, 1 skipped in 0.01s =====   and with -q:   1 passed, 1 skipped in 0.01s
+  { runner: 'pytest', line: /^(?:=+ )?(?:\d+ \w+, )*[1-9]\d* skipped(?:, \d+ \w+)* in \d/ },
+  // Tests:       1 skipped, 1 passed, 2 total      Test Suites: 1 skipped, 1 passed, 1 of 2 total
+  { runner: 'jest', line: /^Test(?:s| Suites):\s+(?:\d+ \w+, )*[1-9]\d* skipped\b/ },
+  //       Tests  1 passed | 1 skipped (2)       Test Files  1 skipped (1)
+  { runner: 'vitest', line: /^\s*Test(?:s| Files)\s+(?:\d+ \w+ \| )*[1-9]\d* skipped\b/ },
+  // ℹ skipped 1 (spec reporter)   # skipped 1 (TAP; # skip 1 in older TAP producers)
+  { runner: 'node:test', line: /^(?:ℹ|#) skip(?:ped)? [1-9]\d*$/ },
+  // --- SKIP: TestX (0.00s), indented for a subtest
+  { runner: 'go', line: /^\s*--- SKIP: / },
+  // {"Time":…,"Action":"skip","Package":…,"Test":"TestX",…}: a test, not a package with no test files
+  { runner: 'go', line: /^\{.*"Action":"skip".*"Test":/ },
+  // test result: ok. 1 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; …
+  { runner: 'cargo', line: /^test result: .*; [1-9]\d* ignored;/ },
+  //   1 passing (3ms)
+  //   1 pending
+  { runner: 'mocha', line: /^\s*[1-9]\d* pending$/, after: /^\s*\d+ passing \(\d+(?:ms|s|m|h)\)$/ },
+  // 2 examples, 0 failures, 1 pending
+  { runner: 'rspec', line: /^\d+ examples?, \d+ failures?, [1-9]\d* pending\b/ },
+];
+
+/** Terminal color and cursor codes: pytest and vitest color their output even with FORCE_COLOR=0. */
+const ANSI = /\u001b\[[0-?]*[ -/]*[@-~]/g;
+
+/** The first line of a command's output where the runner reports a skipped test, without its color codes, or undefined. */
+export function skipLine(printed: string): string | undefined {
+  let before = '';
+  for (const raw of printed.split('\n')) {
+    const line = raw.replace(ANSI, '').trimEnd();
+    if (SKIP_RULES.some((r) => r.line.test(line) && (!r.after || r.after.test(before)))) return line;
+    if (line.trim()) before = line;
+  }
+  return undefined;
+}
 
 export function runCommands(root: string, cmds: string[], timeoutMinutes: number, stopOnFail = true): RunOutcome {
   const results: Evidence['commands'] = [];
@@ -191,12 +228,12 @@ function judge(root: string, config: Config, feature: Feature, name: string, c: 
   // A driver command is filtered to these names, so a skip in its output is a skip of this task's own tests:
   // neither red nor green. A test that needs a live system must fail without it, never skip.
   const driverCmds = new Set(c.groups.filter((g) => g.template).map((g) => driverCommand(g.template!, g.names)));
-  const skipLine = c.cmds.map((cmd, i) => (driverCmds.has(cmd) ? (outcome.printed[i] ?? '').split('\n').find((l) => SKIP_PATTERN.test(l)) : undefined)).find((l) => l !== undefined);
+  const skipped = c.cmds.map((cmd, i) => (driverCmds.has(cmd) ? skipLine(outcome.printed[i] ?? '') : undefined)).find((l) => l !== undefined);
   const findings: Finding[] = [];
   let ok: boolean;
-  if (skipLine !== undefined) {
+  if (skipped !== undefined) {
     ok = false;
-    findings.push({ severity: 'error', code: 'RUN-SKIPPED', message: `the tests of ${name} skip (${skipLine.trim().slice(0, 120)}): a skip is neither red nor green`, fix: 'A test that needs a live system or a record must fail when it is missing, not skip. Declare what it needs in needs[] of its test record, or make it a session the tester performs at verify.' });
+    findings.push({ severity: 'error', code: 'RUN-SKIPPED', message: `the tests of ${name} skip (${skipped.trim().slice(0, 120)}): a skip is neither red nor green`, fix: 'A test that needs a live system or a record must fail when it is missing, not skip. Declare what it needs in needs[] of its test record, or make it a session the tester performs at verify.' });
   } else if (expect === 'pass') {
     ok = outcome.ok;
     if (!ok) {
@@ -302,7 +339,7 @@ export function verifyFeature(root: string, config: Config, feature: Feature): F
     }
     const all = runCommands(root, [driverCommand(g.template, g.names)], config.limits.verify_minutes);
     output += all.output;
-    const skipped = SKIP_PATTERN.test(all.printed[0] ?? '');
+    const skipped = skipLine(all.printed[0] ?? '') !== undefined;
     if (all.ok && !skipped) {
       for (const t of g.tests) scripts.push({ id: t.id, ok: true, cmd: all.results[0].cmd, exit: 0, tail: '' });
       continue;
@@ -312,7 +349,7 @@ export function verifyFeature(root: string, config: Config, feature: Feature): F
       const one = runCommands(root, [driverCommand(g.template, [t.name!])], config.limits.verify_minutes);
       output += one.output;
       const r = one.results[0];
-      const skip = (one.printed[0] ?? '').split('\n').find((l) => SKIP_PATTERN.test(l));
+      const skip = skipLine(one.printed[0] ?? '');
       const seen = one.raw.includes(t.name!);
       const ok = one.ok && !skip && seen;
       scripts.push({ id: t.id, ok, cmd: r.cmd, exit: r.exit, tail: ok ? '' : skip ? `skipped: ${skip.trim().slice(0, 120)} — a skip is neither red nor green` : !seen && !one.ok ? `the run failed but never mentioned ${t.name}\n${r.tail.slice(-1500)}` : r.tail.slice(-1500) });

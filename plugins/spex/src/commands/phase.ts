@@ -21,7 +21,8 @@ import { findSpec, isClosed, readState, specList, stateWord, writeState, type Li
 import { isSession, needsFindings } from '../tests.js';
 import type { Config, Feature, Finding, SpecState } from '../types.js';
 import { readVerify, runCommands, verifyIsCurrent, startVerifyRun } from '../verify.js';
-import { addWorktree, baseBranch, branchOf, mainRoot, pushFix, unpushed, type WorktreeResult } from '../worktree.js';
+import { SETUP_RECORD as SETUP_RECORD_PATH } from '../worktree.js';
+import { baseBranch, branchOf, catchUp, enterGate, inWorktree, mainRoot, pushFix, setupOnce, toplevel, unpushed, type SetupResult } from '../worktree.js';
 import { yesLines, type CmdResult } from './lifecycle.js';
 import { pendingRound } from '../review.js';
 import { openedNote } from './new.js';
@@ -120,7 +121,7 @@ interface Located {
 
 function locate(root: string, given: string): Located | CmdResult {
   const main = mainRoot(root);
-  if (!isGitRepo(main)) return refuse([err('GIT-REQUIRED', 'a phase needs a git repository: the spec gets a branch and a worktree', 'Run inside the repository.')], 2);
+  if (!isGitRepo(main)) return refuse([err('GIT-REQUIRED', 'a phase needs a git repository: the spec works on its own branch, in its own worktree', 'Run inside the repository.')], 2);
   const list = specList(root);
   const spec = findSpec(root, given);
   if (!spec) return refuse([err('SPEC-UNKNOWN', `${given} is no spec folder under specs/`, list.length ? `The list: ${list.map((s) => `${s.name} (${stateWord(s.state)})`).join(', ')}.` : 'An idea starts with /spex:new: it writes the notes.')], 2);
@@ -129,21 +130,47 @@ function locate(root: string, given: string): Located | CmdResult {
 
 const isResult = (x: Located | CmdResult): x is CmdResult => 'exit' in x;
 
-/** The worktree lines every start prints: where the chat must work, and what the script did to get there. */
-function worktreeLines(wt: WorktreeResult): string[] {
-  const lines = [`worktree: ${wt.path} · branch ${wt.branch} · ${wt.made ? `made from ${wt.base}` : 'found'}`, `enter: ${wt.path}`];
-  if (wt.setup) lines.push(`setup: \`${wt.setup.cmd}\` ${wt.setup.ok ? 'ran' : `FAILED\n${wt.setup.tail.slice(-800)}`}`);
+/** The worktree lines every start prints: where the session works, and what the first start there did. */
+function worktreeLines(home: string, spec: ListedSpec, entered: Entered): string[] {
+  const lines = [`worktree: ${home} · branch ${branchOf(spec.name)}${entered.setup.first ? ' · the first start here' : ''}`];
+  if (entered.moved.length) lines.push(`the base came in (fast-forward): ${entered.moved.join(', ')}`);
+  const ran = entered.setup.ran;
+  if (ran) lines.push(`setup: \`${ran.cmd}\` ${ran.ok ? 'ran' : `FAILED\n${ran.tail.slice(-800)}`}`);
+  else if (!entered.setup.first) lines.push('setup: ran at the first start here');
   return lines;
 }
 
-function worktreeFor(main: string, config: Config, spec: ListedSpec): WorktreeResult {
-  return addWorktree(main, config, spec.name, (cwd, cmd) => {
+const setupFinding = (e: Entered): Finding[] => (e.setup.ran && !e.setup.ran.ok ? [{ severity: 'warning', code: 'WORKTREE-SETUP', message: `worktree.setup failed in this worktree: ${e.setup.ran.cmd}`, fix: 'Fix the command in .spex/config.yaml and run it one time by hand in the worktree. The phase goes on.' }] : []);
+
+interface Entered {
+  home: string;
+  setup: SetupResult;
+  moved: string[];
+}
+
+/**
+ * The session is in the worktree of the spec (GATE-ENTER passed). On the first start here, the gates of the base
+ * branch run (GATE-COMMIT, GATE-PUSH), the base comes in when the branch has no work of its own, and worktree.setup
+ * runs one time. A later start finds the record and skips all three.
+ */
+function enter(root: string, main: string, spec: ListedSpec, config: Config, base: string, phase: 'plan' | 'implement' | 'review'): Entered | CmdResult {
+  const home = toplevel(root);
+  const first = !fileExists(join(home, SETUP_RECORD_PATH));
+  let moved: string[] = [];
+  if (first) {
+    const gate = commitGate(main, spec, base, phase);
+    if (gate) return gate;
+    moved = catchUp(home, base);
+    if (!fileExists(join(home, spec.dir, SPEC_FILE))) return refuse([err('WORKTREE-BEHIND', `this worktree has no ${spec.dir}: it started from a commit before the note`, `Bring ${base} in: \`git merge ${base}\` in this worktree. Then type /spex:${phase} ${spec.dir} again.`, spec.dir)]);
+  }
+  const setup = setupOnce(home, config, (cwd, cmd) => {
     const out = runCommands(cwd, [cmd], config.limits.verify_minutes);
     return { ok: out.ok, tail: out.results[0]?.tail ?? '' };
   });
+  return { home, setup, moved };
 }
 
-const setupFinding = (wt: WorktreeResult): Finding[] => (wt.setup && !wt.setup.ok ? [{ severity: 'warning', code: 'WORKTREE-SETUP', message: `worktree.setup failed in the new worktree: ${wt.setup.cmd}`, fix: 'Fix the command in .spex/config.yaml and run it one time by hand in the worktree. The phase goes on.' }] : []);
+const isEntered = (x: Entered | CmdResult): x is Entered => 'setup' in x;
 
 /** The one-spec-at-a-time gate of plan: every spec with a lower number is closed, and no other spec is open. */
 function turnFindings(spec: ListedSpec, list: ListedSpec[]): Finding[] {
@@ -165,6 +192,7 @@ function turnFindings(spec: ListedSpec, list: ListedSpec[]): Finding[] {
  * migrated files of a spec in flight.
  */
 function commitGate(main: string, spec: ListedSpec, base: string, phase: 'plan' | 'implement' | 'review'): CmdResult | null {
+  if (!isGitRepo(main)) return null;
   const loose = dirty(main, [spec.dir, CONFIG_PATH]);
   if (loose.length) return refuse([err('GATE-COMMIT', `${loose.length} file(s) the worktree needs are not committed on ${base}: ${loose.slice(0, 6).join(', ')}${loose.length > 6 ? ', …' : ''}`, `Commit them on ${base}, then type /spex:${phase} ${spec.dir} again.${phase === 'plan' ? ' With commit: true in .spex/config.yaml, /spex:new commits its notes itself.' : ''}`, spec.dir)], 6, { uncommitted: loose });
   if (!git(main, ['rev-parse', '--verify', '--quiet', 'HEAD'], { allowFail: true }).trim()) return refuse([err('GATE-COMMIT', 'the repository has no commit yet', 'Commit the notes first: a worktree starts from a commit.')]);
@@ -179,17 +207,17 @@ function startPlan(root: string, given: string): CmdResult {
   const at = locate(root, given);
   if (isResult(at)) return at;
   const { main, spec, list } = at;
-  if (isClosed(spec.state)) return refuse([err('GATE-CLOSED', `${spec.name} is closed${spec.worktree ? ' on its branch' : ' and merged'}`, spec.worktree ? `Type /spex:review ${spec.dir}: it finishes the merge.` : 'A closed spec is never planned again. A new spec changes it: /spex:new, or /spex:new-bug for a bug.', spec.dir)]);
+  if (isClosed(spec.state)) return refuse([err('GATE-CLOSED', `${spec.name} is closed${spec.worktree || spec.branch ? ' on its branch' : ' and merged'}`, spec.worktree || spec.branch ? `Type /spex:review ${spec.dir}: it finishes the merge.` : 'A closed spec is never planned again. A new spec changes it: /spex:new, or /spex:new-bug for a bug.', spec.dir)]);
   const turn = turnFindings(spec, list);
   if (turn.length) return refuse(turn);
   const { config, findings: cf } = loadConfig(main);
   if (hasErrors(cf)) return refuse(cf, 4);
   const base = baseBranch(main, config);
-  const gate = spec.worktree ? null : commitGate(main, spec, base, 'plan');
-  if (gate) return gate;
-  const wt = worktreeFor(main, config, spec);
-  if (!wt.ok) return refuse([err('WORKTREE-FAILED', `git could not make the worktree ${wt.path}`, `Read the output, fix the cause, and type /spex:plan ${spec.dir} again. Output: ${wt.error ?? ''}`)], 7);
-  const home = wt.path;
+  const gate = enterGate(root, spec.name, spec.dir, 'plan');
+  if (gate) return refuse([gate], 6, { dir: spec.dir, branch: branchOf(spec.name) });
+  const wt = enter(root, main, spec, config, base, 'plan');
+  if (!isEntered(wt)) return wt;
+  const home = wt.home;
   const was = readState(home, spec.dir);
   writeState(home, spec.dir, { command: 'plan', state: 'started' });
   // A note that opens: the note line goes, and the sections of the full spec it lacks are added, empty, with their hints.
@@ -198,11 +226,11 @@ function startPlan(root: string, given: string): CmdResult {
   const feature = loadFeature(home, spec.dir);
   const open = openCorrections(home, spec.dir);
   const closed = list.filter((s) => isClosed(s.state)).map((s) => s.name);
-  const lines = [`plan started for ${spec.dir} (it was ${stateWord(was)})`, ...worktreeLines(wt)];
+  const lines = [`plan started for ${spec.dir} (it was ${stateWord(was)})`, ...worktreeLines(home, spec, wt)];
   lines.push(`on disk: spec.md${fileExists(join(home, spec.dir, 'source.md')) ? ', source.md' : ''}${feature.requirements ? ', requirements.yaml' : ''}${feature.tasks ? ', tasks.yaml' : ''}${feature.tests ? ', tests.yaml' : ''}`);
   lines.push(closed.length ? `closed before it: ${closed.join(', ')} (fit.md reads what they built: SPEX show ${spec.dir} --inherited)` : 'closed before it: none (the note is checked against the code alone)');
   if (open.length) lines.push(`open in corrections.md: ${open.map(entryLine).join('; ')}`);
-  return { ok: true, findings: [...cf, ...setupFinding(wt)], exit: 0, text: lines.join('\n'), data: { phase: 'plan', dir: spec.dir, worktree: wt.path, branch: wt.branch, base, made: wt.made, was, state: { command: 'plan', state: 'started' }, again: !!feature.requirements, closed, corrections: open.map((c) => c.id) } };
+  return { ok: true, findings: [...cf, ...setupFinding(wt)], exit: 0, text: lines.join('\n'), data: { phase: 'plan', dir: spec.dir, worktree: home, branch: branchOf(spec.name), base, first: wt.setup.first, setup: wt.setup.ran, was, state: { command: 'plan', state: 'started' }, again: !!feature.requirements, closed, corrections: open.map((c) => c.id) } };
 }
 
 function endPlan(root: string, given: string): CmdResult {
@@ -250,27 +278,30 @@ function needFindings(home: string, config: Config, feature: Feature): Finding[]
 function startImplement(root: string, given: string): CmdResult {
   const at = locate(root, given);
   if (isResult(at)) return at;
-  const { main, spec } = at;
+  const { main } = at;
+  if (isClosed(at.spec.state)) return refuse([err('GATE-CLOSED', `${at.spec.name} is closed`, at.spec.worktree || at.spec.branch ? `Type /spex:review ${at.spec.dir}: it finishes the merge.` : 'A closed spec is never built again. A new spec changes it.', at.spec.dir)]);
+  const config0 = loadConfig(main).config;
+  const gate = enterGate(root, at.spec.name, at.spec.dir, 'implement');
+  if (gate) return refuse([gate], 6, { dir: at.spec.dir, branch: branchOf(at.spec.name) });
+  const wt = enter(root, main, at.spec, config0, baseBranch(main, config0), 'implement');
+  if (!isEntered(wt)) return wt;
+  // The first start may have brought the base in: the spec is read again, from this worktree.
+  const spec = findSpec(root, given) ?? at.spec;
   const s = spec.state;
   if (!s || (s.command === 'plan' && s.state === 'started')) return refuse([err('GATE-PLAN', `${spec.name} has no finished plan (it is ${stateWord(s)})`, `Type /spex:plan ${spec.dir}.`, spec.dir)]);
-  if (isClosed(s)) return refuse([err('GATE-CLOSED', `${spec.name} is closed`, spec.worktree ? `Type /spex:review ${spec.dir}: it finishes the merge.` : 'A closed spec is never built again. A new spec changes it.', spec.dir)]);
-  const config0 = loadConfig(main).config;
-  const gate = spec.worktree ? null : commitGate(main, spec, baseBranch(main, config0), 'implement');
-  if (gate) return gate;
-  const wt = worktreeFor(main, config0, spec);
-  if (!wt.ok) return refuse([err('WORKTREE-FAILED', `git could not make the worktree ${wt.path}`, `Read the output and fix the cause. Output: ${wt.error ?? ''}`)], 7);
-  const home = wt.path;
+  if (isClosed(s)) return refuse([err('GATE-CLOSED', `${spec.name} is closed`, `Type /spex:review ${spec.dir}: it finishes the merge.`, spec.dir)]);
+  const home = wt.home;
   const check = runCheck(home, [spec.dir]);
   const feature = check.features[0];
   const config = check.config;
   const open = openCorrections(home, spec.dir);
   const lines: string[] = [];
-  const data: Record<string, unknown> = { phase: 'implement', dir: spec.dir, worktree: wt.path, branch: wt.branch, was: s };
+  const data: Record<string, unknown> = { phase: 'implement', dir: spec.dir, worktree: home, branch: branchOf(spec.name), was: s };
   if (open.length) {
     // The process began a correction and the chat ended before the stamp: not a change by hand. The run finishes it.
     writeState(home, spec.dir, { command: 'implement', state: 'started' });
     if (feature.requirements) startVerifyRun(home, feature.requirements.feature);
-    lines.push(`implement started for ${spec.dir} (it was ${stateWord(s)})`, ...worktreeLines(wt), `a correction is not finished: ${open.map(entryLine).join('; ')}`, 'finish it first (the part wrong.md): the plan follows the spec, then `spex stamp` closes the entry', ...yesLines(home, feature));
+    lines.push(`implement started for ${spec.dir} (it was ${stateWord(s)})`, ...worktreeLines(home, spec, wt), `a correction is not finished: ${open.map(entryLine).join('; ')}`, 'finish it first (the part wrong.md): the plan follows the spec, then `spex stamp` closes the entry', ...yesLines(home, feature));
     return { ok: true, findings: [...check.findings.filter((f) => f.severity !== 'info'), ...setupFinding(wt)], exit: 0, text: lines.join('\n'), data: { ...data, resume: open.map((c) => c.id), state: { command: 'implement', state: 'started' } } };
   }
   if (hasErrors(check.findings)) return refuse(check.findings.filter((f) => f.severity === 'error'), 4, data);
@@ -282,7 +313,7 @@ function startImplement(root: string, given: string): CmdResult {
   startVerifyRun(home, feature.requirements.feature);
   const needs = needFindings(home, config, feature);
   const tasks = feature.tasks.tasks;
-  lines.push(`implement started for ${spec.dir} (it was ${stateWord(s)})`, ...worktreeLines(wt));
+  lines.push(`implement started for ${spec.dir} (it was ${stateWord(s)})`, ...worktreeLines(home, spec, wt));
   lines.push(`the plan is as it was stamped${approved ? `: ${approved} record(s) approved` : ''}`);
   lines.push(`tasks: ${tasks.filter((t) => t.status === 'done').length} done, ${tasks.filter((t) => t.status === 'todo').length} todo, ${tasks.filter((t) => t.status === 'blocked').length} blocked · tests: ${feature.tests.tests.length} (${feature.tests.tests.filter(isSession).length} in a real app)`);
   if (needs.length) return { ok: false, findings: needs, exit: 6, text: [...lines, `${needs.length} need(s) not met: only you can give them, then type /spex:implement ${spec.dir} again`].join('\n'), data: { ...data, needs: needs.map((n) => n.message), state: { command: 'implement', state: 'started' } } };
@@ -325,21 +356,29 @@ function endImplement(root: string, given: string): CmdResult {
 function startReview(root: string, given: string): CmdResult {
   const at = locate(root, given);
   if (isResult(at)) return at;
-  const { main, spec } = at;
+  const { main } = at;
+  if (isClosed(at.spec.state) && !at.spec.worktree && !at.spec.branch) return refuse([err('GATE-CLOSED', `${at.spec.name} is closed and merged`, 'Nothing is left to do for it.', at.spec.dir)]);
+  // The one start that belongs in the main folder: the spec is closed on its branch, and what is left of the close
+  // (the pull, a local merge, the removal of the worktree and the branch) changes the main folder. It makes nothing.
+  if (isClosed(at.spec.state) && !inWorktree(root)) {
+    const spec = at.spec;
+    const s = spec.state;
+    return { ok: true, findings: [], exit: 0, text: [`${spec.dir} is closed on its branch; the close is not finished`, `main folder: ${main}`, `go on with the part close.md: \`spex close ${spec.dir} finish\``].join('\n'), data: { phase: 'review', dir: spec.dir, branch: branchOf(spec.name), was: s, closing: true, step: 'finish', state: s } };
+  }
+  const config0 = loadConfig(main).config;
+  const gate = enterGate(root, at.spec.name, at.spec.dir, 'review');
+  if (gate) return refuse([gate], 6, { dir: at.spec.dir, branch: branchOf(at.spec.name) });
+  const wt = enter(root, main, at.spec, config0, baseBranch(main, config0), 'review');
+  if (!isEntered(wt)) return wt;
+  const spec = findSpec(root, given) ?? at.spec;
   const s = spec.state;
   const built = !!s && ((s.command === 'implement' && s.state === 'done') || s.command === 'review');
   if (!built) return refuse([err('GATE-BUILT', `${spec.name} is not built (it is ${stateWord(s)})`, `Implement it first. Type: ${commandFor(spec).command}`, spec.dir)]);
-  if (isClosed(s) && !spec.worktree) return refuse([err('GATE-CLOSED', `${spec.name} is closed and merged`, 'Nothing is left to do for it.', spec.dir)]);
-  const config0 = loadConfig(main).config;
-  const gate = spec.worktree ? null : commitGate(main, spec, baseBranch(main, config0), 'review');
-  if (gate) return gate;
-  const wt = worktreeFor(main, config0, spec);
-  if (!wt.ok) return refuse([err('WORKTREE-FAILED', `git could not make the worktree ${wt.path}`, `Read the output and fix the cause. Output: ${wt.error ?? ''}`)], 7);
-  const home = wt.path;
-  const data: Record<string, unknown> = { phase: 'review', dir: spec.dir, worktree: wt.path, branch: wt.branch, was: s };
+  const home = wt.home;
+  const data: Record<string, unknown> = { phase: 'review', dir: spec.dir, worktree: home, branch: branchOf(spec.name), was: s };
   if (isClosed(s)) {
     // The close wrote `review, done` and the merge or the removal did not finish: each box finds its work done.
-    return { ok: true, findings: [], exit: 0, text: [`${spec.dir} is closed on its branch; the close is not finished`, ...worktreeLines(wt), `go on with the part close.md: \`spex close ${spec.dir} merge\``].join('\n'), data: { ...data, closing: true, state: s } };
+    return { ok: true, findings: [], exit: 0, text: [`${spec.dir} is closed on its branch; the close is not finished`, ...worktreeLines(home, spec, wt), `go on with the part close.md: \`spex close ${spec.dir} merge\``].join('\n'), data: { ...data, closing: true, step: 'merge', state: s } };
   }
   const check = runCheck(home, [spec.dir]);
   if (hasErrors(check.findings)) return refuse(check.findings.filter((f) => f.severity === 'error'), 4, data);
@@ -350,7 +389,7 @@ function startReview(root: string, given: string): CmdResult {
   if (findings.length) return refuse(findings, 6, data);
   writeState(home, spec.dir, { command: 'review', state: 'started' });
   const all = readCorrections(home, spec.dir);
-  const lines = [`review started for ${spec.dir} (it was ${stateWord(s)})`, ...worktreeLines(wt), `every task is done and every test is green on this tree`, all.length ? `corrections.md: ${all.map(entryLine).join('; ')}` : 'corrections.md: no entry'];
+  const lines = [`review started for ${spec.dir} (it was ${stateWord(s)})`, ...worktreeLines(home, spec, wt), `every task is done and every test is green on this tree`, all.length ? `corrections.md: ${all.map(entryLine).join('; ')}` : 'corrections.md: no entry'];
   // A round the reviewers wrote and nobody answered: it is shown again, never reviewed again.
   const waits = feature.requirements ? pendingRound(home, feature.requirements.feature) : null;
   if (waits) lines.push(`round ${waits.round} waits for its answer: ${waits.path}${waits.errors.length ? ' (the file does not pass its schema: repair it by the fix text of `spex review accept`)' : ''}`, 'print its list again, and stop: no reviewer runs');

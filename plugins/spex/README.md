@@ -8,9 +8,10 @@ builds the code and proves it. `review` reads the diff and closes the spec. A
 script, not the model, says when each step is done. The one who writes a claim
 never writes its proof.
 
-> **Status:** spex 3.0.0 · 2026-11-13 · data format 3. `spex update` moves a
+> **Status:** spex 3.1.0 · 2026-11-18 · data format 3. `spex update` moves a
 > repo from format 2. [What changed in v3.0](#what-changed-in-v30) lists the
-> differences from spex 2.2.
+> differences from spex 2.2, and [What changed in v3.1](#what-changed-in-v31)
+> what came after the 3.0 build.
 >
 > **The design:** [`README.html`](README.html) is the design of the process:
 > one playable map with every step and every fork, 48 cases with their way
@@ -29,8 +30,8 @@ are setup.
 
 | Command | What it does | What it leaves on disk |
 |:--|:--|:--|
-| `/spex:new <idea>` | keeps your words, sizes the idea, splits it into specs, writes one note for each; a second agent reads the notes against your text | `specs/<NNN>-<slug>/source.md` (your text, word for word) and `spec.md` (a note), on the base branch; for a design file also `specs/<name>.roadmap.md` |
-| `/spex:plan <dir>` | checks the note against the real code, asks at most 3 questions, writes the full spec, the requirements, the tasks and the test plan; the script checks that every line of yours has a record | the branch `spex/<spec>` and the worktree `.claude/worktrees/<spec>`; in it `spec.md` (full), `requirements.yaml`, `tasks.yaml`, `tests.yaml`, `status.yaml` (`plan`, `done`); one commit |
+| `/spex:new <idea>` | keeps your words, sizes the idea, splits it into specs, writes one note for each; a second agent reads the notes against your text; asks "Commit and push to origin/main?" | `specs/<NNN>-<slug>/source.md` (your text, word for word) and `spec.md` (a note), committed on the base branch and pushed after your yes; for a design file also `specs/<name>.roadmap.md` |
+| `/spex:plan <dir>` | checks the note against the real code, asks at most 3 questions, writes the full spec, the requirements, the tasks and the test plan; the script checks that every line of yours has a record | in the worktree `.worktrees/spex/<spec>` on the branch `spex/<spec>` (your session started there with `claude -w spex/<spec>`): `spec.md` (full), `requirements.yaml`, `tasks.yaml`, `tests.yaml`, `status.yaml` (`plan`, `done`); one commit |
 | `/spex:implement <dir>` | writes every test and proves it red, builds each task with a fresh agent, runs every test on the final tree and in the real app; a red test goes to the decider | the test files, the code, `status.yaml` (`implement`, `done`); one commit |
 | `/spex:review <dir>` | reads the diff for what no test sees, shows every finding with a pick, takes your one-word answer; a clean review closes the spec | the records `built`, `status.yaml` (`review`, `done`); the branch merged, the worktree and the branch removed |
 | `/spex:comment <your words>` | a question about the open spec gets an answer from its files; a change is put into the spec, the tasks and the test plan; no code is written | an entry in `corrections.md`; for a change, the corrected and stamped plan, one commit |
@@ -96,18 +97,26 @@ the skills call. In Claude Code the path is
 ```text
 /spex:init                              # once: writes .spex/config.yaml from what the repo has
 /spex:new Add an Export button to the Orders page. It downloads all orders as a CSV file. …
-/clear
+ok                                      # the answer to "Commit and push to origin/main?"
+
+claude -w spex/007-csv-export           # a new session, in the worktree of the spec
 /spex:plan specs/007-csv-export         # each reply ends with a NEXT block that names this line
 /clear
 /spex:implement specs/007-csv-export    # typing it approves the plan
 /clear
-/spex:review specs/007-csv-export       # a clean review merges and removes the worktree
+/spex:review specs/007-csv-export       # a clean review merges
+
+claude                                  # a session on the main folder, after you end the one above
+/spex:review specs/007-csv-export       # pulls the base branch, removes the worktree and the branch
 ```
 
-Set `commit: true` in `.spex/config.yaml`, or commit the notes yourself after
-`new`: a worktree gets only what is committed, so `plan` refuses a note that
-is not (`GATE-COMMIT`). Set `close.cmd` to the command that merges, or to
-`local`; with no command the close waits for you to merge.
+The phases run only in a session that started in the worktree of the spec
+(`claude -w spex/<spec>`, made by your `WorktreeCreate` hook); a start
+anywhere else is `GATE-ENTER`, and makes nothing. `new` commits and pushes
+the notes after your yes: the worktree starts from the remote, so `plan`
+refuses a note that is not committed (`GATE-COMMIT`). Set `close.cmd` to the
+command that merges, or to `local`; with no command the close waits for you
+to merge.
 
 With a merge command and a remote, the notes must be on the remote before a
 spec starts. Else the request of the spec carries them, and after a squash
@@ -227,9 +236,9 @@ prevents.
    `by: default`. The close prints every answer no person gave, so you read
    them once more at the end.
 9. **Plain text in the skills.** A skill names actions ("ask the person",
-   "start one agent for each task"), with two exceptions that are Claude Code
-   tools: `EnterWorktree` and `ExitWorktree`, which move the chat into and
-   out of the worktree of a spec.
+   "start one agent for each task"), and no Claude Code tool moves the chat:
+   no skill calls `EnterWorktree` or `ExitWorktree`. A session starts in the
+   worktree of its spec (`claude -w spex/<spec>`), and stays there.
 10. **This README is for people.** No skill tells the agent to read it. If one
     did, every run would pay for the whole process again.
 11. **The wall: the one who writes a claim never writes its proof.** The
@@ -295,7 +304,7 @@ any folder of the repo.
 
 | Phase | The start | The work | The end |
 |:--|:--|:--|:--|
-| **plan** | `spex start plan <dir>`: it is the turn of this spec (`GATE-TURN`, `GATE-OPEN`, `GATE-CLOSED`), and the note is committed on the base branch (`GATE-COMMIT`). It makes the branch `spex/<spec>` and the worktree, runs `worktree.setup` one time, writes `plan`, `started`, and adds the empty sections of the full spec to the note | The analyst checks the note against the code. The decider sizes what does not fit. The analyst drafts the spec. You answer at most 3 questions. One researcher gets each missing fact. The analyst writes the full spec and the records, the planner writes the tasks, the test analyst writes the test plan | `spex end plan <dir>`: every file is there (`PLAN-MISSING`), no question and no unknown is open (`PLAN-QUESTION`, `PLAN-UNKNOWN`), `spex check` has no error, and all is linked. Then the stamp, `plan`, `done`, and one commit |
+| **plan** | `spex start plan <dir>`: it is the turn of this spec (`GATE-TURN`, `GATE-OPEN`, `GATE-CLOSED`), the session is in the worktree of the spec, on `spex/<spec>` (`GATE-ENTER`), and the note is committed on the base branch (`GATE-COMMIT`). At the first start there it runs `worktree.setup` one time. It writes `plan`, `started`, and adds the empty sections of the full spec to the note | The analyst checks the note against the code. The decider sizes what does not fit. The analyst drafts the spec. You answer at most 3 questions. One researcher gets each missing fact. The analyst writes the full spec and the records, the planner writes the tasks, the test analyst writes the test plan | `spex end plan <dir>`: every file is there (`PLAN-MISSING`), no question and no unknown is open (`PLAN-QUESTION`, `PLAN-UNKNOWN`), `spex check` has no error, and all is linked. Then the stamp, `plan`, `done`, and one commit |
 | **implement** | `spex start implement <dir>`: the plan is done (`GATE-PLAN`) and as it was stamped (`GATE-PLAN-CHANGED`). The records go from `draft` to `approved`. It writes `implement`, `started`, checks every `needs` of the tests and runs `env.up` (`GATE-NEEDS`, `ENV-UP`) | Test developers write each script test and prove it red. One developer builds each task, and `spex done` closes it. `spex verify` runs every test on the final tree, and testers perform the sessions in the real app. A red test goes to the decider | `spex end implement <dir>`: every task is done (`GATE-TASKS`), the plan is stamped, and the proof is green on this tree (`GATE-VERIFY`). Then `implement`, `done`, and one commit |
 | **review** | `spex start review <dir>`: the spec is built (`GATE-BUILT`), every task is done, and the proof is green on this tree. It writes `review`, `started` | Reviewers read the diff against every record. You answer the findings in one word. A fix pick goes back to `implement` with no command typed. With no fix pick, the close runs | `spex close <dir> built` writes `review`, `done` and commits. The other steps of the close merge and clean up |
 
@@ -362,9 +371,10 @@ or a comment that is not finished, and the one command to go on:
 
 ```text
 📍 006 delete-old-backups · implement, started · worktree 006-delete-old-backups · 3 days ago
-   worktree: /path/to/repo/.claude/worktrees/006-delete-old-backups
+   worktree: /path/to/repo/.worktrees/spex/006-delete-old-backups
 ────────────────────────────────────────
-NEXT   /spex:implement specs/006-delete-old-backups
+NEXT   claude -w spex/006-delete-old-backups
+       then, in that session: /spex:implement specs/006-delete-old-backups
        The phase runs again; a task that is done stays done.
 ────────────────────────────────────────
 ```
@@ -433,31 +443,36 @@ spex knows no tool. Your project gives it four scripts and one address, under
 ### Branches and worktrees
 
 Each spec gets its own branch, `spex/<spec>`, and its own worktree (a second
-folder of the same repo, on that branch), `.claude/worktrees/<spec>`.
+folder of the same repo, on that branch), `.worktrees/spex/<spec>`. The script
+never makes a worktree. You start a session in it with `claude -w spex/<spec>`,
+and the `WorktreeCreate` hook of your machine makes it: `<repo>/.worktrees/<name>`
+on the branch `<name>`, from `origin/<default>` after a fetch. A folder that is
+there is adopted, and a branch that is there is checked out. The repo ignores
+`.worktrees/`.
 
-| Moment | What the script does | Where the chat works |
+| Moment | What the script does | Where the session works |
 |:--|:--|:--|
-| `new`, `new-bug` | Writes the notes on the base branch. `spex commit` commits them with `commit: true`, and pushes them when `close.cmd` merges through a remote. Without it, the reply names the files, and you commit and push them | The main folder |
-| `plan` starts | Makes the branch and the worktree from the base branch (`base` in the config, or the branch the main folder is on). Runs `worktree.setup` one time | Moves into the worktree |
-| `implement`, `review`, `comment` | Find the worktree of the spec. All files of the spec are there | Moves into the worktree |
-| A phase ends | Commits what the phase wrote, on the branch of the spec | In the worktree |
-| The close | The six steps above | Back in the main folder for `finish` |
+| `new` | Writes the notes on the base branch, then asks "Commit and push to origin/main?". After your yes, `spex commit --approved` commits and pushes them: the worktree starts from the remote. The reply ends with `claude -w spex/<spec>`, then `/spex:plan specs/<spec>` in that session | The main folder |
+| `new-bug`, `delete` | Write the notes on the base branch. `spex commit` commits them with `commit: true`, and pushes them when `close.cmd` merges through a remote. Without it, the reply names the files | The main folder |
+| `plan`, `implement`, `review`, `comment` start | Refuse with `GATE-ENTER` when the session is not on `spex/<spec>`, and make nothing. On the first start in the worktree: `GATE-COMMIT` and `GATE-PUSH`, the base branch in (fast-forward, when the branch has no work of its own), and `worktree.setup` one time, with a record in `.spex/runs/` so a second start skips it | The worktree |
+| A phase ends | Commits what the phase wrote, on the branch of the spec | The worktree |
+| The close | Steps `sync` to `merge` in the worktree. `finish` writes the main folder, so it runs when you type `/spex:review <dir>` in a session there | The worktree, then the main folder |
 | `delete`, for a spec with a worktree | Copies the folder of the spec and the script's work folders to `.spex/archive/` in the main folder, with the code of the branch as `code.patch`. Then removes the worktree and the branch. Then takes the note off the base branch and moves the later notes down | The main folder |
 
 While a spec is open, the base branch can still change: a teammate merges, or
 you type `new`, `new-bug` or `delete`. The open spec does not see that until
 its close, so the close takes in the base branch first.
 
-**What the worktree test showed** (2026-11-13, in a Claude Code session with
-the sandbox on):
+**Why the session starts in the worktree** (the worktree contract of the
+machine, and the worktree test of 2026-11-13):
 
 | Question | Result | What spex does |
 |:--|:--|:--|
-| Can a skill move the chat into a worktree that the script made? | Yes: the tool `EnterWorktree` takes the path | `plan`, `implement`, `review` and `comment` move in with one tool call |
-| Does an agent that starts after the move work in the worktree? | Yes | No agent gets a path to change into |
-| Can the chat still change the main folder after the move? | No: the sandbox refuses the write | The close leaves the worktree first (`ExitWorktree`, `action: keep`), then runs `finish` |
-| Can the script remove the worktree? | Not alone, in a sandbox: `.claude/settings.json` and `.claude/.cc-writes` in the worktree are write-protected | The script checks that the folder is gone. If not: exit 8, and the same command runs one time outside the sandbox |
-| Does git ignore `.claude/worktrees/`? | No | The script adds it to `.git/info/exclude` when it makes the first worktree |
+| Can a skill move the chat into a worktree? | `EnterWorktree` can, but the machine rule forbids it, and the guard hook (`worktree-guard.py`) denies every edit into a worktree from a session that started on the main folder, subagents too | No skill calls it. A start outside `spex/<spec>` is `GATE-ENTER`, with its fix: `claude -w spex/<spec>`, then the command there |
+| Does an agent work in the worktree? | Yes: an agent starts in the cwd of the session | No agent gets a path to change into |
+| Can a session in the worktree change the main folder? | No: Claude Code, the sandbox and the guard refuse Edit, Write and Bash writes there. Git that moves only refs of the shared `.git` (fetch, commit, push) works | `sync` to `merge` run in the worktree, and `close.cmd` merges through the forge. `finish` (the pull, a `local` merge, the removal) runs in a session on the main folder |
+| Can the script remove the worktree? | Not always, in a sandbox: `.git/worktrees` is write-protected but for the session's own | When you end the worktree session, pick remove: the `WorktreeRemove` hook removes the folder and keeps the branch. `finish` deletes the branch, and removes a folder that is left; if it cannot, exit 8 and the command to run once outside the sandbox |
+| Does git ignore `.worktrees/`? | The repo's `.gitignore` does, by the contract | The script writes no ignore line |
 
 ### The list, and the other specs
 
@@ -517,7 +532,7 @@ specs/                             on the base branch: notes, and closed specs
     ├── status.yaml                the phase, and if it is done; only the script writes it
     └── corrections.md             what changed after the plan, and why; only the script writes it
 tests/acceptance/                  the script tests, by the test developers; a driver's folder (tests/e2e) too
-.claude/worktrees/007-csv-export/  the worktree of the open spec, on the branch spex/007-csv-export
+.worktrees/spex/007-csv-export/    the worktree of the open spec, on the branch spex/007-csv-export (claude -w makes it)
 .spex/                             everything else spex owns in the repo
 ├── .gitignore                     written by spex init: ignores all of .spex/ but config.yaml
 ├── config.yaml                    written by /spex:init, edited by hand, committed
@@ -917,7 +932,10 @@ No `steps`, `expect` or `why` line names a person as an actor
 (`TEST-PERSON`): a merge is an API call, a press is a browser step, a
 credential is a `needs`. A test that needs a live system fails without it; a
 test that skips is neither red nor green (`RUN-SKIPPED`), and `spex done`
-refuses it.
+refuses it. A skip counts only in the runner's own summary or result line
+(`ℹ skipped 1`, `Tests: 1 skipped`, `--- SKIP:`, `1 ignored`, `1 pending`), read
+from the start of the line: a `SKIPPED` label in a page a test prints is not a
+skip.
 
 ```yaml
 feature: "007"
@@ -1134,10 +1152,10 @@ env: {up: ./scripts/env/up.sh, deploy: ./scripts/env/deploy.sh, check: ./scripts
 | `review_rounds` | `3` | review rounds before only a P1 is a fix (`REVIEW-ROUNDS`) |
 | `verify_rounds` | `3` | verify rounds before a person reads it (`VERIFY-ROUNDS`) |
 | `auto` | `false` | nobody is asked; the decider answers with evidence, and each digest lists its answers |
-| `commit` | `false` | `true`: `spex commit` and `spex delete` commit `specs/` on the base branch. `false`: they name the files, and you commit them. On the branch of a spec the script always commits, at the end of each phase |
+| `commit` | `false` | `true`: `spex commit` and `spex delete` commit `specs/` on the base branch; `spex commit` takes `.spex/config.yaml` and `.spex/.gitignore` along with the notes when they are new or changed. `false`: they name the files, and you commit them. On the branch of a spec the script always commits, at the end of each phase |
 | `base` | empty | the branch a spec starts from and merges into; empty: the branch the main folder is on |
 | `close` | `{cmd: ""}` | `cmd` pushes, opens the request and merges it; it gets `SPEX_BRANCH`, `SPEX_BASE` and `SPEX_SPEC`. `local`: no forge, the script merges the branch into the base branch in the main folder. Empty: the close waits, you merge, and `/spex:review` typed again finishes it |
-| `worktree` | `{setup: ""}` | `setup` runs one time in a new worktree: install the packages, copy `.env`. A failure is a warning (`WORKTREE-SETUP`), and the phase goes on |
+| `worktree` | `{setup: ""}` | `setup` runs at the first start in a worktree, and a record in `.spex/runs/` keeps a second start from running it: install the packages, copy `.env`. The hook that makes the worktree does not run it. A failure is a warning (`WORKTREE-SETUP`), and the phase goes on |
 | `env` | absent | the environment contract: `up`, `deploy`, `check`, `down`, `url`. See [The environment contract](#the-environment-contract) |
 
 There is no `approvals` key and no `ship` key any more: the next command is the
@@ -1189,7 +1207,7 @@ generator as "large, unverified, stale on arrival".)*
 are one contract, so one integer covers them, and one migration per repo. It
 goes up when a key changes meaning, moves or goes away; never for a new
 optional key. The script carries the one format it reads: `spex --version`
-prints `spex 3.0.0 (format 3)`. A repo on a newer format fails with
+prints `spex 3.1.0 (format 3)`. A repo on a newer format fails with
 `CONFIG-FORMAT` (update the plugin: an older script would read changed keys
 wrong). A repo on an older format is told to run `spex update`. *(Git's
 `core.repositoryformatversion`, Cargo's `version` in `Cargo.lock`, Terraform's
@@ -1419,7 +1437,7 @@ output of `spex --version`.
 need. The source is TypeScript under `src/`, bundled with esbuild together with
 its YAML parser (`yaml`, core schema, so `no` and dates stay strings) and its
 JSON Schema validator (`ajv`), so the plugin works with no install step. `spex
---version` prints `spex 3.0.0 (format 3)`. This is `spex --help`:
+--version` prints `spex 3.1.0 (format 3)`. This is `spex --help`:
 
 ```text
 spex — spec-driven development in small, checkable files. The claim and its proof are never written by the same hand.
@@ -1437,7 +1455,10 @@ A spec is a folder under specs/. Its state is in one file, status.yaml: no file 
   spex cover <text file> <dir>…                every line of the person's text is linked from a note (← source.md#L3), or has its reason there
   spex new-bug <slug> --words <file>           one note for a bug in merged code, with the next turn; each note that waits moves one number up
   spex delete <dir>… --reason "…"              take a spec off the list: a spec with a worktree is saved to .spex/archive/ (the folder, code.patch) first; then the worktree, the branch, the note; the later notes move down
+  spex commit --preview                        change nothing: name the files, and the question for the person (commit and push to origin/main?)
+  spex commit --approved --message "…"         the person said yes: commit specs/ on the base branch and push it to the branch it tracks
   spex commit --message "…"                    commit specs/ on the base branch, only with commit: true (and push it when close.cmd merges through a remote); without it, name the files
+                                               both take .spex/config.yaml and .spex/.gitignore along with the notes when they are new or changed, and no other file
   spex status                                  where the work stopped: the open spec, its phase, the one command to go on
   spex roadmap [name] | <name> --init --source <file>… | <name> --coverage
   spex outline <file>…                         a design's sections, with the anchor a source or a coverage row names
@@ -1643,10 +1664,11 @@ The phases:
 | `GATE-TURN` | error | `start plan`: a spec with a lower number is not closed. The fix names the command to type |
 | `GATE-OPEN` | error | `start plan`: another spec is open. One spec is open at a time |
 | `GATE-CLOSED` | error | a phase or `stamp` on a closed spec. Closed on its branch: `/spex:review` finishes the merge. Merged: only a new spec changes it |
-| `GATE-COMMIT` | error | a start that makes the worktree: files of the spec, or `.spex/config.yaml`, are not committed on the base branch, or the repo has no commit. Commit them, or set `commit: true` |
-| `GATE-PUSH` | error | a start that makes the worktree, `close sync`, `close merge`: `close.cmd` merges through a remote, and the base branch has commits the remote lacks. Push it; on a protected branch, send them as a small pull request |
-| `WORKTREE-FAILED` | error | git could not make the worktree (exit 7): read the output, fix the cause |
-| `WORKTREE-SETUP` | warning | `worktree.setup` failed in the new worktree: fix the command, run it one time by hand |
+| `GATE-ENTER` | error | `start plan`, `start implement`, `start review`, `comment` in a session that is not on `spex/<spec>`. Nothing is made. Start a session in the spec's worktree: `claude -w spex/<spec>`, then type the command there |
+| `GATE-COMMIT` | error | the first start in a worktree: files of the spec, or `.spex/config.yaml`, are not committed on the base branch, or the repo has no commit. Commit them, or set `commit: true`: `spex commit` takes the config along with the notes |
+| `GATE-PUSH` | error | the first start in a worktree, `close sync`, `close merge`: `close.cmd` merges through a remote, and the base branch has commits the remote lacks. Push it; on a protected branch, send them as a small pull request |
+| `WORKTREE-BEHIND` | error | the first start in a worktree that has no folder of the spec, and the base could not come in by a fast-forward: `git merge <base>` in the worktree |
+| `WORKTREE-SETUP` | warning | `worktree.setup` failed at the first start in this worktree: fix the command, run it one time by hand |
 | `PHASE-NOT-STARTED` | error | `end plan`, `end implement` or `stamp` for a phase that did not start: type the command of the phase |
 | `PHASE-COMMIT` | error | git commit failed (an identity, a hook, a protected branch): fix git, run the step again (exit 7) |
 | `PLAN-MISSING` | error | `end plan`: `requirements.yaml`, `tasks.yaml` or `tests.yaml` is not there. The fix names the agent that writes it |
@@ -1687,10 +1709,10 @@ The close, and the commands for any time:
 | `COMMENT-NO-SPEC` | error | `comment` with no spec open. The fix names `plan`, `new`, `new-bug` or `delete` |
 | `CORRECTION-NONE` | error | `correction --close` names no open entry (exit 2) |
 | `COVER-LINE` | gap | `spex cover`: a line of the text is linked from no note (exit 5). Add its detail to a note, or a bullet with its reason |
-| `COMMIT-YOURS` | warning | `spex commit` without `commit: true`: files under `specs/` are not committed. Commit them yourself |
+| `COMMIT-YOURS` | warning | `spex commit` without `commit: true`: files under `specs/`, or `.spex/config.yaml` and `.spex/.gitignore`, are not committed. Commit them yourself |
 | `COMMIT-PUSH` | warning | `spex commit`, `spex delete`: the push of the notes failed, or without `commit: true` the base branch is ahead of its remote. Push it; on a protected branch, send the notes as a small pull request |
 | `COMMIT-BASE` | error | `spex commit`: the main folder is on another branch than the base branch. Check out the base branch, or set `base:` |
-| `COMMIT-LEAVE`, `NEWBUG-LEAVE`, `DELETE-LEAVE` | error | the command changes the main folder, and the chat is in a worktree: leave it first |
+| `COMMIT-LEAVE`, `NEWBUG-LEAVE`, `DELETE-LEAVE`, `CLOSE-LEAVE` | error | the command changes the main folder, and this session is in a worktree: run it in a session on the main folder |
 | `DELETE-MERGED` | error | the spec is closed and merged. A merged spec stays; a new spec changes it |
 | `DELETE-DEPENDED` | error | another spec depends on it. Delete both in one command, or correct `depends_on` in that note |
 | `DELETE-WORKTREE` | error | the worktree is not fully removed (exit 8). The archive has the folder and the code already |
@@ -1704,7 +1726,7 @@ Runs and other commands:
 | `RUN-FAILED` | error | a composed command exited non-zero on a `pass` run |
 | `RUN-GREEN` | error | the tests pass on an `--expect fail` run: a test that passes before the code exists asserts nothing new |
 | `RUN-NO-TESTS` | error | the run failed but never mentioned the test names, or a task has no test: the tests crashed or were not collected |
-| `RUN-SKIPPED` | error | a test of the task skips: neither red nor green; a test that needs a live system must fail without it, or declare it in `needs[]` |
+| `RUN-SKIPPED` | error | a test of the task skips, by the runner's own summary or result line: neither red nor green; a test that needs a live system must fail without it, or declare it in `needs[]` |
 | `RUN-NO-RED` | info | a task has no test under a driver (only shell tests or a session), so nothing can be red; the develop gate opens with this on record |
 | `DONE-FAILED` | error | `spex done`: a command failed now, so the status stays |
 | `UNBLOCK-STATUS` | error | `unblock` on a task that is not blocked |
@@ -1831,9 +1853,9 @@ note's bullets hold everything its sections say. Those are the second read of
 - **Claude Code:** `.claude-plugin/plugin.json`. Install it from this
   marketplace at project scope. The skills appear as `/spex:<name>`. The
   manifest also declares the Playwright MCP server the tester uses.
-- **Codex, OpenCode (later):** the skill text is plain, but 3.0 moves the chat
-  with two Claude Code tools (`EnterWorktree`, `ExitWorktree`) and starts
-  subagents by name. A port must give both.
+- **Codex, OpenCode (later):** the skill text is plain. The session starts in
+  the worktree of the spec (`claude -w spex/<spec>`, through a `WorktreeCreate`
+  hook), and the skills start subagents by name. A port must give both.
 
 **Subagents.** The plugin ships ten, each with a one-line brief in and a
 fixed shape out, so the main context never holds what they read. A skill says
@@ -1900,7 +1922,7 @@ before it can run 3.0. This table says where.
 | `requirements`, `clarify`, `research`, `tasks` | `/spex:plan <dir>`, one run | four stages become one; the run needs the `Agent` tool for its subagents |
 | `tests`, `implement` (one run per task, then `spex done`), `verify` | `/spex:implement <dir>`, one run that starts a fresh subagent per task | Dex's own loop per task is not needed. `spex gate develop`, `spex run`, `spex done` and `spex verify` still exist for a caller that keeps it, between `spex start implement` and `spex end implement` |
 | `review`, then `ship` or `spex ship <dir> --merged` | `/spex:review <dir>`, which ends with the close | `spex ship` is gone. After a merge that Dex makes itself, `/spex:review <dir>` again finishes the close |
-| the branch per feature | the script makes `spex/<spec>` and the worktree at `spex start plan` | Dex must not make the branch, and must run each stage where `enter: <path>` of the `start` output says |
+| the branch per feature | `claude -w spex/<spec>` makes `spex/<spec>` and the worktree, through the hook; the script never makes one | Dex must not make the branch, and must start each stage in a session in `.worktrees/spex/<spec>`: a start anywhere else is `GATE-ENTER` |
 | `spex next <dir>` for the stage | `spex status --json` (`open`, `next`), `spex list --json` | the stage names of `spex next` are gone: the state is `status.yaml` |
 | `roadmap.json` | `spex roadmap --json`, as before | a step is a note now, and the order is the order of the numbers |
 
@@ -1926,7 +1948,7 @@ before it can run 3.0. This table says where.
 | The planning phase that takes as long as it needs; shaped work is "rough, solved, bounded"; the pitch's Problem, Appetite, Solution, Rabbit holes and No-gos are `spec.md`'s Why, Constraints, What, Open questions and Not this | Shape Up (Basecamp: "Principles of Shaping", "Write the Pitch") |
 | A big design sized into a list of specs with `depends_on`, each one folder and one branch, written in full only when its turn comes, a re-plan after every merged step that never rewrites a started one; lessons as proposed edits a person approves; retrospective action items routed with an owner | Dex 020 (`design-roadmap`, D-020-3, 6, 7), Dex 018 (`living-docs`, D-018-5, 7, 8), BMAD `bmad-retrospective` |
 | The wall between a claim and its proof, test-first with a separate test author, a decider between the developer and the test, a session performed by an agent in a browser, no manual step in a task | nex 028 (T05, T10), the v2.0 brainstorm in this repo |
-| A worktree per spec, in `.claude/worktrees/`, and the tools that move a chat into it | Claude Code (`EnterWorktree`, `ExitWorktree`) |
+| A worktree per spec, in `.worktrees/spex/<spec>`, and a session that starts in it | Claude Code (`claude -w`, the `WorktreeCreate` hook), the worktree contract of mac-setup (`projects/claude-code.md` § Worktrees) |
 | Four commands, no approve, your words kept and marked, `comment`, `new-bug`, `delete` with its order, one spec at a time, stop at any time | the author's own rules, decided on 2026-11-11 to 2026-11-13 ([`README.html`](README.html), section 10) |
 
 ## Left out
@@ -2253,7 +2275,7 @@ proof, the roadmap file and its coverage check, `init` and `update`.
 |:--|:--|
 | `status.yaml` | the state of a spec, in two lines; the `status:` line of `spec.md` is gone |
 | `spex start plan\|implement\|review`, `spex end plan\|implement` | a phase starts and ends in the script: the gate, the state, the commit |
-| The worktree | `spex start plan` makes `spex/<spec>` and `.claude/worktrees/<spec>`, runs `worktree.setup`, and adds the folder to `.git/info/exclude`; a command that names a spec works there from any folder |
+| The worktree | `claude -w spex/<spec>` makes `.worktrees/spex/<spec>` through the hook; `spex start` refuses any other session (`GATE-ENTER`) and runs `worktree.setup` at the first start there; a command that names a spec finds its worktree by the branch, from any folder |
 | The stamp | `spex end plan` stores the hashes of the spec, the records, the tasks and the tests; `spex start implement` refuses a plan changed by hand; `spex stamp` stamps a change the process made |
 | The links check | every line of yours ends with a record or a reason, no line of the note is lost, `source.md` is unchanged |
 | The tree id | git's hash of the working tree, the same before and after a commit; `status.yaml` and `corrections.md` are left out. `verify.json` also keeps the id of the code alone, so a note that changed never makes a proof stale |
@@ -2269,6 +2291,23 @@ proof, the roadmap file and its coverage check, `init` and `update`.
 | A write with no undo | `spex status`, a start and `show --ready` print the question of a blocked task; only the word yes runs the write |
 | The config | `ship` became `commit` and `close`; `approvals` is gone; `base` and `worktree.setup` are new |
 | Gone | `spex approve`, `spex next`, `spex ship`, `spex drop`, the gates `new`, `requirements`, `tasks`, `review` and `ship`, `spex new --from`, `--shaping` and `--planned` |
+
+## What changed in v3.1
+
+The first 3.x on GitHub. Next to the 3.0 build it changes where a session works,
+and three things a first run on a real project (Dex spec 017) found.
+
+| Change | What it does | Why |
+|:--|:--|:--|
+| The session starts in the worktree | `claude -w spex/<spec>` makes `.worktrees/spex/<spec>` through the `WorktreeCreate` hook. The script never makes a worktree, and no skill moves the chat (no `EnterWorktree`, no `ExitWorktree`). A start anywhere else is `GATE-ENTER`, and `finish` runs in a session on the main folder (`CLOSE-LEAVE`) | The guard of the machine denies an edit into a worktree from a session that started elsewhere |
+| `/spex:new` asks before it commits | `spex commit --preview` names the files and asks "Commit and push to origin/main?"; after the yes, `spex commit --approved` commits and pushes, whatever `commit:` says | The worktree starts from the remote, and a push is outward |
+| `spex commit` takes spex's own files along | `.spex/config.yaml` and `.spex/.gitignore`, when they are new or changed, go into the same commit as the notes, never alone; no other file does | In a new project `spex init` leaves both uncommitted, so the first `spex start plan` stopped at `GATE-COMMIT` |
+| A skip is read from the runner's own line | Each runner has a rule for its summary or result line, read from the start of the line, with color codes removed; zero counts never match. Mocha's `N pending` counts only right after its `N passing` line | An app test that printed its page (a `SKIPPED` label, a `1 skipped` digest line) was called `RUN-SKIPPED`. And pytest and vitest color their output even with `FORCE_COLOR=0`, so their real skips were missed |
+
+The rules are in `src/verify.ts` (`SKIP_RULES`), and `tests/fixtures/skips/`
+holds what each runner printed: pytest, jest, vitest, node:test (spec and TAP),
+go (`-v` and `-json`), cargo, mocha and rspec. go prints a skip only with `-v`
+or `-json`.
 
 ## Open questions
 

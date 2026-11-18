@@ -40,7 +40,7 @@ export function deleteSpecs(root: string, given: string[], reason: string): CmdR
   if (!isGitRepo(main)) return refuse([err('GIT-REQUIRED', 'delete needs a git repository', 'Run inside the repository.')], 2);
   if (!given.length) return refuse([err('USAGE', 'delete needs a spec folder', 'spex delete specs/005-restore --reason "…"')], 2);
   if (!reason.trim()) return refuse([err('USAGE', 'delete needs --reason "…"', 'Say why the spec goes. The reason is kept in the archive.')], 2);
-  if (inWorktree(root)) return refuse([err('DELETE-LEAVE', 'delete changes the main folder, and the chat is in a worktree', `Leave the worktree first (ExitWorktree, action keep), then run it again in ${main}.`)], 6, '', { main });
+  if (inWorktree(root)) return refuse([err('DELETE-LEAVE', 'delete changes the main folder, and this session is in a worktree', `Type /spex:delete in a session on the main folder (${main}).`)], 6, '', { main });
   const list = specList(main);
   const targets: ListedSpec[] = [];
   for (const g of given) {
@@ -49,7 +49,7 @@ export function deleteSpecs(root: string, given: string[], reason: string): CmdR
     if (!targets.some((t) => t.dir === s.dir)) targets.push(s);
   }
   const findings: Finding[] = [];
-  for (const s of targets) if (isClosed(s.state) && !s.worktree) findings.push(err('DELETE-MERGED', `${s.name} is closed and merged`, 'A merged spec stays. Only a new spec changes it: /spex:new, or /spex:new-bug for a bug.', s.dir));
+  for (const s of targets) if (isClosed(s.state) && !s.worktree && !s.branch) findings.push(err('DELETE-MERGED', `${s.name} is closed and merged`, 'A merged spec stays. Only a new spec changes it: /spex:new, or /spex:new-bug for a bug.', s.dir));
   const gone = new Set(targets.map((t) => t.name));
   for (const s of targets) {
     const number = s.name.slice(0, 3);
@@ -128,7 +128,7 @@ export function deleteSpecs(root: string, given: string[], reason: string): CmdR
     else if (p.tried) warnings.push({ severity: 'warning', code: 'COMMIT-PUSH', message: `git push of ${p.base} failed: ${p.tail.trim()}`, fix: pushFix(p) });
   } else if (loose.length) lines.push(`not committed (commit: true is not set): commit specs/ on ${base} yourself, ${loose.length} file(s)`);
   const n = nextFor(main);
-  lines.push(renderNext(n));
+  lines.push(renderNext(n, { root: main }));
   return { ok: true, findings: warnings, exit: 0, text: lines.join('\n'), data: { deleted: targets.map((t) => t.dir), archives, moves, committed, uncommitted: committed ? [] : loose, reason: reason.trim(), next: n.command || null } };
 }
 

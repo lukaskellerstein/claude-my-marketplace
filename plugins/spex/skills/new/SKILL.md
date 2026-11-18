@@ -80,7 +80,8 @@ reply.
 ## 5. Write and check the notes
 
 Read `${CLAUDE_PLUGIN_ROOT}/skills/new/notes.md` and do it: one note for each spec, the
-check, the second read, the commit.
+check, the second read, then the question `Commit and push to origin/main?`, and the
+commit and the push after the person's yes.
 
 ## Reply
 
@@ -91,8 +92,10 @@ In the frame of `${CLAUDE_PLUGIN_ROOT}/reply.md` (read it first), at most 12 lin
 - What: one spec is enough and its folder, or how many and the first. Every detail of
   the text is in a note. How many things are open: `2 things are open. plan settles
   them.`
-- `You:` the files to commit, when `SPEX commit` named them (`COMMIT-YOURS`), or the
-  push it could not do (`COMMIT-PUSH`, with its fix text): plan refuses until then.
+- Before the yes: the reply is the one question of notes.md step 6, and nothing else
+  waits. After it, the last line before NEXT is `You:` `claude -w spex/<spec>`, then
+  `/spex:plan specs/<spec>` in that session. A push that failed (`COMMIT-PUSH`, with its
+  fix text) goes first under `You:`: plan refuses until the remote has the notes.
 - A check that still fails after 3 tries: `⛔ STOPPED`, with the lines that are in no
   note.
 - NEXT: the block `SPEX commit` printed, as it is.

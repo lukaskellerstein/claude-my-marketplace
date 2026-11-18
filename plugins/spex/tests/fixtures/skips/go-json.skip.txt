@@ -1,0 +1,13 @@
+{"Time":"2026-11-18T14:57:47.390634+01:00","Action":"start","Package":"example.com/skip"}
+{"Time":"2026-11-18T14:57:47.394658+01:00","Action":"run","Package":"example.com/skip","Test":"TestPasses"}
+{"Time":"2026-11-18T14:57:47.394712+01:00","Action":"output","Package":"example.com/skip","Test":"TestPasses","Output":"=== RUN   TestPasses\n"}
+{"Time":"2026-11-18T14:57:47.394739+01:00","Action":"output","Package":"example.com/skip","Test":"TestPasses","Output":"--- PASS: TestPasses (0.00s)\n"}
+{"Time":"2026-11-18T14:57:47.394744+01:00","Action":"pass","Package":"example.com/skip","Test":"TestPasses","Elapsed":0}
+{"Time":"2026-11-18T14:57:47.394747+01:00","Action":"run","Package":"example.com/skip","Test":"TestSkips"}
+{"Time":"2026-11-18T14:57:47.394748+01:00","Action":"output","Package":"example.com/skip","Test":"TestSkips","Output":"=== RUN   TestSkips\n"}
+{"Time":"2026-11-18T14:57:47.394749+01:00","Action":"output","Package":"example.com/skip","Test":"TestSkips","Output":"    a_test.go:4: no live record\n"}
+{"Time":"2026-11-18T14:57:47.394751+01:00","Action":"output","Package":"example.com/skip","Test":"TestSkips","Output":"--- SKIP: TestSkips (0.00s)\n"}
+{"Time":"2026-11-18T14:57:47.394753+01:00","Action":"skip","Package":"example.com/skip","Test":"TestSkips","Elapsed":0}
+{"Time":"2026-11-18T14:57:47.394754+01:00","Action":"output","Package":"example.com/skip","Output":"PASS\n"}
+{"Time":"2026-11-18T14:57:47.395067+01:00","Action":"output","Package":"example.com/skip","Output":"ok  \texample.com/skip\t0.004s\n"}
+{"Time":"2026-11-18T14:57:47.395081+01:00","Action":"pass","Package":"example.com/skip","Elapsed":0.004}

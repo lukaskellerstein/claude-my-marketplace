@@ -1,0 +1,8 @@
+
+running 1 test
+test tests::passes ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out; finished in 0.00s
+
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.00s
+     Running unittests src/lib.rs (target/debug/deps/skipdemo-996230d7efffab3c)

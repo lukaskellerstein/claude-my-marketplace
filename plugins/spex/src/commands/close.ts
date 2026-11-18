@@ -7,8 +7,13 @@
 //   prove   the code changed since the proof of implement? Then the proof runs again. Only notes changed: it holds.
 //   built   the records → built, `review, done` in status.yaml, one commit on the branch of the spec.
 //   merge   close.cmd pushes, opens the request and merges it. No command, or the forge wants a person: the run waits.
-//   finish  in the main folder, after the chat left the worktree: pull the base branch, stop the environment,
-//           remove the worktree and the branch.
+//   finish  in a session on the main folder, after the session in the worktree ended: pull the base branch, the
+//           merge of close.cmd local, stop the environment, remove the worktree and the branch.
+//
+// From inside the worktree no step may write the main folder: Claude Code, the sandbox and the guard hook refuse it.
+// git that only moves refs of the shared .git (a fetch, a commit on the branch of the spec, a push) works there, so
+// sync to merge run in the worktree, and close.cmd merges through the forge. finish is the one step that changes the
+// main folder, so it runs in a session there: /spex:review typed on the main folder goes straight to it.
 //
 // A spec is closed when the commit of `built` is on the base branch. So review typed again after a merge by a person
 // finds every step done, and `finish` sees in git that the branch is merged.
@@ -37,7 +42,7 @@ export type CloseStep = (typeof CLOSE_STEPS)[number];
 const refuse = (findings: Finding[], exit = 6, text = '', data: Record<string, unknown> = {}): CmdResult => ({ ok: false, findings, exit, text, data });
 const err = (code: string, message: string, fix: string, path?: string): Finding => ({ severity: 'error', code, message, fix, ...(path ? { path } : {}) });
 
-/** `local` as close.cmd: no forge. The script merges the branch into the base branch itself, in the main folder, at `finish`. */
+/** `local` as close.cmd: no forge. The script merges the branch into the base branch itself, in the main folder, at `finish`: the one step that runs in a session there. */
 export const LOCAL_MERGE = 'local';
 
 /** approved → built, and the records this spec supersedes → retired, in their own files. The answers no person gave are listed. */
@@ -253,19 +258,19 @@ function merge(home: string, config: Config, spec: ListedSpec, feature: Feature,
       lines.push(`merged: ${cmd}`);
     }
   }
-  lines.push('next: the chat leaves the worktree (ExitWorktree, keep), then `spex close <dir> finish` in the main folder');
+  lines.push(`next: the person ends this session (the worktree may go: pick remove), then types /spex:review ${spec.dir} in a session on the main folder (${mainRoot(home)}): it runs \`spex close ${spec.dir} finish\` there`);
   return { ok: true, findings: [], exit: 0, text: lines.join('\n'), data: { step: 'merge', waits: false, branch: branchOf(spec.name), base } };
 }
 
 function finish(root: string, main: string, spec: ListedSpec): CmdResult {
-  if (inWorktree(root)) return refuse([err('CLOSE-LEAVE', 'this step changes the main folder, and the chat is in a worktree', `Leave the worktree first (ExitWorktree, action keep). Then run \`spex close ${spec.dir} finish\` again, in ${main}.`)], 6, '', { main });
+  if (inWorktree(root)) return refuse([err('CLOSE-LEAVE', 'this step changes the main folder, and this session is in a worktree', `End this session (the worktree may go: pick remove). Then type /spex:review ${spec.dir} in a session on the main folder (${main}): it runs this step there.`)], 6, '', { main });
   const { config } = loadConfig(main);
   const base = baseBranch(main, config);
   const lines: string[] = [];
   const findings: Finding[] = [];
   const branch = branchOf(spec.name);
   // The branch is merged only as a closed spec: `built` wrote review, done and committed it there.
-  if (spec.worktree && !isClosed(spec.state)) return refuse([err('CLOSE-ORDER', `${spec.name} is ${stateWord(spec.state)}: it is not closed on its branch yet`, `The steps before this one come first: \`spex close ${spec.dir} built\`, then merge.`)]);
+  if ((spec.worktree || spec.branch) && !isClosed(spec.state)) return refuse([err('CLOSE-ORDER', `${spec.name} is ${stateWord(spec.state)}: it is not closed on its branch yet`, `The steps before this one come first: \`spex close ${spec.dir} built\`, then merge.`)]);
   if (currentBranch(main) !== base) return refuse([err('CLOSE-BASE', `the main folder is on ${currentBranch(main)}, not on ${base}`, `Switch it to ${base}, then run this step again.`)]);
   // Pull, so the next worktree starts with the code of this spec. No upstream: nothing to pull.
   if (git(main, ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'], { allowFail: true }).trim()) {
@@ -291,7 +296,7 @@ function finish(root: string, main: string, spec: ListedSpec): CmdResult {
   if (!rm.ok) return refuse([...findings, { severity: 'error', code: 'CLOSE-WORKTREE', message: `the worktree of ${spec.name} is not fully removed (folder: ${rm.folder ? 'gone' : 'still there'}, branch: ${rm.branch ? 'gone' : 'still there'})`, fix: `A sandbox protects two paths of Claude Code in a worktree. Run this one time outside the sandbox: ${rm.cmd}` }], 8, lines.join('\n'), { step: 'finish', cmd: rm.cmd });
   lines.push(`removed the worktree and the branch ${branch}`);
   const n = nextFor(main);
-  lines.push(`${spec.name} is closed and merged`, renderNext(n));
+  lines.push(`${spec.name} is closed and merged`, renderNext(n, { root: main }));
   return { ok: true, findings, exit: 0, text: lines.join('\n'), data: { step: 'finish', next: n.command || null } };
 }
 
@@ -301,9 +306,9 @@ export function close(root: string, given: string, step: string): CmdResult {
   const spec = findSpec(root, given);
   if (!spec) return refuse([err('SPEC-UNKNOWN', `${given} is no spec folder under specs/`, 'Name the folder: specs/007-csv-export.')], 2);
   if (step === 'finish') {
-    if (isClosed(readState(main, spec.dir)) && !spec.worktree && !refExists(main, `refs/heads/${branchOf(spec.name)}`)) {
+    if (isClosed(readState(main, spec.dir)) && !spec.worktree && !spec.branch && !refExists(main, `refs/heads/${branchOf(spec.name)}`)) {
       const n = nextFor(main);
-      return { ok: true, findings: [], exit: 0, text: [`${spec.name} is closed and merged, and its worktree is gone`, renderNext(n)].join('\n'), data: { step, next: n.command || null } };
+      return { ok: true, findings: [], exit: 0, text: [`${spec.name} is closed and merged, and its worktree is gone`, renderNext(n, { root: main })].join('\n'), data: { step, next: n.command || null } };
     }
     return finish(root, main, spec);
   }

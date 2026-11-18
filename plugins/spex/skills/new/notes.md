@@ -2,8 +2,8 @@
 
 The run gets here when the list is settled: one spec, or the person's ok. It writes one
 note for each spec, checks that every detail is in a note, has a second agent read them,
-and commits. A note holds all the person or the design says for its spec, so plan never
-has to find it again.
+and, after the person's yes, commits and pushes. A note holds all the person or the
+design says for its spec, so plan never has to find it again.
 
 ## 1. One `SPEX new` for each spec, in the order of the list
 
@@ -83,10 +83,18 @@ roadmap file and the design files for a design.
   does not stop for it.
 - After any change: step 4 again. The reviewers run one time.
 
-## 6. Commit
+## 6. The yes, then commit and push
 
-`SPEX commit --message "spex: notes for <the idea>"`. It commits `specs/` on the base
-branch only with `commit: true` in the config. In a repo that merges with a command
-through a remote, it also pushes the notes: the request of a spec must not carry them.
-`COMMIT-YOURS` (it names the files) and `COMMIT-PUSH` (the push failed) are warnings:
-each goes under `You:`, with its fix text. It ends with the NEXT block of the reply.
+The worktree of a spec starts from the remote (`claude -w` fetches it), so a note must be
+committed and pushed. A push is outward: it waits for the yes, also in auto mode.
+
+1. `SPEX commit --preview` changes nothing. It prints the files and `ask: Commit and
+   push to origin/main?`, with the names of this repo.
+2. Reply `❓ QUESTIONS`, one block with that heading word for word:
+   `### 1 · Commit and push to origin/main?`. Context: the folders. Pick: yes. Stop.
+3. The yes (`ok`, `yes`): `SPEX commit --approved --message "spex: notes for <the
+   idea>"`: it commits `specs/` on the base branch and pushes it. Anything else: their
+   words change the notes; step 4 and 5 again for what changed, then ask again.
+4. `COMMIT-PUSH` (a failed push) goes under `You:`, with its fix text.
+
+Never run `SPEX commit --approved` before the yes, nor `git commit` or `git push`.

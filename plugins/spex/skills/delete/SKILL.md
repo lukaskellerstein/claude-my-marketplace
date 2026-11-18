@@ -2,7 +2,7 @@
 name: delete
 description: Take a spec off the list — a note, a planned spec or a started spec, never a merged one. The script saves the folder of a spec that has a worktree to .spex/archive/ with its code as one patch file, removes the worktree and the branch, takes the note off the base branch, moves the later notes one number down, and commits with commit true. No agent runs. Use when the user says "spex delete", "drop spec 005", "remove this spec", "I do not want 008 any more".
 disable-model-invocation: true
-allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Read(${CLAUDE_PLUGIN_ROOT}/reply.md), ExitWorktree
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Read(${CLAUDE_PLUGIN_ROOT}/reply.md)
 ---
 
 # spex delete
@@ -16,8 +16,9 @@ and the reason. The script does all of it; you call it and say what it did. No a
    The reason is the person's, and the archive keeps it. Never invent one.
 2. `SPEX delete <dir>… --reason "<their words>"`.
 3. Read the exit code and the finding:
-   - `DELETE-LEAVE`: the chat is in a worktree, and delete changes the main folder. Call
-     the tool `ExitWorktree` with `action: keep`, then step 2 again.
+   - `DELETE-LEAVE`: this session is in a worktree, and delete changes the main folder.
+     Nothing changed. Reply `⛔ NOT STARTED`, its fix text under `You:` (a session on the
+     main folder), and stop. No skill enters or leaves a worktree.
    - `DELETE-MERGED`: the spec is closed and merged. Nothing changed. A merged spec stays;
      only a new spec changes it. Reply `⛔ NOT STARTED` and name `/spex:new`, or
      `/spex:new-bug` for a bug.

@@ -16,7 +16,7 @@ const refuse = (findings: Finding[], exit = 6, data: Record<string, unknown> = {
 export function newBug(root: string, slug: string, words?: string): CmdResult {
   const main = mainRoot(root);
   if (!isGitRepo(main)) return refuse([{ severity: 'error', code: 'GIT-REQUIRED', message: 'new-bug needs a git repository', fix: 'Run inside the repository.' }], 2);
-  if (inWorktree(root)) return refuse([{ severity: 'error', code: 'NEWBUG-LEAVE', message: 'new-bug writes notes on the base branch, in the main folder, and the chat is in a worktree', fix: `Leave the worktree first (ExitWorktree, action keep), then run it again in ${main}. A bug found while its spec is open is fixed in that spec: /spex:comment.` }], 6, { main });
+  if (inWorktree(root)) return refuse([{ severity: 'error', code: 'NEWBUG-LEAVE', message: 'new-bug writes notes on the base branch, in the main folder, and this session is in a worktree', fix: `Type /spex:new-bug in a session on the main folder (${main}). A bug found while its spec is open is fixed in that spec: /spex:comment.` }], 6, { main });
   if (!words) return refuse([{ severity: 'error', code: 'USAGE', message: 'new-bug needs the bug report', fix: 'spex new-bug <slug> --words <file with the report, word for word>' }], 2);
   const list = specList(main);
   // The turn: after the last spec a phase has started for. With none, the bug is first: it takes the number of the

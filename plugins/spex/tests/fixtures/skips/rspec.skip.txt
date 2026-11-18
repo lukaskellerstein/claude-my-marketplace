@@ -1,0 +1,11 @@
+.*
+
+Pending: (Failures listed here are expected and do not affect your suite's status)
+
+  1) x REQ_2_skips
+     # Temporarily skipped with xit
+     # ./a_spec.rb:3
+
+Finished in 0.00065 seconds (files took 0.02943 seconds to load)
+2 examples, 0 failures, 1 pending
+

@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, relative } from 'node:path';
 import test from 'node:test';
-import { DIR, NAME, codes, commitAll, configure, edit, gitIn, makeRepo, ok, read, spex, tempDir, worktreeOf } from './helpers.mjs';
+import { DIR, NAME, codes, commitAll, configure, edit, enter, gitIn, makeRepo, ok, read, spex, tempDir, worktreeOf } from './helpers.mjs';
 
 const finding = (r, code) => r.json.findings.find((f) => f.code === code);
 
@@ -74,7 +74,7 @@ function setup({ uiClose = '', homeClose = '', task = T03(), path } = {}) {
 
 /** plan ended and implement started: the three tasks are approved, and the spec is in its worktree. */
 const implement = (home) => {
-  for (const args of [['start', 'plan'], ['end', 'plan'], ['start', 'implement']]) ok(home, ...args, DIR);
+  for (const args of [['start', 'plan'], ['end', 'plan'], ['start', 'implement']]) ok(args[0] === 'start' ? enter(home) : home, ...args, DIR);
 };
 
 test('check: a task names a repo of the config; its protected folders, context and parallel files are its own', () => {
@@ -206,11 +206,11 @@ test('the evidence covers both trees: a change in the ui repo makes the green ru
   rmSync(join(ui, 'src/extra.txt'));
   ok(home, 'end', 'implement', DIR);
   writeFileSync(join(ui, 'src/extra.txt'), 'later\n');
-  r = spex(home, 'start', 'review', DIR);
+  r = spex(enter(home), 'start', 'review', DIR);
   assert.equal(r.code, 6, r.stdout);
   assert.deepEqual(codes(r), ['GATE-VERIFY']);
   rmSync(join(ui, 'src/extra.txt'));
-  assert.equal(spex(home, 'start', 'review', DIR).code, 0);
+  assert.equal(spex(enter(home), 'start', 'review', DIR).code, 0);
 });
 
 /** Every task done, the proof green, review started and its round clean, and the close up to `built`. */
@@ -221,7 +221,7 @@ function readyToMerge(s, { note = false } = {}) {
   for (const t of ['T01', 'T02', 'T03']) ok(s.home, 'done', DIR, t);
   ok(s.home, 'verify', DIR);
   ok(s.home, 'end', 'implement', DIR);
-  ok(s.home, 'start', 'review', DIR);
+  ok(enter(s.home), 'start', 'review', DIR);
   ok(s.home, 'show', DIR, '--review');
   writeFileSync(join(s.wt, '.spex/review/007-1.findings.yaml'), 'feature: "007"\nround: 1\nfindings: []\n');
   ok(s.home, 'review', 'accept', DIR, 'ok', '--by', 'agent');

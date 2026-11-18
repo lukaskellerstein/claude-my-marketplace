@@ -3,7 +3,9 @@
 // status.yaml alone: the phase, and if it is done. No step inside a phase is ever named.
 
 import { openCorrections } from './corrections.js';
+import { currentBranch } from './git.js';
 import { isClosed, specList, stateWord, type ListedSpec } from './state.js';
+import { branchOf } from './worktree.js';
 
 export const RULE = '─'.repeat(40);
 
@@ -14,10 +16,18 @@ export interface Next {
   why: string[];
   /** The spec it is about, when there is one. */
   spec: string | null;
+  /** The branch the command works on: a session must start in its worktree first (`claude -w <branch>`). */
+  branch?: string;
 }
 
 /** The command that moves one spec, from its state. A comment that is not finished comes first: its entry is still open. */
 export function commandFor(spec: ListedSpec): Next {
+  const n = phaseCommand(spec);
+  // Every command but the end of the close works in the worktree of the spec, so a session starts there first.
+  return isClosed(spec.state) ? n : { ...n, branch: branchOf(spec.name) };
+}
+
+function phaseCommand(spec: ListedSpec): Next {
   const dir = spec.dir;
   const s = spec.state;
   const open = openCorrections(spec.home, dir);
@@ -34,24 +44,30 @@ export function commandFor(spec: ListedSpec): Next {
   }
   if (s.state === 'started') return { command: `/spex:review ${dir}`, why: ['The phase runs again: the findings that wait for your answer are shown again.'], spec: dir };
   // review, done, and the spec is still in the list as open: the merge or the removal of the worktree is not finished.
-  return { command: `/spex:review ${dir}`, why: ['The spec is closed on its branch. The merge, or the removal of the worktree, is not finished: this finishes it.'], spec: dir };
+  // That part changes the main folder, so it is typed in a session there.
+  return { command: `/spex:review ${dir}`, why: ['The spec is closed on its branch. The merge, or the removal of the worktree, is not finished: type it in a session on the main folder, and it finishes it.'], spec: dir };
 }
 
 /** What is next for the repo: the spec that is open, else the first note of the list, else nothing. */
 export function nextFor(root: string): Next {
   const list = specList(root);
-  const open = list.find((s) => (s.state && !isClosed(s.state)) || (isClosed(s.state) && s.worktree));
+  const open = list.find((s) => (s.state && !isClosed(s.state)) || (isClosed(s.state) && (s.worktree || s.branch)));
   if (open) return commandFor(open);
   const note = list.find((s) => !isClosed(s.state));
   if (note) return commandFor(note);
   return { command: '', why: [list.length ? 'Every spec is closed and merged. A new idea starts with /spex:new, a bug in merged code with /spex:new-bug.' : 'No spec yet. An idea starts with /spex:new.'], spec: null };
 }
 
-/** The block as it is printed: /clear first, then the command alone on its line to copy, then the reason. */
-export function renderNext(n: Next, opts: { clear?: boolean } = {}): string {
+/**
+ * The block as it is printed: /clear first, then the command alone on its line to copy, then the reason. With `root`,
+ * a command whose branch is not the branch of this session starts with the session it needs: `claude -w spex/<spec>`,
+ * then the command, typed in that session.
+ */
+export function renderNext(n: Next, opts: { clear?: boolean; root?: string } = {}): string {
   const clear = opts.clear ?? true;
   const lines = [RULE];
   if (!n.command) lines.push('NEXT   Nothing.', ...n.why.map((w) => `       ${w}`));
+  else if (n.branch && opts.root && currentBranch(opts.root) !== n.branch) lines.push(`NEXT   claude -w ${n.branch}`, `       then, in that session: ${n.command}`, ...n.why.map((w) => `       ${w}`));
   else if (clear) lines.push('NEXT   /clear', `       ${n.command}`, ...n.why.map((w) => `       ${w}`));
   else lines.push(`NEXT   ${n.command}`, ...n.why.map((w) => `       ${w}`));
   lines.push(RULE);

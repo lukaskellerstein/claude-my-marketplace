@@ -31,14 +31,14 @@ import { FIELDS, type Field } from './corrections.js';
 import { homeOf } from './state.js';
 import type { Finding } from './types.js';
 
-export const VERSION = '3.0.0';
+export const VERSION = '3.1.0';
 
 const FIELD_FLAGS = FIELDS.map((f) => f.toLowerCase().replace(' ', '-'));
 const VALUE_FLAGS = new Set(['number', 'base', 'expect', 'task', 'scope', 'words', 'text', 'message', 'title', 'done', 'root', 'status', 'summary', 'reason', 'ask', 'roadmap', 'step', 'depends-on', 'test', 'session', 'result', 'observed', 'by', ...FIELD_FLAGS]);
 const LIST_FLAGS = new Set(['concern', 'question', 'file', 'pulled', 'source', 'artifact', 'add', 'close']);
 /** List flags whose values are paths or ids, never prose: each takes every value up to the next flag. */
 const MANY_FLAGS = new Set(['file', 'pulled', 'add', 'close']);
-const BOOL_FLAGS = new Set(['json', 'force', 'branches', 'no-branches', 'all', 'tests', 'plan', 'verify', 'review', 'design', 'decisions', 'inherited', 'lessons', 'ready', 'help', 'version', 'coverage', 'init', 'closed']);
+const BOOL_FLAGS = new Set(['json', 'force', 'branches', 'no-branches', 'all', 'tests', 'plan', 'verify', 'review', 'design', 'decisions', 'inherited', 'lessons', 'ready', 'help', 'version', 'coverage', 'init', 'closed', 'preview', 'approved']);
 
 interface Args {
   positional: string[];
@@ -89,19 +89,23 @@ A spec is a folder under specs/. Its state is in one file, status.yaml: no file 
   spex cover <text file> <dir>…                every line of the person's text is linked from a note (← source.md#L3), or has its reason there
   spex new-bug <slug> --words <file>           one note for a bug in merged code, with the next turn; each note that waits moves one number up
   spex delete <dir>… --reason "…"              take a spec off the list: a spec with a worktree is saved to .spex/archive/ (the folder, code.patch) first; then the worktree, the branch, the note; the later notes move down
+  spex commit --preview                        change nothing: name the files, and the question for the person (commit and push to origin/main?)
+  spex commit --approved --message "…"         the person said yes: commit specs/ on the base branch and push it to the branch it tracks
   spex commit --message "…"                    commit specs/ on the base branch, only with commit: true (and push it when close.cmd merges through a remote); without it, name the files
+                                               both take .spex/config.yaml and .spex/.gitignore along with the notes when they are new or changed, and no other file
   spex status                                  where the work stopped: the open spec, its phase, the one command to go on
   spex roadmap [name] | <name> --init --source <file>… | <name> --coverage
   spex outline <file>…                         a design's sections, with the anchor a source or a coverage row names
 
   the phases of a spec
-  spex start plan <dir>                        the gate (its turn, the note is committed), the branch spex/<spec> and the worktree, status.yaml: plan, started
+  the phases run in a session started in the worktree of the spec: claude -w spex/<spec>. A start anywhere else is GATE-ENTER, and makes nothing
+  spex start plan <dir>                        the gate (its turn, this session on spex/<spec>, the note committed), worktree.setup at the first start here, status.yaml: plan, started
   spex end plan <dir>                          "All linked?" (your line → record → task → test), the stamp, status.yaml: plan, done, one commit on the branch of the spec
   spex start implement <dir>                   the plan is as stamped (typing implement approves it), draft → approved, the needs and env.up, status.yaml: implement, started
   spex end implement <dir>                     every task done, the proof green on this tree; status.yaml: implement, done, one commit
   spex start review <dir>                      built and green, status.yaml: review, started
   spex close <dir> <sync|later|prove|built|merge|finish>
-                                               the close, in this order: the base branch in · the later notes · still green? · records → built, review, done, commit · close.cmd · (main folder) pull, env.down, remove the worktree
+                                               the close, in this order: the base branch in · the later notes · still green? · records → built, review, done, commit · close.cmd · (a session on the main folder) pull, the local merge, env.down, remove the worktree and the branch
   spex comment [--words <file> | --text "…"]   keep the person's words in corrections.md of the open spec, as an open entry; no words: go on with one that is not finished
   spex stamp <dir> [--close <C-id>…] [--changed "…"]
                                                the process changed the plan: check the links, stamp it, close the entry, commit; a built spec goes back to implement, started
@@ -136,7 +140,7 @@ A spec is a folder under specs/. Its state is in one file, status.yaml: no file 
                                                the answer to the newest review round: a fix pick → a fix task and implement, started · defer → deferred[] · skip → noted; each pick is an entry in corrections.md
   spex report <dir> <stage> [task] --status s --summary "…" [--concern c]* [--question q]* [--file f]* [--pulled p]*
 
-A command that names a spec works in the worktree of that spec when it has one, from any folder of the repo.
+A command that names a spec works in the worktree of that spec when it has one, from any folder of the repo. The script never makes a worktree.
 Every command takes --json. Exit codes: 0 ok · 2 usage · 4 invalid · 5 gap · 6 refused · 7 failed · 8 a worktree is not removed (run the printed command outside the sandbox).`;
 
 function findRoot(start: string): string {
@@ -201,7 +205,7 @@ function main(argv: string[]): void {
     case 'status':
       return emit(command, status(root), json);
     case 'commit':
-      return emit(command, commitNotes(root, str('message') ?? ''), json);
+      return emit(command, commitNotes(root, str('message') ?? '', { preview: flags.preview === true, approved: flags.approved === true }), json);
     case 'new': {
       if (!rest[0]) throw new Usage('new needs a slug, e.g. csv-export');
       const step = flags.step === undefined ? undefined : Number(flags.step);

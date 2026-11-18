@@ -1,8 +1,8 @@
 ---
 name: review
-description: Review the built spec, then close it. Reviewers read the diff against every record, read only. Every finding comes at once, worst first, each with a fix plan and a pick (fix, defer or skip), and the person answers in one line. A fix pick is built with no command typed. With no fix pick left it closes the spec: the base branch comes in, the later notes learn, the merge, and the worktree is removed. Use when the user says "spex review", "review it", answers a review with "ok" or picks, or when a NEXT block names /spex:review.
+description: Review the built spec, then close it. Reviewers read the diff against every record, read only. Every finding comes at once, worst first, each with a fix plan and a pick (fix, defer or skip), and the person answers in one line. A fix pick is built with no command typed. With no fix pick left it closes the spec: the base branch comes in, the later notes learn, the merge; typed again in a session on the main folder, it pulls and removes the worktree and the branch. Use when the user says "spex review", "review it", answers a review with "ok" or picks, or when a NEXT block names /spex:review.
 disable-model-invocation: true
-allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Read(${CLAUDE_PLUGIN_ROOT}/reply.md), Read(${CLAUDE_PLUGIN_ROOT}/skills/*/*.md), Agent, EnterWorktree, ExitWorktree, Write(.spex/review/*)
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Read(${CLAUDE_PLUGIN_ROOT}/reply.md), Read(${CLAUDE_PLUGIN_ROOT}/skills/*/*.md), Agent, Write(.spex/review/*)
 ---
 
 # spex review
@@ -13,11 +13,11 @@ the arguments, or `auto: true` in `.spex/config.yaml`, is auto mode.
 
 ## Steps
 
-1. `SPEX start review <dir>`. Refused: reply `⛔ NOT STARTED` with its fix text, and stop.
-   The output has `enter: <path>`: call the tool `EnterWorktree` with `path: <that path>`,
-   unless the chat is there. Every agent you start works there.
+1. `SPEX start review <dir>`. Refused: reply `⛔ NOT STARTED` with its fix text, and stop;
+   `GATE-ENTER` puts its fix text under `You:` as it is. The session is in the worktree
+   (`claude -w spex/<spec>`), and so is every agent. No skill moves the chat.
 2. The output says `the close is not finished`: read
-   `${CLAUDE_PLUGIN_ROOT}/skills/review/close.md` and go on at the step the output names.
+   `${CLAUDE_PLUGIN_ROOT}/skills/review/close.md` and go on at the step it names.
 3. A round that waits for its answer is never reviewed again.
    - Words after `<dir>` (`ok`, `2=defer`), or the reply of the person to the list: step 7.
    - The output says `round <n> waits for its answer: <file>`, and no answer came: read

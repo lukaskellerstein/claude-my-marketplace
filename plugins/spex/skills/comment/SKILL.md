@@ -2,7 +2,7 @@
 name: comment
 description: Say something about the spec that is open, at any moment — a question, or what must change. The script keeps the words in corrections.md word for word. A question is answered from the files of the spec. A change goes through the analyst, the planner and the test analyst, the script stamps the changed plan, and the reply names the one command to type. No code is written. Use when the user says "spex comment", stops a run to object, asks "why does it …", or says "it must also …" about the open spec.
 disable-model-invocation: true
-allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Read(${CLAUDE_PLUGIN_ROOT}/reply.md), Agent, EnterWorktree
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Read(${CLAUDE_PLUGIN_ROOT}/reply.md), Agent
 ---
 
 # spex comment
@@ -18,9 +18,11 @@ run no other command: the reply names it, and the person types it.
    `SPEX comment --words <file>`. With no words: `SPEX comment`, which finds a
    comment that is not finished and goes on from there. `COMMENT-NO-SPEC`: nothing
    changed; reply `⛔ NOT STARTED` with the command its fix names (plan, new, new-bug or
-   delete), and stop.
-2. It prints the entry (`C3`), the spec, its state, `enter: <path>` and if a plan exists.
-   Call the tool `EnterWorktree` with `path: <that path>`, unless the chat is there.
+   delete), and stop. `GATE-ENTER`: this session did not start in the worktree of the
+   open spec, and nothing is kept. Reply `⛔ NOT STARTED`, its fix text under `You:` as it
+   is, and stop. No skill enters or leaves a worktree.
+2. It prints the entry (`C3`), the spec, its state, `worktree: <path>` and if a plan
+   exists. The session is in that worktree, and every agent you start works there.
 3. Sort the words. A question gets an answer. Everything else is a change. When you
    cannot tell, it is a change. Words about another spec or about merged code: say which
    command fits, `SPEX correction <dir> --close <C> --done "not about this spec"`, stop.

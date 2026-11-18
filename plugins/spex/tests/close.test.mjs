@@ -7,7 +7,7 @@ import { chmodSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs
 import { join } from 'node:path';
 import test from 'node:test';
 import { parse } from 'yaml';
-import { DIR, NAME, builtSpec, codes, commitAll, configure, edit, gitIn, ok, read, reviewing, spex, tempDir } from './helpers.mjs';
+import { enter, DIR, NAME, builtSpec, codes, commitAll, configure, edit, gitIn, ok, read, reviewing, spex, tempDir } from './helpers.mjs';
 
 const BRANCH = `spex/${NAME}`;
 const RULE = '─'.repeat(40);
@@ -174,31 +174,38 @@ test('close built, merge and finish with close.cmd local: the script merges in t
   r = close(repo, 'built');
   assert.equal(r.code, 0, r.stdout);
   assert.deepEqual([r.json.committed, r.json.text], [false, `${DIR} is closed already on its branch\nnothing new to commit`]);
-  // closed on its branch and not merged: review, typed again, goes on with the close; no other phase opens it
-  r = ok(repo, 'start', 'review', DIR);
-  assert.deepEqual([r.json.closing, r.json.state], [true, { command: 'review', state: 'done' }]);
+  // closed on its branch and not merged: review, typed again in the worktree, goes on with the close at merge; typed in
+  // the main folder, it goes straight to finish, the one step that changes the main folder. No other phase opens it
+  r = ok(wt, 'start', 'review', DIR);
+  assert.deepEqual([r.json.closing, r.json.step, r.json.state], [true, 'merge', { command: 'review', state: 'done' }]);
   assert.ok(r.json.text.includes(`spex close ${DIR} merge`), r.json.text);
-  for (const args of [['start', 'plan', DIR], ['start', 'implement', DIR], ['stamp', DIR]]) assert.deepEqual(codes(spex(repo, ...args)), ['GATE-CLOSED'], args.join(' '));
+  r = ok(repo, 'start', 'review', DIR);
+  assert.deepEqual([r.json.closing, r.json.step], [true, 'finish']);
+  assert.ok(r.json.text.includes(`spex close ${DIR} finish`) && !r.json.text.includes('worktree:'), r.json.text);
+  for (const cwd of [repo, wt]) for (const args of [['start', 'plan', DIR], ['start', 'implement', DIR], ['stamp', DIR]]) assert.deepEqual(codes(spex(cwd, ...args)), ['GATE-CLOSED'], args.join(' '));
   assert.equal(spex(repo, 'status').json.next, `/spex:review ${DIR}`);
+  assert.ok(spex(repo, 'status').json.text.includes(`NEXT   /spex:review ${DIR}\n`), 'the end of the close is typed in the main folder: no claude -w');
 
   r = close(repo, 'merge');
   assert.equal(r.code, 0, r.stdout);
   assert.deepEqual([r.json.step, r.json.waits, r.json.branch, r.json.base], ['merge', false, BRANCH, 'main']);
   assert.ok(r.json.text.includes(`close.cmd is local: the script merges ${BRANCH} into main in the main folder, in the step finish`), r.json.text);
+  assert.ok(r.json.text.endsWith(`next: the person ends this session (the worktree may go: pick remove), then types /spex:review ${DIR} in a session on the main folder (${repo}): it runs \`spex close ${DIR} finish\` there`), r.json.text);
   assert.ok(!existsSync(join(repo, DIR, 'status.yaml')), 'the base branch has nothing yet');
 
-  // finish changes the main folder, so the chat leaves the worktree first
+  // finish changes the main folder, so it runs in a session there, never in the worktree
   r = close(wt, 'finish');
   assert.equal(r.code, 6, r.stdout);
   assert.deepEqual(codes(r), ['CLOSE-LEAVE']);
   assert.equal(r.json.main, repo);
-  assert.ok(finding(r, 'CLOSE-LEAVE').fix.includes('ExitWorktree') && finding(r, 'CLOSE-LEAVE').fix.includes(`in ${repo}`), r.stdout);
+  assert.equal(finding(r, 'CLOSE-LEAVE').fix, `End this session (the worktree may go: pick remove). Then type /spex:review ${DIR} in a session on the main folder (${repo}): it runs this step there.`);
+  assert.ok(!finding(r, 'CLOSE-LEAVE').fix.includes('ExitWorktree'));
 
   r = close(repo, 'finish');
   assert.equal(r.code, 0, r.stdout);
   assert.deepEqual([r.json.step, r.json.next], ['finish', '/spex:plan specs/008-restore']);
   for (const line of [`merged ${BRANCH} into main (close.cmd: local)`, 'environment stopped: echo stopped > env-down.flag', `removed the worktree and the branch ${BRANCH}`, `${NAME} is closed and merged`]) assert.ok(r.json.text.includes(`${line}\n`), `${line}\n${r.json.text}`);
-  assert.ok(r.json.text.endsWith(`${RULE}\nNEXT   /clear\n       /spex:plan specs/008-restore\n       It is the turn of this spec.\n${RULE}`), r.json.text);
+  assert.ok(r.json.text.endsWith(`${RULE}\nNEXT   claude -w spex/008-restore\n       then, in that session: /spex:plan specs/008-restore\n       It is the turn of this spec.\n${RULE}`), r.json.text);
   assert.ok(!existsSync(wt), 'the worktree is gone');
   assert.deepEqual(branches(repo), ['main']);
   assert.equal(gitIn(repo, ['worktree', 'list']).trim().split('\n').length, 1);
@@ -221,7 +228,7 @@ test('close built, merge and finish with close.cmd local: the script merges in t
   assert.deepEqual(codes(spex(repo, 'delete', DIR, '--reason', 'no')), ['DELETE-MERGED']);
   assert.deepEqual(codes(spex(repo, 'comment', '--text', 'one more thing')), ['COMMENT-NO-SPEC']);
   // and the turn of the next spec has come: its plan reads what the closed one built
-  r = ok(repo, 'start', 'plan', 'specs/008-restore');
+  r = ok(enter(repo, 'specs/008-restore'), 'start', 'plan', 'specs/008-restore');
   assert.deepEqual(r.json.closed, [NAME]);
   assert.ok(r.json.text.includes(`closed before it: ${NAME} `), r.json.text);
 });

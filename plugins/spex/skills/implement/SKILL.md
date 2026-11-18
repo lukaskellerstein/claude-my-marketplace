@@ -2,7 +2,7 @@
 name: implement
 description: Build the open spec from its plan, in one run. Typing it approves the plan. Test developers write each test and prove it red, one fresh developer builds each task, and the script and the testers prove the whole spec. For each red test a decider names the cause (the test, the code, the tasks or the spec), and the agent that owns it fixes it. Use when the user says "spex implement", "implement it", "build it", or when a NEXT block names /spex:implement.
 disable-model-invocation: true
-allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Read(${CLAUDE_PLUGIN_ROOT}/reply.md), Read(${CLAUDE_PLUGIN_ROOT}/skills/*/*.md), Agent, EnterWorktree, ExitWorktree
+allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Read(${CLAUDE_PLUGIN_ROOT}/reply.md), Read(${CLAUDE_PLUGIN_ROOT}/skills/*/*.md), Agent
 ---
 
 # spex implement
@@ -19,13 +19,15 @@ agents`. `auto` among the arguments, or `auto: true` in `.spex/config.yaml`, is 
    - Refused, and the output says `need(s) not met` (a token, a system that must run,
      `ENV-UP`): only the person gives these. Reply `⏸ WAITING FOR YOU`, each need under
      `You:`, and stop. No code is written yet.
+   - `GATE-ENTER`: this session did not start in the worktree of the spec. Reply `⛔ NOT
+     STARTED`, its fix text under `You:` as it is, and stop. No skill enters or leaves a
+     worktree: the session starts there (`claude -w spex/<spec>`), and every agent you
+     start works there.
    - Any other refusal: reply `⛔ NOT STARTED` with its fix text, and stop.
-2. The output has `enter: <path>`. Call the tool `EnterWorktree` with `path: <that
-   path>`, unless the chat is there. Every agent you start from now on works there.
-3. The output says `a correction is not finished`: a run ended in the middle of a fix.
+2. The output says `a correction is not finished`: a run ended in the middle of a fix.
    Read `${CLAUDE_PLUGIN_ROOT}/skills/implement/wrong.md` and do its part **An entry that
    is open** first.
-4. The parts, in this order. Read a part when the run gets there, and do it:
+3. The parts, in this order. Read a part when the run gets there, and do it:
    - `${CLAUDE_PLUGIN_ROOT}/skills/implement/tests.md`: each script test has its file,
      and is red.
    - `${CLAUDE_PLUGIN_ROOT}/skills/implement/develop.md`: each task is done.
@@ -34,12 +36,12 @@ agents`. `auto` among the arguments, or `auto: true` in `.spex/config.yaml`, is 
 
    A part that finds something red sends the run to `wrong.md`, and wrong.md says where
    the run goes on. A run with every test green never reads it.
-5. `SPEX end implement <dir>`. It checks every task and the proof, closes the entries
+4. `SPEX end implement <dir>`. It checks every task and the proof, closes the entries
    that are open, and commits on the branch of the spec. Refused: `GATE-TASKS` is
    develop.md again, `GATE-VERIFY` is prove.md again, `GATE-PLAN-CHANGED` is a change of
    the plan with no stamp (**The plan follows** of wrong.md). At most 3 tries, then
    `⛔ STOPPED`.
-6. `SPEX report <dir> implement --status <done|concerns|blocked> --summary "…"`, with one
+5. `SPEX report <dir> implement --status <done|concerns|blocked> --summary "…"`, with one
    `--concern` for each thing a later spec must know: a test written again, a file a
    task got, a task that waits. Also when the run stops early.
 

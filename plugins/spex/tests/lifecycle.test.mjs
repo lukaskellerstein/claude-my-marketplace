@@ -3,12 +3,12 @@
 // coverage, review accept. Plus new, report, init, update. The phases themselves are in phases.test.mjs, the close in
 // close.test.mjs, and the commands around them in notes.test.mjs.
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
 import { parse } from 'yaml';
 import { spawnSync } from 'node:child_process';
-import { DIR, NAME, SPEX, codes, commitAll, configure, edit, gitIn, implementing, makeRepo, ok, planned, read, reviewing, spex, spexText, tempDir, worktreeOf } from './helpers.mjs';
+import { DIR, FIXTURES, NAME, SPEX, codes, commitAll, configure, edit, enter, gitIn, implementing, makeRepo, ok, planned, read, reviewing, spex, spexText, tempDir, worktreeOf } from './helpers.mjs';
 
 const tasksOf = (root) => parse(read(root, `${DIR}/tasks.yaml`), { schema: 'core' });
 const status = (root, id) => tasksOf(root).tasks.find((t) => t.id === id).status;
@@ -32,7 +32,7 @@ test('the whole lifecycle on the README example: a note, plan, implement, review
   assert.equal(spex(repo, 'status').json.next, `/spex:plan ${DIR}`);
 
   // plan: the worktree, then the stamp and the commit. Its end approves nothing.
-  r = ok(repo, 'start', 'plan', DIR);
+  r = ok(enter(repo), 'start', 'plan', DIR);
   const wt = r.json.worktree;
   assert.equal(wt, worktreeOf(repo));
   r = ok(repo, 'end', 'plan', DIR);
@@ -41,7 +41,7 @@ test('the whole lifecycle on the README example: a note, plan, implement, review
   assert.equal(spex(repo, 'status').json.next, `/spex:implement ${DIR}`);
 
   // implement: typing it is the approval. The records flip, and the file keeps its comments and its layout.
-  r = ok(repo, 'start', 'implement', DIR);
+  r = ok(enter(repo), 'start', 'implement', DIR);
   assert.equal(r.json.approved, 2);
   assert.equal(reqStatus(wt, 'REQ-007-001'), 'approved');
   assert.ok(read(wt, `${DIR}/requirements.yaml`).includes('decision: csv-stringify 6.x, because'), 'layout kept');
@@ -146,7 +146,7 @@ test('the whole lifecycle on the README example: a note, plan, implement, review
   assert.equal(spex(repo, 'status').json.next, `/spex:review ${DIR}`);
 
   // review: typing it approves what implement built. A round with no finding is clean, and the close goes on.
-  ok(repo, 'start', 'review', DIR);
+  ok(enter(repo), 'start', 'review', DIR);
   r = spex(repo, 'show', DIR, '--review');
   assert.equal(r.code, 0, r.stdout);
   assert.equal(r.json.round, 1);
@@ -264,7 +264,7 @@ test('paths widens a task under the check rules; a plan changed before it still 
   assert.equal(JSON.parse(read(wt, '.spex/runs/007/paths-T01.json')).changes[0].stamp, 'due');
   // before the end of plan there is no stamp to keep, and none is due
   const early = makeRepo('csv-export');
-  ok(early, 'start', 'plan', DIR);
+  ok(enter(early), 'start', 'plan', DIR);
   const e = spex(early, 'paths', DIR, 'T01', '--add', 'src/store/format.ts', '--reason', 'the planner: format.ts holds the header');
   assert.deepEqual([e.json.stamp_due, e.json.stamp_kept], [false, false]);
   assert.equal(JSON.parse(read(worktreeOf(early), '.spex/runs/007/paths-T01.json')).changes[0].stamp, 'none');
@@ -302,7 +302,7 @@ test('paths: a stamped plan stays stamped, the record says why, and review shows
   assert.ok(record.changes[0].reason.startsWith('decider:'));
   assert.equal(record.changes[0].stamp, 'kept');
   assert.equal(spex(repo, 'gate', 'develop', DIR, 'T01').code, 0, 'the widened plan needs no person');
-  assert.deepEqual(codes(spex(repo, 'start', 'implement', DIR)), [], 'and implement, typed again, takes it as stamped');
+  assert.deepEqual(codes(spex(enter(repo), 'start', 'implement', DIR)), [], 'and implement, typed again, takes it as stamped');
   // a second change adds to the record, it does not replace it; the repeated flag works too
   spex(repo, 'paths', DIR, 'T01', '--add', 'src/cli/usage.ts', '--add', 'src/cli/flags.ts', '--reason', 'decider: the usage text names the flag');
   assert.deepEqual(JSON.parse(read(wt, '.spex/runs/007/paths-T01.json')).changes.map((c) => c.added.length), [2, 2]);
@@ -341,13 +341,36 @@ test('a skipped test is neither red nor green: the red run, the develop gate, do
   assert.equal(status(wt, 'T01'), 'done');
 });
 
+test('a skip is read only from the runner\'s own summary or result line: a real skip of each runner counts; a zero count, a page dump and "1 skipped" in a message do not', () => {
+  // tests/fixtures/skips/ holds what each runner printed, with the env spex gives a command (pytest and vitest color
+  // it). <runner>.skip.txt: a run with one skipped test. <runner>.none.txt: the same runner with no skip, and
+  // dex-page.none.txt: a red node:test whose test prints the app page (a SKIPPED stat label, a "1 skipped" digest line)
+  // and repeats it in its assertion message. The driver prints the file, then the test name, and fails.
+  const skips = join(FIXTURES, 'skips');
+  const { repo } = planned((main) => edit(main, '.spex/config.yaml', (s) => s.replace(/^acceptance_cmd: .*$/m, `acceptance_cmd: 'cat "$SPEX_SKIP_FIXTURE"; echo "{ids}"; exit 1'`)));
+  const files = readdirSync(skips).filter((f) => f.endsWith('.txt')).sort();
+  const wrong = [];
+  for (const file of files) {
+    const res = spawnSync('node', [SPEX, 'run', DIR, 'T01', '--expect', 'fail', '--json'], { cwd: repo, encoding: 'utf8', env: { ...process.env, SPEX_SKIP_FIXTURE: join(skips, file) } });
+    const found = (JSON.parse(res.stdout).findings ?? []).map((f) => f.code);
+    const skipped = res.status === 7 && found.includes('RUN-SKIPPED');
+    const red = res.status === 0 && !found.length;
+    if (file.endsWith('.skip.txt') ? !skipped : !red) wrong.push(`${file}: exit ${res.status}, ${found.join(',') || 'no finding'}`);
+  }
+  assert.deepEqual(wrong, []);
+  // every runner the check names has a real skip here
+  const runners = [...new Set(files.filter((f) => f.endsWith('.skip.txt')).map((f) => f.split(/[-.]/)[0]))];
+  assert.deepEqual(runners, ['cargo', 'go', 'jest', 'mocha', 'node', 'pytest', 'rspec', 'vitest']);
+  assert.ok(files.includes('dex-page.none.txt'));
+});
+
 test('a need the environment lacks stops the develop gate with the one thing a person gives; a shell test needs no red run', () => {
   const { repo, wt } = planned((main) => {
     edit(main, `${DIR}/tests.yaml`, (s) => `${s.replace('    name: REQ_007_001_AC_1_writes_open_tasks_as_csv\n', '    name: REQ_007_001_AC_1_writes_open_tasks_as_csv\n    needs: [SPEX_TEST_TOKEN, "test -f src/state.txt"]\n')}${SHELL_TEST.replace('grep -q fixed src/fix.txt', 'test -f src/fix.txt')}`);
     edit(main, `${DIR}/tasks.yaml`, (s) => s + SHELL_TASK);
   });
   const env = { ...process.env, SPEX_TEST_TOKEN: 'x' };
-  assert.equal(spawnSync('node', [SPEX, 'start', 'implement', DIR, '--json'], { cwd: repo, encoding: 'utf8', env }).status, 0);
+  assert.equal(spawnSync('node', [SPEX, 'start', 'implement', DIR, '--json'], { cwd: enter(repo), encoding: 'utf8', env }).status, 0);
   let r = spex(repo, 'gate', 'develop', DIR, 'T01');
   assert.equal(r.code, 6, r.stdout);
   const needs = r.json.findings.filter((f) => f.code === 'GATE-NEEDS');
@@ -494,7 +517,7 @@ test('check reads a note by its sections, and the whole-repo check sees every fo
   // one named spec is checked where it lives: an open spec in its worktree, from any folder of the repo
   rmSync(join(repo, 'specs/010-empty'), { recursive: true });
   commitAll(repo, 'a note');
-  ok(repo, 'start', 'plan', DIR);
+  ok(enter(repo), 'start', 'plan', DIR);
   const wt = worktreeOf(repo);
   edit(wt, `${DIR}/tasks.yaml`, (s) => s.replace('kind: story', 'kind: saga'));
   assert.equal(spex(repo, 'check', DIR).code, 4, 'the worktree copy is the one that counts');
@@ -545,7 +568,7 @@ test('a roadmap: notes in the order of their steps, a broken link between them, 
   edit(repo, 'specs/002-runner/spec.md', (s) => s.replace('depends_on: [001-ticket-model, 099-nowhere]', 'depends_on: [001-ticket-model]'));
   commitAll(repo, 'three notes');
   // the turn is the order of the numbers: step 2 waits for step 1
-  assert.deepEqual(codes(spex(repo, 'start', 'plan', 'specs/002-runner')), ['GATE-TURN']);
+  assert.deepEqual(codes(spex(enter(repo, 'specs/002-runner'), 'start', 'plan', 'specs/002-runner')), ['GATE-TURN']);
 
   // step 1 closed the short way, as the close leaves a spec on the base branch: records built, review done
   const fixture = (file) => readFileSync(new URL(`./fixtures/csv-export/${DIR}/${file}`, import.meta.url), 'utf8').replace('feature: "007"', 'feature: "001"').replace(/REQ-007-/g, 'REQ-001-').replace(/REQ_007_/g, 'REQ_001_');
@@ -573,7 +596,7 @@ test('a roadmap: notes in the order of their steps, a broken link between them, 
   assert.ok(spex(repo, 'show', 'specs/003-runner-cli', '--inherited').json.text.includes('(nothing settled yet)'), 'a dependency that is a note has nothing yet');
 
   // the turn of step 2 has come: plan opens the note. The note line goes, the sections it left out come with their hints, its words stay
-  r = ok(repo, 'start', 'plan', 'specs/002-runner');
+  r = ok(enter(repo, 'specs/002-runner'), 'start', 'plan', 'specs/002-runner');
   assert.deepEqual(r.json.closed, ['001-ticket-model']);
   assert.ok(r.json.text.includes('closed before it: 001-ticket-model (fit.md reads what they built: SPEX show specs/002-runner --inherited)'), r.json.text);
   const opened = read(worktreeOf(repo, '002-runner'), 'specs/002-runner/spec.md');
@@ -581,7 +604,7 @@ test('a roadmap: notes in the order of their steps, a broken link between them, 
   assert.deepEqual([...opened.matchAll(/^## (.+)$/gm)].map((m) => m[1]), ['Why', 'What', 'Not this', 'From the design', 'Uses', 'Introduces', 'Open questions', 'Who', 'Constraints', 'Success', 'Alternatives', 'Decisions']);
   assert.ok(opened.includes('## Why\nwords') && opened.includes('Tech, time, cost, compatibility. -->'), opened);
   // a second start changes nothing in the file
-  ok(repo, 'start', 'plan', 'specs/002-runner');
+  ok(enter(repo, 'specs/002-runner'), 'start', 'plan', 'specs/002-runner');
   assert.equal(read(worktreeOf(repo, '002-runner'), 'specs/002-runner/spec.md'), opened);
   // step 3 still waits, now for step 2 only
   assert.deepEqual(spex(repo, 'roadmap', 'nex-platform').json.steps[2].waits, ['specs/002-runner']);
@@ -605,7 +628,7 @@ test('the format is one integer in the config: missing means 1, init writes 3, c
   r = spex(repo, 'check', DIR);
   assert.equal(r.code, 4);
   assert.ok(codes(r).includes('CONFIG-FORMAT') && finding(r, 'CONFIG-FORMAT').fix.includes('spex update'));
-  r = spex(repo, 'start', 'plan', DIR);
+  r = spex(enter(repo), 'start', 'plan', DIR);
   assert.equal(r.code, 4, r.stdout);
   assert.deepEqual(codes(r), ['CONFIG-FORMAT'], 'no phase starts on an older format');
 });
@@ -675,7 +698,7 @@ test('update migrates a format 1 repo through format 2 to 3: verification leaves
   assert.equal(read(repo, `${DIR}/status.yaml`), 'command: plan\nstate: done\n');
   assert.deepEqual(spex(repo, 'list').json.specs.map((s) => s.state), ['planned']);
   commitAll(repo, 'spex 3');
-  r = spex(repo, 'start', 'implement', DIR);
+  r = spex(enter(repo), 'start', 'implement', DIR);
   assert.equal(r.code, 0, r.stdout);
   assert.deepEqual([r.json.approved, r.json.was], [2, { command: 'plan', state: 'done' }]);
 });
@@ -770,13 +793,13 @@ test('update 2 → 3: ship becomes commit and close, approvals go, the status li
   assert.equal(spex(repo, 'status').json.next, `/spex:implement ${inFlight}`, 'the spec that was in flight is the open one');
 
   // a worktree gets only what is committed: the migration is committed first, then the spec in flight goes on where it was
-  r = spex(repo, 'start', 'implement', inFlight);
+  r = spex(enter(repo, inFlight), 'start', 'implement', inFlight);
   assert.equal(r.code, 6, r.stdout);
   assert.deepEqual(codes(r), ['GATE-COMMIT']);
   assert.ok(r.json.uncommitted.includes('.spex/config.yaml') && r.json.uncommitted.includes(`${inFlight}/status.yaml`), r.stdout);
-  assert.ok(!existsSync(join(repo, '.claude/worktrees')), 'no worktree is made from a commit that lacks the migration');
+  assert.ok(!existsSync(join(worktreeOf(repo, '008-restore'), '.spex/runs/worktree-setup.json')), 'a refused first start records nothing');
   commitAll(repo, 'spex 3');
-  r = spex(repo, 'start', 'implement', inFlight);
+  r = spex(enter(repo, inFlight), 'start', 'implement', inFlight);
   assert.equal(r.code, 0, r.stdout);
   assert.deepEqual([r.json.was, r.json.approved, r.json.worktree], [{ command: 'implement', state: 'started' }, 0, worktreeOf(repo, '008-restore')]);
   assert.ok(r.json.text.includes('tasks: 1 done, 1 todo, 0 blocked'), r.json.text);
@@ -943,7 +966,7 @@ test('review accept: every finding at once, the person answers in one word; a fi
   assert.equal(read(wt, `${DIR}/status.yaml`), 'command: review\nstate: started\n', 'a refused answer changes nothing');
 
   // a round that waits for its answer is named by the start: its list is shown again, and no reviewer runs
-  r = ok(repo, 'start', 'review', DIR);
+  r = ok(enter(repo), 'start', 'review', DIR);
   assert.deepEqual(r.json.waits, { round: 1, path: '.spex/review/007-1.findings.yaml' });
   assert.ok(r.json.text.includes('round 1 waits for its answer: .spex/review/007-1.findings.yaml\nprint its list again, and stop: no reviewer runs'), r.json.text);
 
@@ -982,7 +1005,7 @@ test('review accept: every finding at once, the person answers in one word; a fi
   r = spex(repo, 'gate', 'develop', DIR, 'T03');
   assert.equal(r.code, 0, r.stdout);
   assert.equal(spex(repo, 'check', DIR).code, 0);
-  r = spex(repo, 'start', 'implement', DIR);
+  r = spex(enter(repo), 'start', 'implement', DIR);
   assert.equal(r.code, 0, r.stdout);
   assert.deepEqual(r.json.resume, ['C1'], 'implement, typed by a person in a new chat, finishes the same fix');
 
@@ -999,7 +1022,7 @@ test('review accept: every finding at once, the person answers in one word; a fi
   r = ok(repo, 'end', 'implement', DIR);
   assert.deepEqual(r.json.corrections, ['C1', 'C2', 'C3']);
   assert.ok(read(wt, `${DIR}/corrections.md`).includes('Pick: fix (you)\nState: closed: every test is green\n'));
-  ok(repo, 'start', 'review', DIR);
+  ok(enter(repo), 'start', 'review', DIR);
   r = spex(repo, 'show', DIR, '--review');
   assert.equal(r.json.round, 2);
   assert.equal(r.json.check, true);

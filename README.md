@@ -27,7 +27,7 @@ This marketplace bundles **12 plugins** contributing **55 skills**, **29 agents*
 | [media-plugin](plugins/media-plugin) | `v1.15.1` | Image, video, music, speech, icon and data-viz generation | 10 | 1 |
 | [web-design-plugin](plugins/web-design-plugin) | `v1.6.0` | Brief → working React/Vite site | 4 | 11 |
 | [dev-tools-plugin](plugins/dev-tools-plugin) | `v1.9.0` | Thinking/Q&A, git, code hygiene, deps, docs — all user-invoked | 8 | 1 |
-| [spex](plugins/spex) | `v3.0.0` | Idea → notes → plan (spec, EARS records, tasks, proof plan) → implement (red tests, code, proof) → review and merge; script-gated, a worktree per spec | 10 | 10 |
+| [spex](plugins/spex) | `v3.1.0` | Idea → notes → plan (spec, EARS records, tasks, proof plan) → implement (red tests, code, proof) → review and merge; script-gated, a worktree per spec | 10 | 10 |
 | [demo-video-plugin](plugins/demo-video-plugin) | `v1.3.0` | Repo → narrated demo video | 9 | 5 |
 | [infra-plugin](plugins/infra-plugin) | `v1.2.0` | K8s, Istio, Helm, Terraform, auth, local clusters | 7 | — |
 | [design-plugin](plugins/design-plugin) | `v1.3.0` | Creative direction and design review | 4 | 1 |
@@ -67,7 +67,7 @@ Every skill here is **invoked by you only** — none is ever auto-selected, so n
 - **Agents:** dead-code-analyzer
 - **MCP:** Mermaid (diagram validation for `update-docs` and `update-feature-docs`)
 
-### [spex](plugins/spex) `v3.0.0`
+### [spex](plugins/spex) `v3.1.0`
 
 Spec-driven development in small, checkable files, built to replace GitHub spec-kit, with three rules: what you said stays said, the next command is the approval, and the one who writes a claim never writes its proof. Four commands take an idea to merged code. `/spex:new` keeps your text word for word, splits the idea into specs and writes one note for each, with every detail linked back to its line; a second agent reads the notes against your text. `/spex:plan` does the thinking for one spec when its turn comes, in the spec's own branch and worktree: an `analyst` checks the note against the real code and writes the full spec and the EARS requirement records, a `planner` writes one task for each agent run, and a `test-analyst`, which never wrote a claim, writes the proof plan (`tests.yaml`). It asks at most 3 questions, and the script checks that every line of yours has a record, every record a task and every claim a test. `/spex:implement` (typing it approves the plan) has `test-developer` subagents write each test from its record and prove it red, one fresh `developer` build each task, `spex done` run the task's tests itself, and `tester` subagents perform the browser sessions with the bundled Playwright MCP. For each red test a `decider` names the cause (the test, the code, the tasks or the spec); a spec change is small (an agent corrects it) or big (one question to you). `/spex:review` reads the diff for what no test sees, takes your one-line answer to the findings and, when nothing is left to fix, closes the spec: the base branch comes in, the later notes learn from this spec, the proof is checked again, `close.cmd` merges, and the worktree goes.
 

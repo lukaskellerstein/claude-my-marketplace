@@ -79,7 +79,7 @@ export function repoFindings(root: string, config: Config, names: string[], seve
     // Each spec works in its own worktree, and a relative path names another folder from there.
     const given = (r.path ?? name).trim();
     if (!isAbsolute(given) && given !== '~' && !given.startsWith('~/')) {
-      out.push({ severity: 'error', code: 'REPO-PATH', message: `repo ${name}: the path ${given} is relative`, fix: `Each spec works in its own worktree (.claude/worktrees/<spec>), and from there ${given} is another folder. Write repos.${name}.path absolute, or with ~/.` });
+      out.push({ severity: 'error', code: 'REPO-PATH', message: `repo ${name}: the path ${given} is relative`, fix: `Each spec works in its own worktree (.worktrees/spex/<spec>, made by claude -w spex/<spec>), and from there ${given} is another folder. Write repos.${name}.path absolute, or with ~/.` });
       continue;
     }
     const abs = repoRoot(root, config, name);

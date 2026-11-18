@@ -5,6 +5,9 @@ said that the close is not finished. Six steps, in this order, each one command:
 close <dir> <step>`. A step that ran before finds its work done, so a run that stopped
 goes on at any step. `SPEX` = `${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs`.
 
+Steps 1 to 5 run in the worktree. Step 6 writes the main folder, so it runs in a session
+there.
+
 1. `SPEX close <dir> sync`: the base branch comes in. `CLOSE-CONFLICT` names the files:
    one `spex:developer` with `<dir>. Conflict: <files>` joins both changes, so both stay.
    Then the step again: it commits the merge. `GATE-PUSH` (here or at step 5): the base
@@ -23,49 +26,50 @@ goes on at any step. `SPEX` = `${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs`.
      the names it uses are corrected. A closed spec is never written again.
    - Big, and an entry of corrections.md has the list that the person accepted in
      implement: no question. The analyst writes the notes again from that list.
-   - Big, and nobody asked yet: one answer from the person. Reply `❓ QUESTIONS` with one
-     block: the new list, each spec by its name, each line with keep, change, add or
-     drop and its reason, and a pick. Stop. Their answer: `SPEX correction <dir> --title
+   - Big, and nobody asked yet: reply `❓ QUESTIONS`, one block: the new list, each spec
+     by its name with keep, change, add or drop and its reason, and a pick. Stop. Their answer: `SPEX correction <dir> --title
      "close · the list of specs" --you-said "<their words>" --pick "<the list>"
      --closed`, then the analyst. In auto mode the decider answers.
    - Each line that a note got: `SPEX correction <dir> --title "close · <the fact>"
      --found "<where it came from>" --reaches "<the note>: <the line>" --closed`. Then
      `SPEX check <each note>`: an error goes back to the analyst.
-   - A note to drop or to add waits for step 7: it changes the main folder.
-   - A thing about how to work in this repo belongs in the docs of the repo, not in a
-     spec: name it in the last reply, and leave it to the person.
+   - A note to drop or to add waits for step 7.
+   - How to work in this repo belongs in its docs, not in a spec: name it in the last
+     reply, and leave it to the person.
 3. `SPEX close <dir> prove`. `CLOSE-PROOF`: the code changed after the proof. Read
    `${CLAUDE_PLUGIN_ROOT}/skills/implement/prove.md` and do it from its step 2. A red test
    goes to wrong.md of the same folder. No task is built again for a wrong test: after
    the fix, `SPEX correction <dir> --close <C-id> --done "green again"`, and this step
    again. A fix that changed the plan set the state to `implement, started`: the run
-   ends with `SPEX end implement <dir>`, and the person types the command again.
+   ends with `SPEX end implement <dir>`; the person types the command again.
 4. `SPEX close <dir> built`: the records are built, each entry that is still open is
    closed, the state is `review, done`, one commit. Keep its list `answered by an agent or by the pick` for the last reply.
 5. `SPEX close <dir> merge`.
-   - `CLOSE-WAIT`: the config has no `close.cmd`. Reply `⏸ WAITING FOR YOU`. Under `You:`
-     the branch, who merges it (the person, or the forge after their approval), and that
+   - `CLOSE-WAIT`: no `close.cmd`. Reply `⏸ WAITING FOR YOU`. Under `You:` the branch, who
+     merges it (the person, or the forge after their approval), and that
      `/spex:review <dir>`, typed again, finishes the close. Stop.
-   - `CLOSE-MERGE-FAILED`: a cause to fix, not a question. One `spex:developer` with
-     `<dir>. Merge failed: <tail>`. Then steps 3 and 4 again, so the fix is tested and
-     committed, then this step. At most 3 tries. After them, or when the forge wants a
-     person or a credential: `⏸ WAITING FOR YOU`, with what it wants under `You:`.
-6. Call the tool `ExitWorktree` with `action: keep`. Then, in the main folder, `SPEX
-   close <dir> finish`. It pulls the base branch, runs `env.down`, and removes the
-   worktree and the branch.
-   - Exit 8, `CLOSE-WORKTREE`: the spec is merged, and the worktree is not fully removed.
-     A sandbox protects two paths of Claude Code in a worktree. Run the command the
-     script printed, one time, outside the sandbox: Claude Code asks the person once.
-     Then this step again. With no person to ask: `⏸ WAITING FOR YOU`, the command under
-     `You:`.
+   - `CLOSE-MERGE-FAILED`: a cause to fix. One `spex:developer` with `<dir>. Merge
+     failed: <tail>`, then steps 3 and 4 again, then this step. At most 3 tries. After
+     them, or when the forge wants a person or a credential: `⏸ WAITING FOR YOU`, with
+     what it wants under `You:`.
+6. `SPEX close <dir> finish`, only in a session on the main folder.
+   - In the worktree: do not run it. Reply `✅ CLOSED` (`⏸ WAITING FOR YOU` with `local`),
+     and `You:` end this session, then type `/spex:review <dir>` in a
+     session on the main folder. Stop.
+   - On the main folder: it pulls, merges with `local`, runs `env.down`, removes the
+     worktree and the branch.
+   - Exit 8, `CLOSE-WORKTREE`: merged, and the worktree is not fully removed. Run the
+     printed command once outside the sandbox (Claude Code asks the person), then this
+     step again. No person to ask: `⏸ WAITING FOR YOU`, the command under `You:`.
    - `CLOSE-WAIT`: as in step 5. Any other refusal: its fix text, then this step again.
-7. Only when step 2 changed the list of specs. A note to drop: `SPEX delete <dir> --reason
+7. Only when step 2 changed the list (entry `close · the list of specs`), on the main
+   folder, after step 6. A note to drop: `SPEX delete <dir> --reason
    "<the reason the person accepted>"`. A note to add: `SPEX new <slug>`, then one
    `spex:analyst` with `<the new dir>. Note: <what the list says>`. Then `SPEX commit
-   --message "specs: the list after <NNN>"`: with no `commit: true` it names the files,
-   and they go under `You:`. Then `SPEX status` for the NEXT block.
+   --message "specs: the list after <NNN>"` (no `commit: true`: its files go under
+   `You:`), and `SPEX status` for the NEXT block.
 
-Never merge, delete a branch or remove a worktree by hand: each is a step of the script.
+Never merge, delete a branch or remove a worktree by hand: each is a script step.
 
 ## The last reply
 
@@ -84,4 +88,5 @@ In the frame of reply.md, at most 16 lines.
 - `Deferred, and no later spec took it:` one line each, from step 2. Leave it out with
   none.
 - The NEXT block that `SPEX close <dir> finish` printed (after step 7: `SPEX status`).
-  The last spec prints `Nothing.`
+  The last spec prints `Nothing.` In the worktree: the `You:` line of step 6, then the
+  NEXT block of `SPEX status`.

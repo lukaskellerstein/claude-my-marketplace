@@ -28,7 +28,8 @@ allowed-tools: Bash(${CLAUDE_PLUGIN_ROOT}/scripts/spex.mjs *), Bash(node ${CLAUD
    no file, and a spec in the middle keeps its files and is stamped as it is. In the
    config, `ship` becomes `commit` and `close.cmd`, and `approvals` goes: the next command
    is the approval. A spec in the middle has no branch `spex/<spec>` yet: its next
-   command makes the worktree from the base branch, so its files must be committed there.
+   command runs in a session that `claude -w spex/<spec>` starts, in a worktree made from
+   the remote base branch, so its files must be committed and pushed there first.
 4. `SPEX check`. Fix nothing else yourself. Relay errors by their `fix` text. A new default
    that does not fit this repo is the user's call, so name it: `commit: false` means the
    user commits the notes of new; `close.cmd` empty means a person merges; `live: []`
